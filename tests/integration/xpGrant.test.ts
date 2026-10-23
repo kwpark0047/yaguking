@@ -171,7 +171,8 @@ describe.skipIf(!hasDatabase())('XP 지급과 성적 집계', () => {
         from public.user_private_stats
        where user_id = ${userId}
     `;
-    expect(stats?.total_xp).toBe('40');
+    // 여기도 상수로 박으면 고급 문항이 출제될 때마다 깨진다.
+    expect(stats?.total_xp).toBe(String(expectedXp));
     expect(stats?.total_games).toBe(1);
   });
 
