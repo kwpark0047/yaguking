@@ -10,7 +10,8 @@ import {
   cleanup,
   createQuestionPool,
   hasDatabase,
-  type QuestionFixture,
+  optionsFor,
+
 } from './helpers/fixtures';
 
 /**
@@ -38,12 +39,11 @@ function findForbidden(value: unknown, path = '$'): string[] {
 }
 
 describe.skipIf(!hasDatabase())('정답 노출 차단', () => {
-  let pool: Map<string, QuestionFixture>;
 
   beforeAll(async () => {
     assertLocalDatabase();
     await cleanup();
-    pool = await createQuestionPool(20);
+    await createQuestionPool(20);
   });
 
   afterAll(async () => {
@@ -79,7 +79,7 @@ describe.skipIf(!hasDatabase())('정답 노출 차단', () => {
   it('다음 타석 정보에도 정답이 없다', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
 
     const result = await submitAtBat(
       started.sessionId,
@@ -98,7 +98,7 @@ describe.skipIf(!hasDatabase())('정답 노출 차단', () => {
   it('타석이 끝난 뒤에는 해설과 정답이 내려온다', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
 
     const result = await submitAtBat(
       started.sessionId,
@@ -113,7 +113,7 @@ describe.skipIf(!hasDatabase())('정답 노출 차단', () => {
     // 종료된 타석에 대해서만 공개한다.
     expect(result.reveal).not.toBeNull();
     expect(result.reveal?.correctOption.id).toBe(fixture.correctOptionId);
-    expect(result.reveal?.explanation).toBe('테스트 해설');
+    expect(result.reveal?.explanation?.length ?? 0).toBeGreaterThan(0);
     expect(result.reveal?.sources.length).toBeGreaterThan(0);
   });
 });

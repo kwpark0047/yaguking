@@ -106,6 +106,54 @@ export async function createQuestion(params: {
   };
 }
 
+/**
+ * **출제된 문항의 보기를 그때그때 조회한다.**
+ *
+ * 미리 만든 맵에 의존하면, 시드 문항처럼 테스트가 만들지 않은 문항이 출제될 때
+ * 조회가 빗나간다. 실제로 그렇게 깨졌다. 어떤 문항이 나오든 동작해야 한다.
+ */
+export async function optionsFor(questionId: string): Promise<QuestionFixture> {
+  const db = getDb();
+  const rows = await db<{ id: string; is_correct: boolean }[]>`
+    select id, is_correct
+      from private.question_options
+     where question_id = ${questionId}
+     order by label
+  `;
+
+  const correct = rows.find((row) => row.is_correct);
+  if (!correct) throw new Error(`정답이 없는 문항: ${questionId}`);
+
+  const [difficulty] = await db<{ difficulty: Difficulty }[]>`
+    select difficulty from public.questions where id = ${questionId}
+  `;
+
+  return {
+    id: questionId,
+    difficulty: difficulty?.difficulty ?? 'normal',
+    correctOptionId: correct.id,
+    wrongOptionIds: rows.filter((row) => !row.is_correct).map((row) => row.id),
+  };
+}
+
+/** 지정한 문항이 아닌 다른 게시 문항의 정답 보기 id. 보기 소속 검증 테스트용. */
+export async function optionFromAnotherQuestion(
+  excludeQuestionId: string,
+): Promise<string> {
+  const db = getDb();
+  const [row] = await db<{ id: string }[]>`
+    select o.id
+      from private.question_options o
+      join public.questions q on q.id = o.question_id
+     where q.status = 'published'
+       and q.id <> ${excludeQuestionId}
+       and o.is_correct
+     limit 1
+  `;
+  if (!row) throw new Error('다른 문항을 찾지 못했습니다.');
+  return row.id;
+}
+
 /** 문항 풀을 만든다. 1이닝은 길이가 가변이므로 넉넉히 둔다. */
 export async function createQuestionPool(
   count: number,
@@ -160,23 +208,63 @@ export async function createUser(params?: {
   return userId;
 }
 
-/** 테스트가 만든 데이터를 지운다. 참조 순서를 지켜 삭제한다. */
+/** 테스트가 만든 문항임을 알아보는 표식. */
+const TEST_STEM_PREFIX = '테스트 문항 ';
+/** 테스트가 만든 게스트 토큰 접두사 (atBatSubmit, claimGuest 등에서 사용) */
+const TEST_TOKEN_PREFIXES = ['test-', 'claim-'];
+
+/**
+ * 테스트가 만든 데이터만 지운다.
+ *
+ * 테이블을 통째로 비우면 `supabase/seed.sql`과 시드 문항까지 날아가서, 이후
+ * E2E나 수동 플레이가 "출제할 문항이 없음" 상태로 깨진다. 실제로 그렇게
+ * 깨졌던 적이 있어 범위를 좁혔다.
+ *
+ * 구단·카테고리·시즌 같은 기준 데이터는 건드리지 않는다.
+ */
 export async function cleanup(): Promise<void> {
   assertLocalDatabase();
   const db = getDb();
 
-  await db`delete from public.at_bats`;
-  await db`delete from public.play_sessions`;
-  await db`delete from public.xp_transactions`;
-  await db`delete from public.user_batting_stats`;
-  await db`delete from public.user_zone_cells`;
-  await db`delete from public.user_private_stats`;
-  await db`delete from public.guest_sessions`;
-  await db`delete from public.question_sources`;
-  await db`delete from private.question_options`;
-  await db`delete from public.questions`;
-  await db`delete from public.profiles`;
+  await deleteTestPlayData(db);
+
+  // 문항은 테스트가 만든 것만. 옵션·출처는 CASCADE.
+  await db`delete from public.questions where stem like ${TEST_STEM_PREFIX + '%'}`;
+}
+
+/** 테스트가 만든 경기·게스트·회원을 지운다. at_bats·집계는 CASCADE. */
+async function deleteTestPlayData(db: ReturnType<typeof getDb>): Promise<void> {
+  await db`
+    delete from public.play_sessions
+     where guest_session_id in (
+             select id from public.guest_sessions
+              where token_hash like ${TEST_TOKEN_PREFIXES[0] + '%'}
+                 or token_hash like ${TEST_TOKEN_PREFIXES[1] + '%'}
+           )
+        or user_id in (select id from auth.users where email like '%@example.test')
+  `;
+
+  await db`
+    delete from public.guest_sessions
+     where token_hash like ${TEST_TOKEN_PREFIXES[0] + '%'}
+        or token_hash like ${TEST_TOKEN_PREFIXES[1] + '%'}
+  `;
+
+  // 프로필 삭제가 xp·성적·존 집계를 CASCADE 로 함께 지운다.
+  await db`
+    delete from public.profiles
+     where id in (select id from auth.users where email like '%@example.test')
+  `;
   await db`delete from auth.users where email like '%@example.test'`;
+}
+
+/**
+ * 테스트 사이에 경기·집계만 비운다. 문항과 기준 데이터는 남긴다.
+ * 테스트가 도는 동안 브라우저에서 수동 플레이 중이어도 그 세션을 죽이지 않는다.
+ */
+export async function resetPlayData(): Promise<void> {
+  assertLocalDatabase();
+  await deleteTestPlayData(getDb());
 }
 
 /** 마감시각을 과거로 밀어 시간초과 상황을 만든다. */

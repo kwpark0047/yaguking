@@ -32,6 +32,31 @@ export async function measureOverflow(page: Page) {
   });
 }
 
+/**
+ * 보기를 누를 수 있게 되거나 결과 화면으로 넘어갈 때까지 기다린다.
+ *
+ * 경기 종료 직후에는 결과 화면으로 이동하는 짧은 구간이 있어, 보기 버튼이
+ * 아직 그려진 채 비활성 상태다. 둘 중 하나가 될 때까지 기다리지 않으면
+ * 그 구간에서 엉뚱하게 실패한다.
+ */
+export async function waitForPlayable(
+  page: Page,
+  timeout = 15000,
+): Promise<'playable' | 'result'> {
+  await page.waitForFunction(
+    () =>
+      location.pathname.includes('/result') ||
+      Boolean(
+        document.querySelector(
+          '[role="group"][aria-label="보기"] button:not([disabled])',
+        ),
+      ),
+    undefined,
+    { timeout },
+  );
+  return page.url().includes('/result') ? 'result' : 'playable';
+}
+
 /** 터치 타깃 최소 치수 (주 버튼 56px / 보조 44px). */
 export async function measureTouchTargets(page: Page, selector: string) {
   return page.evaluate((sel) => {

@@ -157,11 +157,20 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+# 로컬 개발 기준값. 스테이징·운영은 각 환경의 Supabase 설정에서 지정한다.
+# env() 참조를 쓰면 변수를 깜빡한 사람의 `supabase start`가 조용히 깨진다.
+site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# 콜백 주소가 **정확히** 이 목록에 있어야 한다. 없으면 Supabase가 조용히
+# site_url로 되돌리고, 사용자는 로그인했는데 세션도 승계도 안 된 상태로 랜딩에
+# 떨어진다. 로컬에서 실제로 그렇게 깨졌다.
+# 스테이징·운영에서도 각 환경의 콜백 주소를 여기에 등록해야 한다.
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+  "http://127.0.0.1:3000/auth/callback",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

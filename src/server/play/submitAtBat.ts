@@ -163,17 +163,26 @@ export async function submitAtBat(
 
     let next = null;
     let finish: FinishOutcome | null = null;
+    let finished = nextState.finished;
 
-    if (nextState.finished) {
-      finish = await finishSession(tx, updatedSession, 'finished');
-    } else {
+    if (!finished) {
       const opened = await openAtBat(tx, updatedSession, {
         sequence: target.sequence + 1,
         inning: nextState.inning,
         outs: nextState.outs,
         bases: nextState.bases,
       });
-      next = toPublicAtBat(opened.row, opened.question, now);
+
+      if (opened) {
+        next = toPublicAtBat(opened.row, opened.question, now);
+      } else {
+        // 문제은행이 바닥났다. 오류로 막다른 길을 만들지 않고 경기를 마무리한다.
+        finished = true;
+      }
+    }
+
+    if (finished) {
+      finish = await finishSession(tx, updatedSession, 'finished');
     }
 
     const reveal = await loadReveal(tx, target.question_id);
@@ -196,7 +205,7 @@ export async function submitAtBat(
         streak: verdict.streakAfter,
       },
       next,
-      finished: nextState.finished,
+      finished,
       finish,
     };
   });

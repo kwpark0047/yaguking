@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { hasDatabase } from './helpers/env';
+import { hasDatabase, waitForPlayable } from './helpers/env';
 
 /**
  * 08 문서 §10의 3·5번 — 가입 게이트와 체험 상한.
@@ -16,13 +16,10 @@ test.beforeEach(async ({}, testInfo) => {
 
 async function playUntilResult(page: Page) {
   await page.goto('/');
-  await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 
   for (let i = 0; i < 20; i += 1) {
-    if (page.url().includes('/result')) return;
+    if ((await waitForPlayable(page)) === 'result') return;
     const options = page.getByRole('group', { name: '보기' }).getByRole('button');
-    if ((await options.count()) === 0) return;
-    await expect(options.first()).toBeEnabled({ timeout: 10000 });
     await options.first().click();
     await page.waitForTimeout(2200);
   }
@@ -33,9 +30,11 @@ test('결과는 비회원에게도 전부 공개된다', async ({ page }) => {
   await expect(page).toHaveURL(/\/result/, { timeout: 20000 });
 
   // 박스스코어를 가리지 않는다 (08 문서 §5.1).
-  await expect(page.getByText('BOX SCORE')).toBeVisible();
-  await expect(page.getByText('타율')).toBeVisible();
-  await expect(page.getByText('OPS')).toBeVisible();
+  const boxScore = page.getByRole('region', { name: 'BOX SCORE' });
+  await expect(boxScore).toBeVisible();
+  await expect(boxScore.getByText('타율', { exact: true })).toBeVisible();
+  await expect(boxScore.getByText('OPS', { exact: true })).toBeVisible();
+  await expect(boxScore.getByText('출루율', { exact: true })).toBeVisible();
 });
 
 test('G1 게이트는 모달이 아니고 닫을 수 있다', async ({ page }) => {
@@ -77,5 +76,5 @@ test('체험 3번째 시도는 시작 전에 막힌다', async ({ page }) => {
   await page.goto('/modes');
   await page.getByRole('button', { name: /체험 1이닝/ }).click();
 
-  await expect(page.getByRole('alert')).toContainText('체험', { timeout: 10000 });
+  await expect(page.getByText(/체험.*사용|이닝을 모두/)).toBeVisible({ timeout: 10000 });
 });

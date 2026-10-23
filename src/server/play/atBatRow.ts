@@ -18,7 +18,12 @@ export interface OpenAtBat {
 }
 
 /**
- * 다음 타석을 연다.
+ * 다음 타석을 연다. 출제할 문항이 남아 있지 않으면 **null**을 돌려준다.
+ *
+ * 한 경기에서 같은 문항은 한 번만 나오므로(unique(session_id, question_id))
+ * 문제은행이 작으면 긴 이닝에서 풀이 바닥난다. 이때 예외를 던지면 제출
+ * 트랜잭션이 통째로 롤백되어 **같은 타석을 영원히 다시 제출하는 교착**이
+ * 생긴다. 호출부가 상황에 맞게 처리하도록 null을 돌려준다.
  *
  * opened_at / deadline_at는 **DB 시계**로 기록한다. 경과시간 판정의 기준이
  * 서버 한 곳이어야 하므로 애플리케이션 시계를 쓰지 않는다 (03 문서 §3).
@@ -27,7 +32,7 @@ export async function openAtBat(
   tx: Queryable,
   session: PlaySessionRow,
   params: { sequence: number; inning: number; outs: number; bases: number },
-): Promise<OpenAtBat> {
+): Promise<OpenAtBat | null> {
   const difficulty = plannedDifficulty(session.mode, params.sequence);
 
   // 계획한 난이도에 남은 문항이 없으면 난이도 제한을 풀고 다시 고른다.
@@ -35,12 +40,7 @@ export async function openAtBat(
     (await pickQuestionId(tx, session.id, difficulty)) ??
     (await pickQuestionId(tx, session.id, null));
 
-  if (!questionId) {
-    throw new ApiError(
-      'INTERNAL_ERROR',
-      '출제할 문항이 부족합니다. 문제은행을 확인해 주세요.',
-    );
-  }
+  if (!questionId) return null;
 
   const [row] = await tx<AtBatRow[]>`
     insert into public.at_bats (

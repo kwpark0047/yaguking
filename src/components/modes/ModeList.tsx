@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { ErrorNotice } from '@/components/shell/states/ErrorNotice';
 import { startPlaySession } from '@/lib/api/client';
 
 /**
@@ -40,7 +41,9 @@ const MODES = [
 export function ModeList() {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; requestId?: string } | null>(
+    null,
+  );
 
   async function start(mode: (typeof MODES)[number]['mode']) {
     setPending(mode);
@@ -49,7 +52,7 @@ export function ModeList() {
     setPending(null);
 
     if (!result.ok) {
-      setError(result.message);
+      setError({ message: result.message, requestId: result.requestId });
       return;
     }
     router.push(`/play/${result.data.sessionId}`);
@@ -57,11 +60,7 @@ export function ModeList() {
 
   return (
     <div className="flex flex-col gap-2">
-      {error && (
-        <p className="text-sm" style={{ color: 'var(--out)' }} role="alert">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNotice message={error.message} requestId={error.requestId} />}
 
       {MODES.map((item) => (
         <button

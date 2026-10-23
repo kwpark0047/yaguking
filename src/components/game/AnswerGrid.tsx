@@ -23,15 +23,23 @@ export function AnswerGrid({
   correctId: string | null;
   onSelect: (optionId: string) => void;
 }) {
-  const keyHints = ['1', '2', '3', '4'];
-
   return (
     <div
       className="grid grid-cols-2 gap-2 md:max-lg:landscape:grid-cols-4"
       role="group"
       aria-label="보기"
     >
-      {options.map((option, index) => {
+      {/*
+       * 조작 안내는 그리드에 한 번만 둔다.
+       * 버튼마다 넣으면 읽을 때마다 반복되고, 버튼의 보이는 텍스트와
+       * 접근 가능한 이름이 어긋나 WCAG 2.5.3(Label in Name)을 위반한다.
+       */}
+      <p className="sr-only">
+        보기를 선택하면 바로 제출됩니다. 숫자 키 1~4 또는 A·S·D·F로도 선택할 수
+        있습니다.
+      </p>
+
+      {options.map((option) => {
         const isChosen = chosenId === option.id;
         const isCorrect = correctId === option.id;
         const revealed = correctId !== null;
@@ -58,14 +66,16 @@ export function AnswerGrid({
             type="button"
             disabled={disabled}
             onClick={() => onSelect(option.id)}
-            aria-label={`보기 ${option.label}. ${option.text}`}
             className="flex min-h-14 items-start gap-2 rounded-option border p-3 text-left text-base transition-colors disabled:cursor-not-allowed disabled:opacity-70 motion-reduce:transition-none"
             style={{ borderColor, backgroundColor: background }}
           >
+            {/*
+             * aria-label로 이름을 덮어쓰지 않는다. 보이는 텍스트(보기 기호 +
+             * 본문)가 그대로 접근 가능한 이름이 되어야 한다.
+             */}
             <span
               className="num-tabular mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-bold"
               style={{ backgroundColor: 'var(--line)' }}
-              aria-hidden="true"
             >
               {option.label}
             </span>
@@ -78,9 +88,6 @@ export function AnswerGrid({
                 {badge}
               </span>
             )}
-            <span className="sr-only">
-              {`단축키 ${keyHints[index]}. 선택하면 바로 제출됩니다.`}
-            </span>
           </button>
         );
       })}

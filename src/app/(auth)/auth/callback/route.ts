@@ -58,6 +58,12 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user) {
+    // 사용자에게는 일반 문구만 보여 주되, 원인은 서버 로그에 남긴다.
+    // 이게 없으면 "로그인이 안 된다"는 신고를 받아도 손쓸 수가 없다.
+    // 토큰·코드 자체는 기록하지 않는다.
+    console.error(
+      `[auth/callback] 코드 교환 실패: ${error?.code ?? 'unknown'} / ${error?.message ?? 'no user'}`,
+    );
     return NextResponse.redirect(
       new URL(withFlag('/auth', 'error', '로그인을 완료하지 못했습니다.'), url.origin),
     );

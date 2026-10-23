@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ErrorNotice } from '@/components/shell/states/ErrorNotice';
 import { startPlaySession } from '@/lib/api/client';
 import type { StartSessionDto } from '@/types/api';
 import { PlayClient } from './PlayClient';
@@ -14,7 +15,9 @@ import { PlayClient } from './PlayClient';
  */
 export function TrialStarter() {
   const [session, setSession] = useState<StartSessionDto | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; requestId?: string } | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
 
   if (session) return <PlayClient initial={session} />;
@@ -25,7 +28,7 @@ export function TrialStarter() {
     const result = await startPlaySession('trial');
     setLoading(false);
     if (result.ok) setSession(result.data);
-    else setError(result.message);
+    else setError({ message: result.message, requestId: result.requestId });
   }
 
   return (
@@ -35,11 +38,7 @@ export function TrialStarter() {
         문제는 투구, 정답 속도는 타구, 오답은 아웃. 3아웃이면 1이닝이 끝나고
         박스스코어가 남습니다.
       </p>
-      {error && (
-        <p className="text-sm" style={{ color: 'var(--out)' }} role="alert">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNotice message={error.message} requestId={error.requestId} />}
       <button
         type="button"
         onClick={() => void start()}

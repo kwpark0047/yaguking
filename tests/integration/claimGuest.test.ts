@@ -11,7 +11,9 @@ import {
   createAuthUser,
   createQuestionPool,
   hasDatabase,
-  type QuestionFixture,
+  optionsFor,
+  resetPlayData,
+
 } from './helpers/fixtures';
 
 /**
@@ -19,24 +21,15 @@ import {
  * 출시 게이트 G7: 동일 토큰 반복·동시 호출에서 기록 중복 0.
  */
 describe.skipIf(!hasDatabase())('게스트 기록 승계', () => {
-  let pool: Map<string, QuestionFixture>;
 
   beforeAll(async () => {
     assertLocalDatabase();
     await cleanup();
-    pool = await createQuestionPool(30);
+    await createQuestionPool(30);
   });
 
   afterEach(async () => {
-    const db = getDb();
-    await db`delete from public.at_bats`;
-    await db`delete from public.play_sessions`;
-    await db`delete from public.user_batting_stats`;
-    await db`delete from public.user_zone_cells`;
-    await db`delete from public.user_private_stats`;
-    await db`delete from public.guest_sessions`;
-    await db`delete from public.profiles`;
-    await db`delete from auth.users where email like '%@example.test'`;
+    await resetPlayData();
   });
 
   afterAll(async () => {
@@ -51,7 +44,7 @@ describe.skipIf(!hasDatabase())('게스트 기록 승계', () => {
     let questionId = started.atBat.questionId;
 
     for (let guard = 0; guard < 20; guard += 1) {
-      const fixture = pool.get(questionId)!;
+      const fixture = await optionsFor(questionId);
       const result = await submitAtBat(
         started.sessionId,
         {

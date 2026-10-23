@@ -7,10 +7,16 @@ import type { ApiEnvelope, PlayStateDto, StartSessionDto, SubmitAtBatDto } from 
  * `fetchPlayState`로 확정 여부를 먼저 확인한다 (08 문서 §4.2).
  */
 
-export type ApiResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; code: string; message: string; detail?: unknown }
-  | { ok: false; code: 'NETWORK'; message: string; detail?: undefined };
+export interface ApiFailure {
+  ok: false;
+  code: string;
+  message: string;
+  /** 서버 로그와 대조할 식별자. 오류 화면에 접어서 노출한다 (08 문서 §9). */
+  requestId?: string;
+  detail?: unknown;
+}
+
+export type ApiResult<T> = { ok: true; data: T } | ApiFailure;
 
 async function request<T>(
   input: string,
@@ -39,6 +45,7 @@ async function request<T>(
     ok: false,
     code: body.error.code,
     message: body.error.message,
+    requestId: body.error.requestId,
     detail: body.error.detail,
   };
 }

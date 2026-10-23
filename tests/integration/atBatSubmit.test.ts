@@ -11,7 +11,10 @@ import {
   createQuestionPool,
   expireAtBat,
   hasDatabase,
-  type QuestionFixture,
+  optionFromAnotherQuestion,
+  optionsFor,
+  resetPlayData,
+
 } from './helpers/fixtures';
 
 /**
@@ -21,19 +24,15 @@ import {
  * 띄울 수 없는 환경에서는 실행되지 않는다.
  */
 describe.skipIf(!hasDatabase())('타석 제출', () => {
-  let pool: Map<string, QuestionFixture>;
 
   beforeAll(async () => {
     assertLocalDatabase();
     await cleanup();
-    pool = await createQuestionPool(20);
+    await createQuestionPool(20);
   });
 
   afterEach(async () => {
-    const db = getDb();
-    await db`delete from public.at_bats`;
-    await db`delete from public.play_sessions`;
-    await db`delete from public.guest_sessions`;
+    await resetPlayData();
   });
 
   afterAll(async () => {
@@ -49,7 +48,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('TC-IDEM-01: 동일 submissionId 2회 제출은 타석을 하나만 만든다', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
     const submissionId = randomUUID();
 
     const first = await submitAtBat(
@@ -80,7 +79,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('TC-IDEM-02: 확정된 타석에 다른 제출 ID로 재제출하면 ALREADY_SUBMITTED', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
 
     await submitAtBat(
       started.sessionId,
@@ -108,7 +107,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('TC-IDEM-03: 같은 submissionId로 동시에 2건을 보내도 1건만 확정된다', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
     const submissionId = randomUUID();
     const input = { sequence: 1, optionId: fixture.correctOptionId, submissionId };
 
@@ -133,7 +132,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('TC-DEADLINE-01: 마감 초과는 아웃으로 확정하고 outcome으로 알린다', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
     await expireAtBat(started.sessionId, 1);
 
     const result = await submitAtBat(
@@ -161,7 +160,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('현재 타석과 다른 순번을 보내면 SEQUENCE_MISMATCH 또는 NOT_FOUND', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
 
     await expect(
       submitAtBat(
@@ -179,14 +178,14 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('다른 문항의 보기를 보내면 VALIDATION_ERROR', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const other = [...pool.values()].find((q) => q.id !== started.atBat.questionId)!;
+    const otherOptionId = await optionFromAnotherQuestion(started.atBat.questionId);
 
     await expect(
       submitAtBat(
         started.sessionId,
         {
           sequence: 1,
-          optionId: other.correctOptionId,
+          optionId: otherOptionId,
           submissionId: randomUUID(),
         },
         owner,
@@ -197,7 +196,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
   it('남의 경기에는 제출할 수 없다', async () => {
     const owner = freshGuest();
     const started = await startSession({ mode: 'trial' }, owner);
-    const fixture = pool.get(started.atBat.questionId)!;
+    const fixture = await optionsFor(started.atBat.questionId);
 
     await expect(
       submitAtBat(
@@ -221,7 +220,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
     let finished = false;
 
     for (let i = 0; i < 3; i += 1) {
-      const fixture = pool.get(questionId)!;
+      const fixture = await optionsFor(questionId);
       const result = await submitAtBat(
         started.sessionId,
         {
@@ -262,7 +261,7 @@ describe.skipIf(!hasDatabase())('타석 제출', () => {
     let sequence = 1;
     let questionId = started.atBat.questionId;
     for (let i = 0; i < 3; i += 1) {
-      const fixture = pool.get(questionId)!;
+      const fixture = await optionsFor(questionId);
       const result = await submitAtBat(
         started.sessionId,
         {

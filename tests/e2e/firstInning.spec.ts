@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { hasDatabase } from './helpers/env';
+import { hasDatabase, waitForPlayable } from './helpers/env';
 
 /**
  * 08 문서 §10의 1·2·6·7·9·16번 — 경기 진행 전 과정.
@@ -37,14 +37,10 @@ test('3아웃이면 결과 화면으로 이동한다', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 
-  // 정답을 모르므로 틀릴 때까지 눌러 아웃을 쌓는다. 최대 20타석.
+  // 정답을 모르므로 첫 보기를 계속 눌러 아웃을 쌓는다. 최대 20타석.
   for (let i = 0; i < 20; i += 1) {
-    if (page.url().includes('/result')) break;
-
+    if ((await waitForPlayable(page)) === 'result') break;
     const options = page.getByRole('group', { name: '보기' }).getByRole('button');
-    if ((await options.count()) === 0) break;
-
-    await expect(options.first()).toBeEnabled({ timeout: 10000 });
     await options.first().click();
     await page.waitForTimeout(2200); // 판정 1.6초 + 여유
   }
@@ -88,7 +84,8 @@ test('오프라인이면 입력이 잠기고 안내가 뜬다', async ({ page, c
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
 
-  await expect(page.getByRole('alert')).toContainText('오프라인', { timeout: 5000 });
+  // Next가 라우트 안내용 role="alert" 요소를 하나 더 두므로 문구로 좁힌다.
+  await expect(page.getByText('오프라인입니다')).toBeVisible({ timeout: 5000 });
 
   await context.setOffline(false);
 });

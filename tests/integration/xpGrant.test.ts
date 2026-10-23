@@ -14,28 +14,23 @@ import {
   createQuestionPool,
   createUser,
   hasDatabase,
+  optionsFor,
+  resetPlayData,
   setElapsed,
-  type QuestionFixture,
+
 } from './helpers/fixtures';
 
 /** 09 문서 §7.2 — XP 멱등 지급과 통산 성적 집계. */
 describe.skipIf(!hasDatabase())('XP 지급과 성적 집계', () => {
-  let pool: Map<string, QuestionFixture>;
 
   beforeAll(async () => {
     assertLocalDatabase();
     await cleanup();
-    pool = await createQuestionPool(40);
+    await createQuestionPool(40);
   });
 
   afterEach(async () => {
-    const db = getDb();
-    await db`delete from public.at_bats`;
-    await db`delete from public.play_sessions`;
-    await db`delete from public.xp_transactions`;
-    await db`delete from public.user_batting_stats`;
-    await db`delete from public.user_zone_cells`;
-    await db`delete from public.user_private_stats`;
+    await resetPlayData();
   });
 
   afterAll(async () => {
@@ -57,7 +52,7 @@ describe.skipIf(!hasDatabase())('XP 지급과 성적 집계', () => {
 
     // 3이닝 = 아웃 9개. 계획이 끝나면 모두 오답으로 채워 경기를 닫는다.
     for (let guard = 0; guard < 200; guard += 1) {
-      const fixture = pool.get(questionId)!;
+      const fixture = await optionsFor(questionId);
       const step = plan[index] ?? { correct: false };
       index += 1;
 
@@ -147,14 +142,27 @@ describe.skipIf(!hasDatabase())('XP 지급과 성적 집계', () => {
     const userId = await createUser();
     const owner: Owner = { kind: 'user', userId };
 
-    // 2타석 정답(각 +10) + 이닝 완료(+20)
-    const { finish } = await playOfficialGame(owner, [
+    const { finish, sessionId } = await playOfficialGame(owner, [
       { correct: true, elapsedMs: 3000 },
       { correct: true, elapsedMs: 3000 },
     ]);
 
     expect(finish?.recorded).toBe(true);
-    expect(finish?.xpEarned).toBe(10 + 10 + 20);
+
+    // 어떤 난이도의 문항이 출제될지 고를 수 없으므로 기대값을 원장에서 계산한다.
+    // 정답 +10, 고급 정답 추가 +5, 이닝 완료 +20 (06 문서 §9).
+    const [earned] = await getDb()<{ correct: string; hard: string }[]>`
+      select count(*) filter (where ab.is_correct)::text as correct,
+             count(*) filter (where ab.is_correct and q.difficulty = 'hard')::text as hard
+        from public.at_bats ab
+        join public.questions q on q.id = ab.question_id
+       where ab.session_id = ${sessionId}
+         and ab.result is not null
+    `;
+    const expectedXp =
+      Number(earned?.correct ?? '0') * 10 + Number(earned?.hard ?? '0') * 5 + 20;
+
+    expect(finish?.xpEarned).toBe(expectedXp);
     expect(finish?.level).toBe(1);
 
     const db = getDb();
@@ -224,19 +232,36 @@ describe.skipIf(!hasDatabase())('XP 지급과 성적 집계', () => {
     expect(career?.total_games).toBe(2);
   });
 
-  it('존 히트맵 집계가 누적된다', async () => {
+  it('존 히트맵은 시대 구간이 있는 문항만 집계한다', async () => {
     const userId = await createUser();
     const owner: Owner = { kind: 'user', userId };
 
-    await playOfficialGame(owner, [{ correct: true, elapsedMs: 3000 }]);
+    const { sessionId } = await playOfficialGame(owner, [
+      { correct: true, elapsedMs: 3000 },
+    ]);
 
     const db = getDb();
-    const [sums] = await db<{ attempts: string; correct: string }[]>`
-      select sum(attempts)::text as attempts, sum(correct)::text as correct
+
+    // era_year가 없는 문항(예: 규칙·상식)은 존 축에 올릴 수 없으므로 제외된다.
+    // 기대값을 원장에서 직접 계산해 문제은행 구성에 의존하지 않게 한다.
+    const [expected] = await db<{ attempts: string; correct: string }[]>`
+      select count(*)::text as attempts,
+             count(*) filter (where ab.is_correct)::text as correct
+        from public.at_bats ab
+        join public.questions q on q.id = ab.question_id
+       where ab.session_id = ${sessionId}
+         and ab.result is not null
+         and q.era_band is not null
+    `;
+
+    const [actual] = await db<{ attempts: string; correct: string }[]>`
+      select coalesce(sum(attempts), 0)::text as attempts,
+             coalesce(sum(correct), 0)::text as correct
         from public.user_zone_cells
        where user_id = ${userId}
     `;
-    expect(Number(sums?.attempts ?? '0')).toBeGreaterThan(0);
-    expect(Number(sums?.correct ?? '0')).toBeGreaterThanOrEqual(1);
+
+    expect(actual?.attempts).toBe(expected?.attempts);
+    expect(actual?.correct).toBe(expected?.correct);
   });
 });

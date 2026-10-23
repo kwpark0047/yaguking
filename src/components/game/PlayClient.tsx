@@ -16,6 +16,7 @@ import { QuestionCard } from './QuestionCard';
 import { ScoreBoard } from './ScoreBoard';
 import { VerdictOverlay } from './VerdictOverlay';
 import { InfoPanel } from '@/components/shell/InfoPanel';
+import { ErrorNotice } from '@/components/shell/states/ErrorNotice';
 import type {
   AtBatDto,
   AtBatLogEntryDto,
@@ -71,6 +72,9 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
   const [explanationOpen, setExplanationOpen] = useState(false);
   const [autoAdvanceMs, setAutoAdvanceMs] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ message: string; requestId?: string } | null>(
+    null,
+  );
   const [offline, setOffline] = useState(false);
   const [exitPrompt, setExitPrompt] = useState(false);
   const trialRemaining = initial.guestTrialRemaining;
@@ -152,6 +156,7 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
     if (!result.ok) {
       setPhase('reconnect');
       setNotice(result.message);
+      setFailure({ message: result.message, requestId: result.requestId });
       return;
     }
 
@@ -215,6 +220,7 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
 
       setPhase('reconnect');
       setNotice(result.message);
+      setFailure({ message: result.message, requestId: result.requestId });
     },
     [atBat, phase, sessionId, resync, applyVerdict],
   );
@@ -450,20 +456,26 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
             )}
 
             {phase === 'reconnect' && (
-              <div className="flex flex-col gap-3 rounded-card border p-4" style={{ borderColor: 'var(--line)' }}>
-                <p className="text-sm">
-                  제출 결과를 확인하지 못했습니다. 같은 요청을 다시 보내지 않고 서버
-                  상태를 확인합니다.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void resync()}
-                  className="min-h-11 self-start rounded-option px-4 text-sm font-semibold"
-                  style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
-                >
-                  상태 확인
-                </button>
-              </div>
+              <ErrorNotice
+                message={
+                  failure?.message ??
+                  '제출 결과를 확인하지 못했습니다. 같은 요청을 다시 보내지 않고 서버 상태를 확인합니다.'
+                }
+                requestId={failure?.requestId}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => void resync()}
+                    className="min-h-11 self-start rounded-option px-4 text-sm font-semibold"
+                    style={{
+                      backgroundColor: 'var(--accent)',
+                      color: 'var(--accent-ink)',
+                    }}
+                  >
+                    상태 확인
+                  </button>
+                }
+              />
             )}
 
             {displayAtBat &&

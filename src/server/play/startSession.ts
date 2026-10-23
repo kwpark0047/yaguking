@@ -93,6 +93,14 @@ export async function startSession(
       bases: 0,
     });
 
+    // 1번 타석조차 못 만들면 경기를 시작할 수 없다.
+    if (!opened) {
+      throw new ApiError(
+        'INTERNAL_ERROR',
+        '출제할 문항이 없습니다. 문제은행을 확인해 주세요.',
+      );
+    }
+
     const [nowRow] = await tx<{ now: Date }[]>`select clock_timestamp() as now`;
     const now = nowRow?.now ?? new Date();
 

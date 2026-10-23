@@ -51,15 +51,19 @@ export async function ensureProfile(
         ? suggestNickname()
         : `${suggestNickname()}${Math.floor(Math.random() * 900) + 100}`.slice(0, 16);
 
+    // 대상을 지정하지 않은 `on conflict do nothing`이어야 한다.
+    // `on conflict (nickname)`으로 좁히면 **기본키(id) 충돌은 잡지 못하고 예외가 난다** —
+    // 동시 승계(콜백 + 재시도)에서 한쪽이 500으로 떨어진다.
     const rows = await tx<ProfileRow[]>`
       insert into public.profiles (id, nickname, onboarding_status)
       values (${userId}, ${nickname}, 'pending')
-      on conflict (nickname) do nothing
+      on conflict do nothing
       returning id, nickname, primary_team_id, onboarding_status
     `;
     if (rows[0]) return rows[0];
 
-    // id 충돌(동시 호출)이면 기존 행을 돌려준다.
+    // 여기까지 왔다면 id 충돌(동시 호출)이거나 닉네임 충돌이다.
+    // id 충돌이면 기존 행이 있다. 없으면 닉네임을 다시 뽑아 재시도한다.
     const [raced] = await tx<ProfileRow[]>`
       select id, nickname, primary_team_id, onboarding_status
         from public.profiles
