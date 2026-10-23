@@ -157,10 +157,23 @@ async function main() {
   const sql = postgres(connectionString, { prepare: false, max: 2 });
 
   try {
-    const inserted = await sql.begin(async (tx) => {
+    const outcome = await sql.begin(async (tx) => {
       const ids = [];
+      const skipped = [];
+
+      // 이미 있는 본문은 건너뛴다. 같은 CSV를 두 번 올려도 문제은행이
+      // 오염되지 않아야 한다 (0013의 유니크 인덱스와 같은 기준).
+      const existing = await tx`
+        select stem from public.questions where status <> 'retired'
+      `;
+      const existingStems = new Set(existing.map((row) => row.stem));
 
       for (const record of records) {
+        if (existingStems.has(record.stem)) {
+          skipped.push(record.__line);
+          continue;
+        }
+        existingStems.add(record.stem);
         const [category] = await tx`
           select id from public.question_categories
            where slug = ${record.category_slug}
@@ -211,13 +224,19 @@ async function main() {
         ids.push(question.id);
       }
 
-      return ids;
+      return { ids, skipped };
     });
 
     console.log(
-      `${inserted.length}문항 투입 완료 (${publish ? 'published' : 'draft'}).`,
+      `${outcome.ids.length}문항 투입 완료 (${publish ? 'published' : 'draft'}).`,
     );
-    if (!publish) {
+    if (outcome.skipped.length > 0) {
+      console.log(
+        `${outcome.skipped.length}문항은 이미 있어 건너뛰었습니다 ` +
+          `(줄 ${outcome.skipped.join(', ')}).`,
+      );
+    }
+    if (!publish && outcome.ids.length > 0) {
       console.log('게시하려면 운영 콘솔에서 승인하거나 --publish로 다시 실행하세요.');
     }
   } catch (error) {

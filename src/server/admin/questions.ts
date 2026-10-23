@@ -108,6 +108,17 @@ export async function createQuestion(
     `;
     if (!category) throw new ApiError('VALIDATION_ERROR', '카테고리를 찾을 수 없습니다.');
 
+    // 같은 본문이 이미 출제 대상으로 있으면 막는다 (0013 유니크 인덱스).
+    // 사람이 읽을 수 있는 메시지로 바꿔 준다.
+    const [duplicate] = await tx<{ id: string }[]>`
+      select id from public.questions
+       where stem = ${input.stem}
+         and status <> 'retired'
+    `;
+    if (duplicate) {
+      throw new ApiError('VALIDATION_ERROR', '같은 본문의 문항이 이미 있습니다.');
+    }
+
     const [question] = await tx<{ id: string }[]>`
       insert into public.questions (
         category_id, stem, explanation, difficulty, status, record_as_of, era_year, created_by
