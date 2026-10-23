@@ -17,8 +17,32 @@
  *
  * 데이터 사용권 확보 전에는 자체 작성 문항과 검증된 공개 사실만 넣는다.
  */
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import postgres from 'postgres';
+
+/**
+ * CSV의 보기 순서(a~d)에 붙일 라벨을 정한다.
+ *
+ * 작성자는 정답을 앞쪽에 두는 버릇이 있다. 실제로 이 보정을 넣기 전 문제은행은
+ * 정답이 A에 53.5%, D에 0.8% 몰려 있었다 — **문항을 읽지 않고 A만 찍어도
+ * 절반을 맞히는 상태였다.** 속도가 타구 결과를 정하는 게임이라 이건 치명적이다.
+ *
+ * 본문 해시로 섞으므로 같은 CSV를 다시 넣어도 결과가 같다. DB 재배치와
+ * 재적재가 어긋나지 않아야 하기 때문에 난수를 쓰지 않는다.
+ *
+ * @returns {string[]} 인덱스 0~3(= option_a~d)에 붙일 라벨
+ */
+export function labelPermutation(stem) {
+  const digest = createHash('sha256').update(stem, 'utf8').digest();
+  const labels = ['A', 'B', 'C', 'D'];
+  for (let i = labels.length - 1; i > 0; i -= 1) {
+    const j = digest[i] % (i + 1);
+    [labels[i], labels[j]] = [labels[j], labels[i]];
+  }
+  return labels;
+}
 
 const REQUIRED_COLUMNS = [
   'category_slug',
@@ -35,7 +59,7 @@ const REQUIRED_COLUMNS = [
 ];
 
 /** 따옴표와 줄바꿈을 다루는 최소 CSV 파서. */
-function parseCsv(text) {
+export function parseCsv(text) {
   const rows = [];
   let row = [];
   let field = '';
@@ -81,7 +105,7 @@ function parseCsv(text) {
   return rows.filter((entry) => entry.some((value) => value.trim().length > 0));
 }
 
-function toRecords(rows) {
+export function toRecords(rows) {
   const [header, ...body] = rows;
   if (!header) throw new Error('CSV가 비어 있습니다.');
 
@@ -204,13 +228,15 @@ async function main() {
           returning id
         `;
 
-        for (const label of ['A', 'B', 'C', 'D']) {
+        // CSV 순서(a~d)를 그대로 쓰지 않고 본문 해시로 섞어 라벨을 붙인다.
+        const labels = labelPermutation(record.stem);
+        for (const [position, csvLabel] of ['A', 'B', 'C', 'D'].entries()) {
           await tx`
             insert into private.question_options (question_id, label, option_text, is_correct)
             values (
-              ${question.id}, ${label},
-              ${record[`option_${label.toLowerCase()}`]},
-              ${label === record.correct_label}
+              ${question.id}, ${labels[position]},
+              ${record[`option_${csvLabel.toLowerCase()}`]},
+              ${csvLabel === record.correct_label}
             )
           `;
         }
@@ -258,4 +284,8 @@ async function main() {
   }
 }
 
-await main();
+// 직접 실행할 때만 돈다. `labelPermutation`을 재배치 스크립트가 가져다 쓰는데,
+// 모듈을 불러오는 것만으로 적재가 돌면 안 된다.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  await main();
+}

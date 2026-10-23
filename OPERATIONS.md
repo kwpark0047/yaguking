@@ -211,3 +211,38 @@ npm run security:check  # 빌드 후 실행
 npm run test:e2e
 npm run load:smoke -- --users 50   # 프로덕션 빌드에 대고
 ```
+
+## 문제은행 점검과 퍼널 집계
+
+### 노출 전 문항 점검
+
+```bash
+npm run content:check
+```
+
+정답 위치 쏠림, 게시 조건, 라벨 무결성, 권리 근거, 난이도 분포를 본다.
+**오류가 있으면 종료 코드 1이다.** 노출 전에 반드시 0건이어야 한다.
+
+정답이 한 글자에 몰리면 문항을 읽지 않고 찍어도 맞는다. 이 게임은 정답
+속도가 타구 결과를 정하므로, 찍기가 통하면 기믹 자체가 무력해진다.
+쏠렸다고 나오면 재배치한다. **CSV가 원본이므로 적재에 쓴 CSV를 모두
+넘겨야 한다.**
+
+```bash
+npm run content:rebalance -- --check data/questions.sample.csv data/questions.rules-a.csv data/questions.rules-a2.csv data/questions.league-rules-2026.csv data/questions.basics-easy.csv data/questions.awards-and-ops.csv data/questions.basics-mix.csv
+```
+
+`--check`를 빼면 실제로 적용된다. 본문 해시로 라벨을 정하므로 몇 번 돌려도
+결과가 같고, CSV를 새로 적재한 결과와도 일치한다. 보기 행의 id는 바뀌지
+않는다 — 지난 경기 기록이 `at_bats.option_id`로 그 id를 들고 있기 때문이다.
+
+### 퍼널 수치
+
+```bash
+npm run funnel
+npm run funnel -- --days 7
+```
+
+**새로 수집하는 것은 없다.** 이미 저장되는 상태 테이블만 읽는다.
+못 재는 단계가 있으므로 출력 끝의 "미측정" 항목을 함께 읽을 것
+(11 문서 §2.3).

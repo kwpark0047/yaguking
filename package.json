@@ -24,7 +24,10 @@
     "seed:questions": "node scripts/seed-questions.mjs",
     "security:check": "node scripts/security-check.mjs",
     "load:smoke": "node scripts/load-smoke.mjs",
-    "db:fingerprint": "node scripts/db-fingerprint.mjs"
+    "db:fingerprint": "node scripts/db-fingerprint.mjs",
+    "content:check": "node scripts/content-check.mjs",
+    "content:rebalance": "node scripts/rebalance-option-labels.mjs",
+    "funnel": "node scripts/funnel-report.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
