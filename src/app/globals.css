@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+
+/*
+ * 디자인 토큰 — 08 문서 §2.1 / §2.2 / §2.3
+ * 다크를 기본으로 정의하고 라이트를 파생한다.
+ * 모든 상태는 색 + 아이콘 + 텍스트 3중 표기이므로, 색 토큰만으로 의미를 전달하지 않는다.
+ */
+
+:root {
+  color-scheme: dark light;
+
+  /* 배경·표면 */
+  --bg-base: #0c1117;
+  --bg-field: #10251a;
+  --bg-card: #161d26;
+
+  /* 텍스트·선 */
+  --ink-1: #f2f5f7;
+  --ink-2: #9aa6b2;
+  --line: #243040;
+
+  /* 의미 색 */
+  --accent: #ffc53d;
+  --accent-ink: #101418;
+  --on-base: #35b36b;
+  --out: #e8636f;
+  --hr: #ff8a3d;
+  --focus: #5ab0ff;
+
+  /* 간격 — 8px 그리드 */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+
+  /* 형태 */
+  --radius-card: 16px;
+  --radius-option: 12px;
+
+  /* 터치 타깃 */
+  --touch-primary: 56px;
+  --touch-secondary: 44px;
+
+  /* 모션 예산 — 08 문서 §2.4 */
+  --motion-verdict: 150ms;
+  --motion-badge: 250ms;
+  --motion-runner: 400ms;
+  --motion-hr: 900ms;
+}
+
+/* 라이트 파생 */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg-base: #f7f8fa;
+    --bg-field: #e8f2eb;
+    --bg-card: #ffffff;
+    --ink-1: #101418;
+    --ink-2: #5c6873;
+    --line: #dde3e9;
+    --accent: #856404;
+    --accent-ink: #ffffff;
+    --on-base: #1e7a46;
+    --out: #c0392b;
+    --hr: #a8490f;
+    --focus: #0b63ce;
+  }
+}
+
+:root[data-theme='light'] {
+  --bg-base: #f7f8fa;
+  --bg-field: #e8f2eb;
+  --bg-card: #ffffff;
+  --ink-1: #101418;
+  --ink-2: #5c6873;
+  --line: #dde3e9;
+  --accent: #856404;
+  --accent-ink: #ffffff;
+  --on-base: #1e7a46;
+  --out: #c0392b;
+  --hr: #a8490f;
+  --focus: #0b63ce;
+}
+
+/*
+ * 브레이크포인트를 08 문서 §6.1에 맞춘다.
+ * sm 360~599 (기본) / md 600~1023 / lg 1024~1439 / xl 1440+
+ * Tailwind 기본값(md 768)과 다르므로 여기서 덮어쓴다.
+ */
+@theme {
+  --breakpoint-md: 600px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+}
+
+@theme inline {
+  --color-bg-base: var(--bg-base);
+  --color-bg-field: var(--bg-field);
+  --color-bg-card: var(--bg-card);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-base: var(--on-base);
+  --color-out: var(--out);
+  --color-hr: var(--hr);
+  --color-focus: var(--focus);
+
+  --radius-card: var(--radius-card);
+  --radius-option: var(--radius-option);
+}
+
+/* ── 기본 ────────────────────────────────────────────────────────────── */
+
+html {
+  /* 360px에서 가로 스크롤 0 (08 문서 §6.8) */
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--ink-1);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Noto Sans KR',
+    'Malgun Gothic',
+    sans-serif;
+  /* 하단 안전영역 확보 */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow-x: hidden;
+}
+
+/* 전광판 숫자: 자릿수가 흔들리지 않도록 tabular (08 문서 §2.2) */
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 포커스 — 배경 대비 3:1 이상 */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* reduced motion — 이동·스케일·플래시 전면 제거 (08 문서 §2.4) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

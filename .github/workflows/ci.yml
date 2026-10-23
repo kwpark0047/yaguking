@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # DB 없이 돌아가는 검사. Docker가 필요 없다.
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run check:sql
+      - run: npm run test:unit -- --coverage
+      - run: npm run build
+      # 번들에 비밀값·정답 컬럼이 섞였는지 본다. 빌드 뒤에 실행해야 한다.
+      - run: npm run security:check
+
+  # 로컬 Supabase 스택이 필요한 검사 (마이그레이션 적용 + 통합 테스트).
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Supabase 로컬 스택 기동
+        run: npx supabase start
+      - name: 마이그레이션 + seed 적용
+        run: npx supabase db reset --no-seed=false
+      - name: DB advisors / lint
+        run: npx supabase db lint
+      - name: 통합 테스트
+        run: npx vitest run tests/integration
+      - name: 스택 종료
+        if: always()
+        run: npx supabase stop --no-backup
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [static]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+# 운영 배포는 이 워크플로에 포함하지 않는다.
+# 마이그레이션은 스테이징 적용·검증 후 수동 승인 게이트를 거쳐 운영에 올린다
+# (09 문서 §9·§10).

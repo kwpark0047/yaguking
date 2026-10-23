@@ -1,0 +1,29 @@
+# 의존성
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# 환경변수 — 실제 비밀값은 절대 커밋하지 않는다
+.env
+.env.local
+.env.*.local
+
+# 테스트 산출물
+coverage/
+playwright-report/
+test-results/
+
+# Supabase 로컬
+supabase/.temp/
+supabase/.branches/
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
