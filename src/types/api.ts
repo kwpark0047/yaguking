@@ -177,6 +177,51 @@ export interface ShareCardDto {
   ops: string;
 }
 
+/** 내 데이터 내보내기 (08 문서 V17). 다른 회원의 정보는 담기지 않는다. */
+export interface AccountExportDto {
+  exportedAt: string;
+  profile: {
+    nickname: string;
+    primaryTeamName: string | null;
+    onboardingStatus: string;
+    joinedAt: string;
+  };
+  battingStats: {
+    scope: 'career' | 'season';
+    pa: number;
+    ab: number;
+    h: number;
+    hr: number;
+    bb: number;
+    so: number;
+    r: number;
+  }[];
+  xpLedger: { amount: number; reason: string; at: string }[];
+  sessions: {
+    id: string;
+    mode: string;
+    runs: number;
+    official: boolean;
+    status: string;
+    startedAt: string;
+    endedAt: string | null;
+  }[];
+  atBats: {
+    sessionId: string;
+    sequence: number;
+    result: string | null;
+    elapsedMs: number | null;
+    isCorrect: boolean | null;
+    submittedAt: string | null;
+  }[];
+  zoneCells: {
+    era_band: number;
+    difficulty_band: number;
+    attempts: number;
+    correct: number;
+  }[];
+}
+
 export interface AdminQuestionDto {
   id: string;
   stem: string;

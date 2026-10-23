@@ -30,6 +30,33 @@ export function SettingsClient() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmNickname, setConfirmNickname] = useState('');
+
+  /**
+   * 계정 삭제. 되돌릴 수 없으므로 닉네임을 정확히 입력해야 버튼이 열린다.
+   * 서버도 같은 값을 다시 확인한다 — 화면 검증만 믿지 않는다.
+   */
+  async function removeAccount() {
+    setPending(true);
+    setError(null);
+
+    const response = await fetch('/api/v1/me', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmNickname: confirmNickname.trim() }),
+    });
+    const body = await response.json();
+    setPending(false);
+
+    if (!body.success) {
+      setError(body.error.message);
+      return;
+    }
+
+    // 세션이 서버에서 무효화됐다. 랜딩으로 완전히 새로 들어간다.
+    window.location.href = '/';
+  }
 
   useEffect(() => {
     try {
@@ -188,9 +215,76 @@ export function SettingsClient() {
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">내 데이터</h2>
         <p className="text-xs text-ink-2 break-keep">
-          데이터 내보내기와 계정 삭제는 개인정보 처리방침 확정과 함께 제공합니다.
-          미성년자 처리 정책을 포함해 법적 검토가 끝나지 않은 보류 항목입니다.
+          닉네임, 통산 성적, XP 내역, 경기와 타석 기록을 JSON 파일로 내려받습니다.
         </p>
+        <a
+          href="/api/v1/me/export"
+          download
+          className="flex min-h-14 items-center justify-center rounded-option border px-4 text-sm font-semibold"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          내 데이터 내보내기
+        </a>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--out)' }}>
+          계정 삭제
+        </h2>
+        <p className="text-xs text-ink-2 break-keep">
+          계정과 함께 통산 성적, XP, 경기 기록이 모두 사라집니다.
+          <strong> 되돌릴 수 없습니다.</strong> 기록을 보관하려면 먼저 내보내기를
+          받아 두세요.
+        </p>
+
+        {!deleteOpen ? (
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="min-h-14 rounded-option border px-4 text-sm"
+            style={{ borderColor: 'var(--out)', color: 'var(--out)' }}
+          >
+            계정 삭제
+          </button>
+        ) : (
+          <div
+            className="flex flex-col gap-2 rounded-option border p-3"
+            style={{ borderColor: 'var(--out)' }}
+          >
+            <label htmlFor="confirm-nickname" className="text-sm break-keep">
+              삭제하려면 닉네임 <strong>{nickname}</strong> 을(를) 그대로 입력하세요.
+            </label>
+            <input
+              id="confirm-nickname"
+              value={confirmNickname}
+              onChange={(event) => setConfirmNickname(event.target.value)}
+              className="min-h-14 rounded-option border px-3"
+              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' }}
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={pending || confirmNickname.trim() !== nickname.trim()}
+                onClick={() => void removeAccount()}
+                className="min-h-14 flex-1 rounded-option px-4 text-sm font-semibold disabled:opacity-50"
+                style={{ backgroundColor: 'var(--out)', color: '#fff' }}
+              >
+                영구 삭제
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteOpen(false);
+                  setConfirmNickname('');
+                }}
+                className="min-h-14 flex-1 rounded-option border px-4 text-sm"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

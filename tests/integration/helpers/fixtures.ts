@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
 import { getDb } from '@/lib/db/sql';
 import type { Difficulty } from '@/lib/engine';
 
@@ -167,13 +168,37 @@ export async function createQuestionPool(
   return pool;
 }
 
-/** auth.users 행만 만든다. 프로필은 승계(ensureProfile)가 만들도록 둔다. */
+/**
+ * 인증 사용자 하나를 만든다. 프로필은 승계(ensureProfile)가 만들도록 둔다.
+ *
+ * service_role 키가 있으면 **Auth 관리 API로 만든다.** `auth.users` 에 직접
+ * INSERT 하면 GoTrue 가 인식하지 못해(`User not found`) 삭제 경로를 검증할 수
+ * 없다. 키가 없는 환경에서는 직접 INSERT 로 떨어져 나머지 테스트는 돌아간다.
+ */
 export async function createAuthUser(): Promise<string> {
+  const email = `${randomUUID()}@example.test`;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && serviceRoleKey) {
+    const admin = createClient(url, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    });
+    if (error || !data.user) {
+      throw new Error(`테스트 사용자 생성 실패: ${error?.message ?? 'unknown'}`);
+    }
+    return data.user.id;
+  }
+
   const db = getDb();
   const userId = randomUUID();
   await db`
     insert into auth.users (id, email, aud, role)
-    values (${userId}, ${`${userId}@example.test`}, 'authenticated', 'authenticated')
+    values (${userId}, ${email}, 'authenticated', 'authenticated')
   `;
   return userId;
 }
@@ -184,13 +209,8 @@ export async function createUser(params?: {
   primaryTeamSlug?: string;
 }): Promise<string> {
   const db = getDb();
-  const userId = randomUUID();
+  const userId = await createAuthUser();
   const nickname = params?.nickname ?? `테스터${userId.slice(0, 6)}`;
-
-  await db`
-    insert into auth.users (id, email, aud, role)
-    values (${userId}, ${`${userId}@example.test`}, 'authenticated', 'authenticated')
-  `;
 
   let teamId: string | null = null;
   if (params?.primaryTeamSlug) {

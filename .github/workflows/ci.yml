@@ -41,7 +41,15 @@ jobs:
       - name: DB advisors / lint
         run: npx supabase db lint
       - name: 통합 테스트
-        run: npx vitest run tests/integration
+        # 계정 삭제 테스트는 Auth 관리 API 를 쓰므로 service_role 키가 필요하다.
+        # 키가 없으면 해당 describe 만 건너뛰고 나머지는 그대로 돈다.
+        run: |
+          eval "$(npx supabase status -o env | sed 's/^/export /')"
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export DATABASE_URL="$DB_URL"
+          export GUEST_TOKEN_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")"
+          npx vitest run tests/integration
       - name: 스택 종료
         if: always()
         run: npx supabase stop --no-backup
