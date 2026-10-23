@@ -14,12 +14,44 @@
 |---|---|---|
 | 스키마 | `supabase db dump --local -f backup-schema.sql` | 구조 복원·비교 |
 | 데이터 | `supabase db dump --local --data-only -s public,private -f backup-data.sql` | 내용 복원 |
+| **계정** | `pg_dump --data-only --column-inserts -t auth.users -t auth.identities` | **로그인 복원** |
 | 역할 | `supabase db dump --local --role-only -f backup-roles.sql` | 권한 복원 |
 
 **`-s public,private`을 빠뜨리면 정답 테이블(`private.question_options`)이
 백업되지 않는다.** 기본값은 `public`만 받는다.
 
 운영에서는 `--local` 대신 `--db-url` 또는 `--linked`를 쓴다.
+
+### 계정(auth) 백업 — 반드시 별도로
+
+`supabase db dump`의 `-s`에 `auth`를 통째로 넣으면 안 된다. `auth`에는 27개
+테이블이 있고 그중 상당수는 **복구하면 안 되거나 복구할 수 없는 것**이다.
+
+```bash
+docker exec supabase_db_<프로젝트> pg_dump -U postgres -d postgres \
+  --data-only --column-inserts \
+  -t auth.users -t auth.identities > backup-auth.sql
+```
+
+운영에서는 `pg_dump "$DATABASE_URL" --data-only --column-inserts -t auth.users -t auth.identities`.
+
+| 테이블 | 백업 | 이유 |
+|---|---|---|
+| `auth.users` | **한다** | 계정 자체 |
+| `auth.identities` | **한다** | 공급자 연결. 없으면 로그인 경로가 끊긴다 |
+| `auth.mfa_factors` | MFA 도입 시 | 지금은 쓰지 않는다 |
+| `auth.sessions`, `auth.refresh_tokens` | **하지 않는다** | 복구 시점에 이미 지난 세션이고, 오래된 토큰을 되살리는 것은 보안상 바람직하지 않다. 사용자는 다시 로그인한다 |
+| `auth.schema_migrations`, `auth.instances` | **하지 않는다** | `db reset` 이 GoTrue 스키마를 새로 만들며 채운다. 덮어쓰면 충돌한다 |
+
+### 계정 백업 파일 취급
+
+`backup-auth.sql`에는 **이메일 주소와 비밀번호 해시**가 들어 있다.
+게임 데이터 백업과 **같은 수준으로 다루면 안 된다.**
+
+- 저장 시 암호화, 접근 권한 최소화
+- 보관 기간을 짧게 (개인정보 처리방침의 보관 기간과 맞춘다)
+- 저장소·이슈 트래커·채팅에 올리지 않는다
+- `.gitignore`에 `backup-*.sql`이 포함되어 있는지 확인할 것
 
 ### 받은 뒤 반드시 확인할 것
 
@@ -43,12 +75,20 @@ grep -oE 'INSERT INTO "[a-z_]+"\."[a-z_]+"' backup-data.sql | sort -u
 #    데이터 백업에 기준 데이터가 이미 들어 있어 충돌한다.
 supabase db reset --local --no-seed
 
-# 2) 데이터를 적재한다. 중간에 실패하면 멈춰야 하므로 ON_ERROR_STOP 을 켠다.
+# 2) 계정을 먼저 복구한다. public.profiles 가 auth.users 를 참조하므로
+#    순서를 바꾸면 외래키에서 깨진다.
+docker exec -i supabase_db_<프로젝트> \
+  psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q < backup-auth.sql
+
+# 3) 애플리케이션 데이터를 적재한다.
 docker exec -i supabase_db_<프로젝트> \
   psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q < backup-data.sql
 ```
 
-운영에서는 2단계를 `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backup-data.sql`로 한다.
+운영에서는 `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f <파일>`로 한다.
+
+**순서가 중요하다.** auth → public/private. 반대로 하면
+`profiles.id → auth.users(id)` 외래키에서 적재가 통째로 실패한다.
 
 ### `--no-seed`가 중요한 이유
 
@@ -71,11 +111,28 @@ node scripts/db-fingerprint.mjs > after.json
 node scripts/db-fingerprint.mjs --compare before.json after.json
 ```
 
-지문은 16개 테이블의 행 수에 더해 **집계값**(통산 타석·안타·득점, XP 합계,
-게시 문항 수)을 함께 본다. 행 수만 보면 내용이 바뀐 것을 놓친다.
+지문은 테이블 행 수(`auth.users`·`auth.identities` 포함)에 더해 **집계값**
+(통산 타석·안타·득점, XP 합계, 게시 문항 수)을 함께 본다. 행 수만 보면
+내용이 바뀐 것을 놓친다.
+
+`auth.sessions`와 `auth.refresh_tokens`는 `notRestored`로 따로 찍고
+**대조에서 제외한다.** 일부러 복구하지 않는 항목이기 때문이다.
 
 불일치가 있으면 종료 코드 1과 함께 어떤 항목이 몇 개에서 몇 개로 바뀌었는지
 출력한다.
+
+### 행 수만으로는 부족하다
+
+지문이 일치해도 **GoTrue가 그 계정을 인정하는지는 별개 문제다.**
+계정 복구 뒤에는 반드시 실제 로그인을 확인한다.
+
+```bash
+# GoTrue 가 사용자를 보는지
+node -e "..." # admin.auth.admin.listUsers()
+```
+
+그다음 실제로 매직링크를 받아 로그인까지 해 본다. 행이 있어도 로그인이
+안 되면 복구된 것이 아니다.
 
 ---
 
@@ -96,13 +153,34 @@ node scripts/db-fingerprint.mjs --compare before.json after.json
 
 소요: 약 2분(로컬, 데이터 358KB 기준).
 
+### 2026-10-24 · 계정(auth) 포함 리허설
+
+앞선 리허설에서 **계정이 복구되지 않는다**는 공백이 드러나 절차를 확정하고
+다시 수행했다.
+
+| 단계 | 내용 |
+|---|---|
+| 준비 | 계정 1개(`restore-check@example.test`) + 프로필·통산 성적(10타석 4안타) 연결 |
+| 백업 | `auth.users`·`auth.identities` 2.4KB, 애플리케이션 데이터 359KB |
+| 손상 | `db reset --no-seed` — DB 전체 유실 시나리오 |
+| 손상 후 | `auth.users` 0, 문항 0 |
+| 복구 | auth 먼저 → public/private (종료 코드 0) |
+| 지문 | **전부 일치** (`auth.users` 1, `auth.identities` 1 포함) |
+| **로그인 검증** | 매직링크 요청 → 수신 → 콜백 → **대시보드 진입 성공** |
+| 데이터 확인 | 닉네임·대표 구단·통산 성적(.444 / OPS 1.278) 모두 복원 |
+
+행 수가 맞는 것으로 끝내지 않고 실제 로그인까지 확인했다. GoTrue가 계정을
+인정하지 않으면 행이 있어도 아무도 들어오지 못한다.
+
 ### 이 리허설이 증명하지 않은 것
 
-- **운영 규모의 데이터**에서의 소요 시간. 358KB와 수 GB는 다르다
+- **운영 규모의 데이터**에서의 소요 시간. 359KB와 수 GB는 다르다
 - **PITR(시점 복구)**. Supabase 유료 플랜 기능이며 여기서는 검증하지 않았다
-- `auth` 스키마 복구. 이번 백업은 `public`·`private`만 받았다 —
-  **회원 계정은 복구되지 않는다.** 운영 백업에는 `auth` 포함 여부를 결정해야 한다
+- **MFA·OAuth 계정**. 검증한 것은 이메일 매직링크 계정 하나다.
+  소셜 로그인을 켜면 `auth.identities`의 공급자 행이 늘어나므로 다시 확인해야 한다
 - 무중단 복구. 위 절차는 DB를 내렸다 올린다
+- **복구 후 사용자는 전원 재로그인해야 한다.** 세션을 복구하지 않기 때문이며,
+  이건 결함이 아니라 의도된 선택이다
 
 ---
 

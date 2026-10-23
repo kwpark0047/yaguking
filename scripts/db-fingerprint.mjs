@@ -54,6 +54,12 @@ async function fingerprint() {
     `;
     counts['private.question_options'] = options?.c ?? 0;
 
+    // 계정 복구 대상. 이게 없으면 게임 기록은 살아나도 로그인할 사람이 없다.
+    const [authUsers] = await sql`select count(*)::int as c from auth.users`;
+    const [identities] = await sql`select count(*)::int as c from auth.identities`;
+    counts['auth.users'] = authUsers?.c ?? 0;
+    counts['auth.identities'] = identities?.c ?? 0;
+
     // 행 수만으로는 내용 변화를 못 잡는다. 핵심 집계도 함께 본다.
     const [agg] = await sql`
       select coalesce(sum(pa), 0)::int as total_pa,
@@ -68,6 +74,17 @@ async function fingerprint() {
       select count(*)::int as c from public.questions where status = 'published'
     `;
 
+    /**
+     * 세션과 리프레시 토큰은 **일부러 복구하지 않는다.**
+     * 복구 시점에 되살린 세션은 이미 지난 상태이고, 오래된 토큰을 되살리는
+     * 것은 보안상 바람직하지 않다. 사용자는 다시 로그인한다.
+     * 대조 대상이 아니라 참고용으로만 찍는다.
+     */
+    const [sessions] = await sql`select count(*)::int as c from auth.sessions`;
+    const [refreshTokens] = await sql`
+      select count(*)::int as c from auth.refresh_tokens
+    `;
+
     return {
       takenAt: new Date().toISOString(),
       counts,
@@ -77,6 +94,11 @@ async function fingerprint() {
         battingR: agg?.total_r ?? 0,
         xpTotal: xp?.total_xp ?? 0,
         publishedQuestions: published?.c ?? 0,
+      },
+      // 복구 대상이 아님. 대조에서 제외한다.
+      notRestored: {
+        authSessions: sessions?.c ?? 0,
+        authRefreshTokens: refreshTokens?.c ?? 0,
       },
     };
   } finally {
