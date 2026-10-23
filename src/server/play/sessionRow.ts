@@ -97,21 +97,36 @@ export function goalOf(session: PlaySessionRow): SessionGoal {
     : { kind: 'innings', innings: session.innings_target };
 }
 
+/** 목표 출제 분포 누적 경계: 초급 40 / 중급 40 / 고급 20 (09 문서 §11). */
+const EASY_UNTIL = 0.4;
+const NORMAL_UNTIL = 0.8;
+
+/** [0,1) 난수를 난이도로 옮긴다. 분포를 눈으로 확인할 수 있게 분리했다. */
+export function rollDifficulty(roll: number): Difficulty {
+  if (roll < EASY_UNTIL) return 'easy';
+  if (roll < NORMAL_UNTIL) return 'normal';
+  return 'hard';
+}
+
 /**
  * 출제 난이도 계획.
  *
- * 체험은 첫 두 타석을 쉽게 깔아 첫인상을 지키고, 그 뒤부터 섞는다.
- * 공식 경기는 초급 40 / 중급 40 / 고급 20 분포를 노린다 (09 문서 §11).
+ * 체험은 첫 두 타석을 쉽게 깔아 첫인상을 지키고, 그 뒤부터는 공식 경기와
+ * 같은 초급 40 / 중급 40 / 고급 20으로 굴린다 (09 문서 §11).
+ *
+ * 체험의 3타석 이후에 `null`(난이도 무제한)을 돌려주던 때는 **문제은행의
+ * 난이도 구성이 그대로 출제 분포가 됐다.** 고급은 판정 엔진의 승급 조건이라
+ * 문항을 채울 때마다 경기 밸런스가 흔들렸다. 공급과 밸런스를 분리한다
+ * (10 문서 §1.2.2).
+ *
+ * 계획한 난이도에 남은 문항이 없을 때 제한을 푸는 것은 호출부의 몫이다
+ * (`openAtBat`).
  */
-export function plannedDifficulty(mode: string, sequence: number): Difficulty | null {
+export function plannedDifficulty(mode: string, sequence: number): Difficulty {
   if (mode === 'trial') {
     if (sequence === 1) return 'easy';
     if (sequence === 2) return 'normal';
-    return null;
   }
 
-  const roll = Math.random();
-  if (roll < 0.4) return 'easy';
-  if (roll < 0.8) return 'normal';
-  return 'hard';
+  return rollDifficulty(Math.random());
 }
