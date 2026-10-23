@@ -9,6 +9,12 @@
  *   node scripts/seed-questions.mjs data/questions.sample.csv
  *   node scripts/seed-questions.mjs data/questions.sample.csv --publish
  *
+ * 선택 컬럼: explanation, era_year, season_scope, source_url, rights_note.
+ * `season_scope`는 문항 카드에 그대로 노출된다. 해마다 바뀌는 규정처럼
+ * 답이 시즌에 묶이는 문항은 반드시 적는다 — 없으면 오래된 답이 정답처럼 보인다.
+ * `rights_note`는 그 출처를 쓸 수 있는 근거를 남기는 자리다. 규정 문서처럼
+ * 조항을 특정할 수 있는 출처는 여기에 근거를 적는다.
+ *
  * 데이터 사용권 확보 전에는 자체 작성 문항과 검증된 공개 사실만 넣는다.
  */
 import { readFileSync } from 'node:fs';
@@ -186,12 +192,14 @@ async function main() {
 
         const [question] = await tx`
           insert into public.questions (
-            category_id, stem, explanation, difficulty, status, record_as_of, era_year
+            category_id, stem, explanation, difficulty, status, record_as_of,
+            era_year, season_scope
           )
           values (
             ${category.id}, ${record.stem}, ${record.explanation || null},
             ${record.difficulty}, 'draft', ${record.record_as_of}::date,
-            ${record.era_year ? Number(record.era_year) : null}
+            ${record.era_year ? Number(record.era_year) : null},
+            ${record.season_scope || null}
           )
           returning id
         `;
@@ -208,10 +216,12 @@ async function main() {
         }
 
         await tx`
-          insert into public.question_sources (question_id, source_name, url, verified_at)
+          insert into public.question_sources (
+            question_id, source_name, url, verified_at, rights_note
+          )
           values (
             ${question.id}, ${record.source_name}, ${record.source_url || null},
-            ${record.verified_at}::date
+            ${record.verified_at}::date, ${record.rights_note || null}
           )
         `;
 
