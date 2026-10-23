@@ -23,7 +23,8 @@
     "db:lint": "supabase db lint",
     "seed:questions": "node scripts/seed-questions.mjs",
     "security:check": "node scripts/security-check.mjs",
-    "load:smoke": "node scripts/load-smoke.mjs"
+    "load:smoke": "node scripts/load-smoke.mjs",
+    "db:fingerprint": "node scripts/db-fingerprint.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
