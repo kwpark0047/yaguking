@@ -5,6 +5,7 @@ import { buildBoxScore } from '@/lib/engine';
 import { getAuthUserId } from '@/lib/supabase/server';
 import { claimGuestSessions } from '@/server/auth/claimGuest';
 import { readGuestTokenHash } from '@/server/auth/resolveOwner';
+import { CLAIM_GUEST_RULE, enforceRateLimit } from '@/server/security/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   return handle(async () => {
+    await enforceRateLimit(request, CLAIM_GUEST_RULE);
+
     const userId = await getAuthUserId();
     if (!userId) throw new ApiError('UNAUTHORIZED');
 

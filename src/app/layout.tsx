@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { indexingAllowed } from '@/lib/seo/indexing';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: '야구왕',
   description: 'KBO 기록 퀴즈를 1이닝 경기로. 3아웃이면 박스스코어가 남습니다.',
+  // 소규모 노출 동안은 색인을 막는다. robots.txt는 크롤링만 막으므로
+  // 외부 링크로 들어온 URL까지 막으려면 이 메타가 함께 있어야 한다
+  // (11 문서 §3).
+  robots: indexingAllowed()
+    ? { index: true, follow: true }
+    : { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

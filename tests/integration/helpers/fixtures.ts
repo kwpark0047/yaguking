@@ -248,6 +248,19 @@ export async function cleanup(): Promise<void> {
 
   await deleteTestPlayData(db);
 
+  // 테스트 문항은 게시 상태로 만들어지므로, 테스트가 도는 동안 같은 DB를 쓰는
+  // 개발 서버나 E2E의 경기가 그 문항을 뽑아 갈 수 있다. 그 타석은 테스트
+  // 세션 소속이 아니라 위에서 지워지지 않고, 남아 있으면 외래키 때문에 아래
+  // 문항 삭제가 막혀 **이후 모든 파일의 정리가 연쇄로 실패한다.** 실제로
+  // E2E와 통합 테스트를 동시에 돌렸다가 8개 파일이 그렇게 깨졌다.
+  // 테스트 문항은 정의상 버리는 데이터이므로, 누가 뽑았든 그 타석까지 지운다.
+  await db`
+    delete from public.at_bats
+     where question_id in (
+       select id from public.questions where stem like ${TEST_STEM_PREFIX + '%'}
+     )
+  `;
+
   // 문항은 테스트가 만든 것만. 옵션·출처는 CASCADE.
   await db`delete from public.questions where stem like ${TEST_STEM_PREFIX + '%'}`;
 }

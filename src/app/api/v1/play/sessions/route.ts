@@ -5,12 +5,16 @@ import { GUEST_COOKIE_MAX_AGE, GUEST_COOKIE_NAME } from '@/lib/guest/token';
 import { startSessionSchema } from '@/lib/schemas/play';
 import { resolveOwner } from '@/server/auth/resolveOwner';
 import { startSession } from '@/server/play/startSession';
+import { enforceRateLimit, START_SESSION_RULE } from '@/server/security/rateLimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   return handle(async () => {
+    // 체험 상한은 게스트 토큰 단위라 쿠키를 버리면 우회된다 (11 문서 §3).
+    await enforceRateLimit(request, START_SESSION_RULE);
+
     const body = await request.json().catch(() => ({}));
     const parsed = startSessionSchema.safeParse(body);
     if (!parsed.success) {
