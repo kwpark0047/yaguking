@@ -1,13 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { TeamPicker, type TeamOption } from '@/components/theme/TeamPicker';
 import { NICKNAME_MESSAGE, validateNickname } from '@/lib/game/nickname';
-
-interface TeamOption {
-  id: string;
-  name: string;
-  shortName: string;
-}
+import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 
 const CLASSIC_MODE_KEY = 'yk.classicMode';
 
@@ -21,7 +17,7 @@ const CLASSIC_MODE_KEY = 'yk.classicMode';
  * 동일하며 전환율·완주율 A/B 측정 대상이다 (06 문서 §4.4).
  * 브라우저 저장소는 기기별 편의 설정에만 쓰고, 서버 기록과 섞지 않는다.
  */
-export function SettingsClient() {
+export function SettingsClient({ teamThemes }: { teamThemes: boolean }) {
   const [nickname, setNickname] = useState('');
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -106,9 +102,25 @@ export function SettingsClient() {
 
     if (!body.success) {
       setError(body.error.message);
-      return;
+      return false;
     }
     setMessage('저장했습니다.');
+    return true;
+  }
+
+  async function chooseTeam(team: TeamOption) {
+    const previousId = teamId;
+    const previousSlug = teams.find((t) => t.id === previousId)?.slug ?? null;
+
+    // 고르는 순간 화면 색을 바꾼다. 저장이 실패하면 되돌린다.
+    if (teamThemes) applyDocumentTeam(team.slug);
+    setTeamId(team.id);
+
+    const saved = await save({ primaryTeamId: team.id });
+    if (!saved) {
+      if (teamThemes) applyDocumentTeam(previousSlug);
+      setTeamId(previousId);
+    }
   }
 
   function toggleClassic(value: boolean) {
@@ -169,28 +181,15 @@ export function SettingsClient() {
         <h2 className="text-sm font-semibold">대표 구단</h2>
         <p className="text-xs text-ink-2 break-keep">
           변경은 다음 날부터 적용됩니다. 진행 중인 집계에는 소급되지 않습니다.
+          {teamThemes && ' 화면 색은 바로 바뀝니다.'}
         </p>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
-          {teams.map((team) => (
-            <button
-              key={team.id}
-              type="button"
-              disabled={pending}
-              aria-pressed={teamId === team.id}
-              onClick={() => {
-                setTeamId(team.id);
-                void save({ primaryTeamId: team.id });
-              }}
-              className="min-h-14 rounded-option border px-2 text-sm disabled:opacity-60"
-              style={{
-                borderColor: teamId === team.id ? 'var(--accent)' : 'var(--line)',
-                backgroundColor: 'var(--bg-card)',
-              }}
-            >
-              {team.shortName}
-            </button>
-          ))}
-        </div>
+        <TeamPicker
+          teams={teams}
+          selectedId={teamId}
+          disabled={pending}
+          teamThemes={teamThemes}
+          onSelect={(team) => void chooseTeam(team)}
+        />
       </section>
 
       <section className="flex flex-col gap-2">

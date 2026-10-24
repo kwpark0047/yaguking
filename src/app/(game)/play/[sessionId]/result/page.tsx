@@ -4,6 +4,7 @@ import { BoxScore } from '@/components/result/BoxScore';
 import { ClaimedBanner } from '@/components/result/ClaimedBanner';
 import { ShareButton } from '@/components/result/ShareButton';
 import { SignupGate } from '@/components/result/SignupGate';
+import { LevelBadge } from '@/components/theme/LevelBadge';
 import { formatRate } from '@/lib/engine';
 import { resolveOwnerFromCookies } from '@/server/auth/resolveOwner';
 import { getBoxScore } from '@/server/play/getState';
@@ -85,8 +86,9 @@ export default async function ResultPage({
           ) : (
             <p className="mt-1 text-sm text-ink-2">아직 통산 기록이 없습니다.</p>
           )}
-          <p className="num-tabular mt-1 text-xs text-ink-2">
-            Lv.{me.level} · 누적 {me.totalXp} XP
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-2">
+            <LevelBadge level={me.level} />
+            <span className="num-tabular">누적 {me.totalXp} XP</span>
           </p>
           {me.profile?.onboardingStatus !== 'completed' && (
             <Link

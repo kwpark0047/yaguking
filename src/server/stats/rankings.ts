@@ -24,14 +24,24 @@ export async function getRanking(
 
   if (kind === 'rate') {
     const rows = await db<
-      { nickname: string; level: number; pa: number; ops: string | null }[]
+      {
+        nickname: string;
+        level: number;
+        pa: number;
+        ops: string | null;
+        team_slug: string | null;
+        team_short: string | null;
+      }[]
     >`
       select p.nickname,
              coalesce(s.level, 1) as level,
              r.pa,
-             r.ops
+             r.ops,
+             t.slug as team_slug,
+             t.short_name as team_short
         from public.v_user_batting_rates r
         join public.profiles p on p.id = r.user_id
+        left join public.teams t on t.id = p.primary_team_id
         left join public.user_private_stats s on s.user_id = r.user_id
        where r.season_id is null
          and r.pa >= ${RATE_MIN_PA}
@@ -49,6 +59,8 @@ export async function getRanking(
         rank: index + 1,
         nickname: row.nickname,
         level: row.level,
+        teamSlug: row.team_slug,
+        teamShortName: row.team_short,
         primary: row.ops === null ? '-' : formatRateString(row.ops),
         secondary: `${row.pa}타석`,
       })),
@@ -56,15 +68,25 @@ export async function getRanking(
   }
 
   const rows = await db<
-    { nickname: string; level: number; r: number; pa: number }[]
+    {
+      nickname: string;
+      level: number;
+      r: number;
+      pa: number;
+      team_slug: string | null;
+      team_short: string | null;
+    }[]
   >`
     select p.nickname,
            coalesce(ps.level, 1) as level,
            b.r,
-           b.pa
+           b.pa,
+           t.slug as team_slug,
+           t.short_name as team_short
       from public.user_batting_stats b
       join public.seasons se on se.id = b.season_id and se.status = 'active'
       join public.profiles p on p.id = b.user_id
+      left join public.teams t on t.id = p.primary_team_id
       left join public.user_private_stats ps on ps.user_id = b.user_id
      order by b.r desc, b.pa asc
      limit ${limit}
@@ -79,6 +101,8 @@ export async function getRanking(
       rank: index + 1,
       nickname: row.nickname,
       level: row.level,
+      teamSlug: row.team_slug,
+      teamShortName: row.team_short,
       primary: `${row.r}득점`,
       secondary: `${row.pa}타석`,
     })),

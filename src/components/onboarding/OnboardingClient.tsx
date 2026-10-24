@@ -2,13 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { TeamPicker, type TeamOption } from '@/components/theme/TeamPicker';
 import { NICKNAME_MESSAGE, validateNickname } from '@/lib/game/nickname';
-
-interface TeamOption {
-  id: string;
-  name: string;
-  shortName: string;
-}
+import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 
 /**
  * V05 온보딩 — 2단계 (06 문서 §7.4).
@@ -19,7 +15,14 @@ interface TeamOption {
  *
  * 선수 TOP3와 레벨 테스트는 없다. 끝나면 원래 보던 화면으로 돌아간다.
  */
-export function OnboardingClient({ returnTo }: { returnTo: string }) {
+export function OnboardingClient({
+  returnTo,
+  teamThemes,
+}: {
+  returnTo: string;
+  /** 서버의 TEAM_THEMES 스위치. false면 구단 색 미리보기를 하지 않는다. */
+  teamThemes: boolean;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [nickname, setNickname] = useState('');
@@ -60,19 +63,27 @@ export function OnboardingClient({ returnTo }: { returnTo: string }) {
     };
   }, []);
 
-  async function save(primaryTeamId: string) {
+  async function save(team: TeamOption) {
+    const previous = teams.find((t) => t.id === teamId)?.slug ?? null;
+
+    // 고르는 순간 화면 전체를 그 구단 테마로 바꿔 보여 준다.
+    if (teamThemes) applyDocumentTeam(team.slug);
+    setTeamId(team.id);
     setPending(true);
     setError(null);
 
     const response = await fetch('/api/v1/me', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nickname.trim(), primaryTeamId }),
+      body: JSON.stringify({ nickname: nickname.trim(), primaryTeamId: team.id }),
     });
     const body = await response.json();
     setPending(false);
 
     if (!body.success) {
+      // 저장이 안 됐으면 미리보기도 되돌린다. 화면 색이 실제 설정과 어긋나면 안 된다.
+      if (teamThemes) applyDocumentTeam(previous);
+      setTeamId(teams.find((t) => t.slug === previous)?.id ?? null);
       setError(body.error.message);
       setStep(1);
       return;
@@ -141,27 +152,19 @@ export function OnboardingClient({ returnTo }: { returnTo: string }) {
             적용되며, 진행 중인 집계에 소급되지 않습니다.
           </p>
 
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
-            {teams.map((team) => (
-              <button
-                key={team.id}
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  setTeamId(team.id);
-                  void save(team.id);
-                }}
-                aria-pressed={teamId === team.id}
-                className="min-h-14 rounded-option border px-2 text-sm disabled:opacity-60"
-                style={{
-                  borderColor: teamId === team.id ? 'var(--accent)' : 'var(--line)',
-                  backgroundColor: 'var(--bg-card)',
-                }}
-              >
-                {team.shortName}
-              </button>
-            ))}
-          </div>
+          {teamThemes && (
+            <p className="text-xs text-ink-2 break-keep">
+              고르면 화면 색이 그 구단 테마로 바로 바뀝니다.
+            </p>
+          )}
+
+          <TeamPicker
+            teams={teams}
+            selectedId={teamId}
+            disabled={pending}
+            teamThemes={teamThemes}
+            onSelect={(team) => void save(team)}
+          />
 
           <button
             type="button"

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { OnboardingClient } from '@/components/onboarding/OnboardingClient';
 import { sanitizeReturnTo, withFlag } from '@/lib/auth/returnTo';
 import { getAuthUserId } from '@/lib/supabase/server';
+import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,5 +26,5 @@ export default async function OnboardingPage({
     redirect(withFlag('/auth', 'returnTo', withFlag('/onboarding', 'returnTo', returnTo)));
   }
 
-  return <OnboardingClient returnTo={returnTo} />;
+  return <OnboardingClient returnTo={returnTo} teamThemes={teamThemesEnabled()} />;
 }

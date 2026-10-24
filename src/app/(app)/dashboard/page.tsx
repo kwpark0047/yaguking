@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/shell/AppShell';
+import { LevelBadge } from '@/components/theme/LevelBadge';
 import { formatRate } from '@/lib/engine';
 import { MODE_LABEL, levelProgress } from '@/lib/game/labels';
+import { tierStyle, tierTheme } from '@/lib/theme/tiers';
 import { getAuthUserId } from '@/lib/supabase/server';
 import { getDashboard } from '@/server/me/dashboard';
 
@@ -15,31 +17,46 @@ export default async function DashboardPage() {
 
   const data = await getDashboard(userId);
   const progress = levelProgress(data.level, data.totalXp);
+  const tier = tierTheme(data.level);
 
   return (
     <AppShell active="home">
       <main className="flex flex-col gap-4 px-4 py-6">
-        <header className="flex flex-col gap-2">
-          <p className="text-sm text-ink-2">
-            {data.primaryTeamName ?? '대표 구단 미설정'}
-          </p>
-          <h1 className="text-2xl font-bold">{data.nickname}</h1>
-          <p className="num-tabular text-sm text-ink-2">
-            {data.levelName} · Lv.{data.level} · {data.totalXp} XP
-          </p>
-          <div
-            className="h-2 overflow-hidden rounded-full"
-            style={{ backgroundColor: 'var(--line)' }}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progress * 100)}
-            aria-label="다음 등급까지 진행률"
-          >
+        {/*
+          히어로 카드. 두 겹으로 나눈 이유: 바깥은 **등급 테두리**, 안쪽은
+          **구단 띠**다. 한 요소에 둘을 같이 걸면 명예의 전당의 무지개 테두리
+          (배경 두 겹으로 그린다)가 구단 띠 배경을 덮어쓴다.
+        */}
+        <header
+          data-tier={tier.level}
+          data-ornament={tier.ornament}
+          style={tierStyle(tier)}
+          className="tier-frame overflow-hidden rounded-card"
+        >
+          <div className="team-band flex flex-col gap-2 p-4">
+            <p className="flex items-center gap-2 text-sm text-ink-2">
+              {data.primaryTeamName && <span className="team-dot" aria-hidden="true" />}
+              {data.primaryTeamName ?? '대표 구단 미설정'}
+            </p>
+            <h1 className="text-2xl font-bold">{data.nickname}</h1>
+            <p className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+              <LevelBadge level={data.level} />
+              <span className="num-tabular">{data.totalXp} XP</span>
+            </p>
             <div
-              className="h-full rounded-full"
-              style={{ width: `${progress * 100}%`, backgroundColor: 'var(--accent)' }}
-            />
+              className="h-2 overflow-hidden rounded-full"
+              style={{ backgroundColor: 'var(--line)' }}
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress * 100)}
+              aria-label="다음 등급까지 진행률"
+            >
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${progress * 100}%`, backgroundColor: 'var(--accent)' }}
+              />
+            </div>
           </div>
         </header>
 

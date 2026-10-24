@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { AppShell } from '@/components/shell/AppShell';
+import { LevelBadge } from '@/components/theme/LevelBadge';
+import { TeamScope } from '@/components/theme/TeamScope';
 import { getRanking } from '@/server/stats/rankings';
-import { levelName } from '@/lib/game/labels';
 import type { RankingKind } from '@/types/api';
 
 /**
@@ -82,10 +83,24 @@ export default async function RankingsPage({
                     <span className="num-tabular w-8 text-sm text-ink-2">
                       {entry.rank}
                     </span>
-                    <span className="flex-1 truncate">
-                      <span className="font-medium">{entry.nickname}</span>
-                      <span className="ml-2 text-xs text-ink-2">
-                        {levelName(entry.level)}
+                    {/*
+                      행마다 **그 선수의** 구단색을 입힌다. 보는 사람의 구단과 무관하다.
+                      색은 보조이고 구단명은 글자로 함께 적는다.
+                    */}
+                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="truncate font-medium">{entry.nickname}</span>
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-ink-2">
+                        <LevelBadge level={entry.level} showNumber={false} />
+                        {entry.teamShortName && (
+                          <TeamScope
+                            as="span"
+                            slug={entry.teamSlug}
+                            className="inline-flex items-center gap-1"
+                          >
+                            <span className="team-dot" aria-hidden="true" />
+                            {entry.teamShortName}
+                          </TeamScope>
+                        )}
                       </span>
                     </span>
                     <span className="num-tabular font-semibold">{entry.primary}</span>

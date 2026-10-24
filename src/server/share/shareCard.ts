@@ -10,7 +10,7 @@ import type { ShareCardDto } from '@/types/api';
  * **공개 조회다.** 공유 링크를 받은 사람이 로그인 없이 볼 수 있어야 하므로
  * 소유권을 확인하지 않는다. 대신 담는 정보를 좁힌다:
  *
- *   담는 것 — 닉네임, 등급, 득점, 타석, 타율, OPS
+ *   담는 것 — 닉네임, 등급, 대표 구단(이름·테마색), 득점, 타석, 타율, OPS
  *   담지 않는 것 — 이메일·실명, 정확한 플레이 시각, **문항 본문과 정답**
  *
  * 세션 UUID가 사실상 접근 토큰 역할을 한다. 추측할 수 없는 값이지만,
@@ -41,21 +41,34 @@ export async function getShareCard(sessionId: string): Promise<ShareCardDto | nu
 
   let nickname = '비회원';
   let level = 1;
+  let teamSlug: string | null = null;
+  let teamShortName: string | null = null;
 
   if (session.user_id) {
-    const [profile] = await db<{ nickname: string }[]>`
-      select nickname from public.profiles where id = ${session.user_id}
+    // 구단은 이름(사실 정보)과 색만 담는다. 로고·엠블럼은 쓰지 않는다.
+    const [profile] = await db<
+      { nickname: string; team_slug: string | null; team_short: string | null }[]
+    >`
+      select p.nickname, t.slug as team_slug, t.short_name as team_short
+        from public.profiles p
+        left join public.teams t on t.id = p.primary_team_id
+       where p.id = ${session.user_id}
     `;
     const [stats] = await db<{ level: number }[]>`
       select level from public.user_private_stats where user_id = ${session.user_id}
     `;
     nickname = profile?.nickname ?? '비회원';
     level = stats?.level ?? 1;
+    teamSlug = profile?.team_slug ?? null;
+    teamShortName = profile?.team_short ?? null;
   }
 
   return {
     nickname,
     levelName: levelName(level),
+    level,
+    teamSlug,
+    teamShortName,
     runs: session.runs,
     pa: box.pa,
     avg: formatRate(box.avg),

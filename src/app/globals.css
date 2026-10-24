@@ -82,6 +82,74 @@
 }
 
 /*
+ * ── 구단 테마 (src/lib/theme/teams.ts) ──────────────────────────────────
+ *
+ * 값은 TS에서 **접근성 기준에 맞춰 도출**해 인라인 변수로 넣는다
+ * (`--team-*-d` 다크, `--team-*-l` 라이트). 인라인 스타일은 미디어 쿼리를
+ * 못 쓰므로 어느 쪽을 쓸지는 여기서 고른다.
+ *
+ * `data-team`은 <html>에 붙으면 앱 전체, 카드에 붙으면 그 카드만 바꾼다.
+ * 공유 카드는 **보는 사람이 아니라 만든 사람의** 구단을 보여야 하므로 카드
+ * 단위로 다시 지정한다.
+ *
+ * 의미 색(--on-base, --out, --hr)은 여기서 절대 바꾸지 않는다.
+ */
+:root {
+  /* 구단 테마가 없을 때 띠는 야구장 잔디색이다 */
+  --team-surface: var(--bg-field);
+  --team-surface-alt: var(--bg-base);
+}
+
+[data-team] {
+  --accent: var(--team-accent-d);
+  --accent-ink: var(--team-accent-ink-d);
+  --team-surface: var(--team-surface-d);
+  --team-surface-alt: var(--team-surface-alt-d);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark'])[data-team],
+  :root:not([data-theme='dark']) [data-team] {
+    --accent: var(--team-accent-l);
+    --accent-ink: var(--team-accent-ink-l);
+    --team-surface: var(--team-surface-l);
+    --team-surface-alt: var(--team-surface-alt-l);
+  }
+}
+
+:root[data-theme='light'][data-team],
+:root[data-theme='light'] [data-team] {
+  --accent: var(--team-accent-l);
+  --accent-ink: var(--team-accent-ink-l);
+  --team-surface: var(--team-surface-l);
+  --team-surface-alt: var(--team-surface-alt-l);
+}
+
+/*
+ * ── 등급 테마 (src/lib/theme/tiers.ts) ──────────────────────────────────
+ * 구단이 색조를, 등급은 장식의 격을 바꾼다. 같은 방식으로 다크·라이트를 고른다.
+ */
+[data-tier] {
+  --tier: var(--tier-d);
+  --tier-ink: var(--tier-ink-d);
+  --tier-prism: var(--tier-prism-d);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) [data-tier] {
+    --tier: var(--tier-l);
+    --tier-ink: var(--tier-ink-l);
+    --tier-prism: var(--tier-prism-l);
+  }
+}
+
+:root[data-theme='light'] [data-tier] {
+  --tier: var(--tier-l);
+  --tier-ink: var(--tier-ink-l);
+  --tier-prism: var(--tier-prism-l);
+}
+
+/*
  * 브레이크포인트를 08 문서 §6.1에 맞춘다.
  * sm 360~599 (기본) / md 600~1023 / lg 1024~1439 / xl 1440+
  * Tailwind 기본값(md 768)과 다르므로 여기서 덮어쓴다.
@@ -154,4 +222,112 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ── 구단 띠 ──────────────────────────────────────────────────────────── */
+/*
+ * 두 색 모두 본문·보조 글자와 4.5:1을 확보하도록 도출되어 있다.
+ * oklab으로 보간해야 중간에 명도가 튀지 않는다(sRGB 보간은 중간이 탁해지거나
+ * 밝아진다). 그래서 띠 위 어느 지점에서도 글자 대비가 유지된다.
+ */
+.team-band {
+  /* 보간 방식을 모르는 브라우저는 아래 선언을 통째로 버린다. 그때 쓸 값 */
+  background: linear-gradient(
+    135deg,
+    var(--team-surface) 0%,
+    var(--team-surface) 55%,
+    var(--team-surface-alt) 100%
+  );
+  background: linear-gradient(
+    135deg in oklab,
+    var(--team-surface) 0%,
+    var(--team-surface) 55%,
+    var(--team-surface-alt) 100%
+  );
+  border-left: 4px solid var(--accent);
+}
+
+/* 구단 표시 점. 장식이며 옆에 항상 구단명이 글자로 붙는다. */
+.team-dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background-color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── 등급 배지 ────────────────────────────────────────────────────────── */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background-color: var(--tier);
+  color: var(--tier-ink);
+}
+
+/* 육성선수는 아직 등급색이 없다 — 외곽선만 */
+.tier-badge[data-ornament='none'] {
+  background-color: transparent;
+  color: var(--tier);
+  box-shadow: inset 0 0 0 1px var(--tier);
+}
+
+/* ── 등급 테두리 — 장식은 등급이 오를수록 한 겹씩 늘어난다 ───────────── */
+.tier-frame {
+  border: 1px solid var(--line);
+}
+
+.tier-frame:is([data-ornament='frame'], [data-ornament='glow']) {
+  border: 2px solid var(--tier);
+}
+
+.tier-frame[data-ornament='glow'] {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--tier) 35%, transparent),
+    0 10px 28px -12px color-mix(in oklab, var(--tier) 70%, transparent);
+}
+
+/*
+ * 명예의 전당: 여러 색이 도는 테두리.
+ * 테두리를 배경 두 겹으로 그린다(안쪽은 카드색, 바깥은 무지개). border-image는
+ * 둥근 모서리를 지원하지 않는다.
+ */
+.tier-frame[data-ornament='prismatic'] {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--tier-frame-fill, var(--bg-card)), var(--tier-frame-fill, var(--bg-card)))
+      padding-box,
+    var(--tier-prism) border-box;
+  background-size:
+    100% 100%,
+    300% 300%;
+  animation: tier-prism-shift 8s ease-in-out infinite;
+  box-shadow: 0 10px 32px -12px color-mix(in oklab, var(--tier) 70%, transparent);
+}
+
+@keyframes tier-prism-shift {
+  0%,
+  100% {
+    background-position:
+      0 0,
+      0% 50%;
+  }
+  50% {
+    background-position:
+      0 0,
+      100% 50%;
+  }
+}
+
+/* 배지에도 명예의 전당은 무지개를 입힌다 */
+.tier-badge[data-ornament='prismatic'] {
+  background: var(--tier-prism);
+  color: #101418;
 }

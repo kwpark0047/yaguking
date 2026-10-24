@@ -135,6 +135,9 @@ export interface RankingEntryDto {
   rank: number;
   nickname: string;
   level: number;
+  /** 대표 구단. 행마다 그 선수의 구단색을 입힌다. 미설정이면 null */
+  teamSlug: string | null;
+  teamShortName: string | null;
   /** 주 지표 표기 (`.327` 또는 `12득점`) */
   primary: string;
   secondary: string;
@@ -171,6 +174,11 @@ export interface DashboardDto {
 export interface ShareCardDto {
   nickname: string;
   levelName: string;
+  /** 등급 장식에 쓴다. 비회원이면 1 */
+  level: number;
+  /** **기록을 만든 사람의** 대표 구단. 보는 사람과 무관하다. */
+  teamSlug: string | null;
+  teamShortName: string | null;
   runs: number;
   pa: number;
   avg: string;
