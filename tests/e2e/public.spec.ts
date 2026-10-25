@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   { path: '/news', name: '최신 소식' },
   { path: '/news/achievement-collection-open', name: '소식 글' },
   { path: '/auth?mode=signup', name: '가입' },
+  { path: '/terms', name: '이용약관' },
+  { path: '/privacy', name: '개인정보처리방침' },
   { path: '/auth', name: '로그인' },
   { path: '/modes', name: '모드 선택' },
   { path: '/rankings', name: '랭킹' },
@@ -158,4 +160,27 @@ test('로그아웃은 POST만 받고, 다른 출처의 요청은 거절한다', 
   });
   expect(sameOrigin.status()).toBe(303);
   expect(new URL(sameOrigin.headers()['location']!, baseURL).pathname).toBe('/');
+});
+
+test('약관·처리방침: 로그인·가입 화면과 메인 바닥글에서 열리고, 확정 전임을 밝힌다', async ({ page }) => {
+  for (const mode of ['login', 'signup']) {
+    await page.goto(`/auth?mode=${mode}`);
+    await expect(page.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms');
+    await expect(page.getByRole('link', { name: '개인정보처리방침' })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
+    await expect(page.getByText('두 문서는 아직 확정 전입니다.')).toBeVisible();
+  }
+
+  await page.goto('/');
+  const footer = page.getByRole('navigation', { name: '약관과 정책' });
+  await footer.getByRole('link', { name: /개인정보처리방침/ }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(page.getByRole('heading', { level: 1, name: '개인정보처리방침' })).toBeVisible();
+  await expect(page.getByText('아직 확정되지 않은 문서입니다')).toBeVisible();
+
+  await page.getByRole('link', { name: '이용약관 보기' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: '이용약관' })).toBeVisible();
+  await expect(page.getByText('확정 전', { exact: true })).toBeVisible();
 });

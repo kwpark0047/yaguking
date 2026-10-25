@@ -192,9 +192,20 @@ export function AuthForm({
         </Link>
       </p>
 
-      <p className="text-xs text-ink-2">
-        계속하면 이용약관과 개인정보 처리방침에 동의하는 것으로 봅니다. (문서 링크는
-        단계 8에서 연결합니다.)
+      {/*
+        두 문서는 아직 확정 전이다. 링크는 자리 페이지로 가며, 확정 전이라는 사실을
+        여기서도 밝힌다 — 보지 못한 문서에 동의했다고 적지 않기 위해서다.
+      */}
+      <p className="text-xs text-ink-2 break-keep">
+        계속하면{' '}
+        <Link href="/terms" className="underline" style={{ color: 'var(--ink-1)' }}>
+          이용약관
+        </Link>
+        과{' '}
+        <Link href="/privacy" className="underline" style={{ color: 'var(--ink-1)' }}>
+          개인정보처리방침
+        </Link>
+        에 동의하는 것으로 봅니다. 두 문서는 아직 확정 전입니다.
       </p>
     </main>
   );

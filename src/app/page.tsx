@@ -215,6 +215,14 @@ export default async function HomePage() {
       <footer className="flex flex-col gap-1 border-t pt-4 text-xs text-ink-2" style={{ borderColor: 'var(--line)' }}>
         <p>야구왕은 KBO 리그 팬을 위한 야구 상식 퀴즈 게임이에요.</p>
         <p>KBO 및 각 구단의 공식 서비스가 아니며, 구단 로고·엠블럼을 사용하지 않습니다.</p>
+        <nav aria-label="약관과 정책" className="flex flex-wrap gap-x-4">
+          <Link href="/terms" className="flex min-h-11 items-center underline">
+            이용약관 (확정 전)
+          </Link>
+          <Link href="/privacy" className="flex min-h-11 items-center font-semibold underline">
+            개인정보처리방침 (확정 전)
+          </Link>
+        </nav>
       </footer>
     </div>
   );
