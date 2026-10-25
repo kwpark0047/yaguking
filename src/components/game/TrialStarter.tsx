@@ -13,7 +13,8 @@ import { PlayClient } from './PlayClient';
  * 쿠키를 심어 주므로 서버에서 0탭 렌더가 되지만, 쿠키가 차단된 첫 방문 등에서는
  * 이 버튼이 대신 경기를 시작한다 (쿠키는 API 응답이 심는다).
  */
-export function TrialStarter() {
+export function TrialStarter({ mode = 'trial' }: { mode?: 'trial' | 'official_3' } = {}) {
+  const member = mode === 'official_3';
   const [session, setSession] = useState<StartSessionDto | null>(null);
   const [error, setError] = useState<{ message: string; requestId?: string } | null>(
     null,
@@ -25,7 +26,7 @@ export function TrialStarter() {
   async function start() {
     setLoading(true);
     setError(null);
-    const result = await startPlaySession('trial');
+    const result = await startPlaySession(mode);
     setLoading(false);
     if (result.ok) setSession(result.data);
     else setError({ message: result.message, requestId: result.requestId });
@@ -46,10 +47,12 @@ export function TrialStarter() {
         className="min-h-14 rounded-option px-4 font-semibold disabled:opacity-60"
         style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
       >
-        {loading ? '준비 중…' : '바로 1이닝 시작'}
+        {loading ? '준비 중…' : member ? '공식 3이닝 시작' : '바로 1이닝 시작'}
       </button>
       <p className="text-xs text-ink-2">
-        로그인 없이 바로 플레이할 수 있습니다. 오늘 체험은 2이닝까지입니다.
+        {member
+          ? '공식 경기는 통산 기록·XP·랭킹에 반영됩니다.'
+          : '로그인 없이 바로 플레이할 수 있습니다. 오늘 체험은 2이닝까지입니다.'}
       </p>
     </main>
   );

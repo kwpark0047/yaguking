@@ -26,13 +26,31 @@ export async function loadResumableSession(
 }
 
 /**
- * 랜딩(0탭 진입)용.
+ * `/play`에서 새 경기를 시작할 때의 모드.
+ *
+ * 회원은 **공식 3이닝**이다. 체험은 공식 집계가 없어(XP·통산·랭킹 미반영) 회원이
+ * 메인 페이지의 "게임 시작"을 눌렀는데 기록이 안 쌓이는 일이 실제로 있었다
+ * (2026-10-26, 메인 페이지가 소개 화면이 되면서 회원도 이 경로로 들어오게 됨).
+ * 모드 목록(V07)의 첫 공식 모드와 같다. 오늘의 야구는 하루 한 번 보너스가 붙는
+ * 특별 모드라 기본값으로 두지 않는다.
+ */
+export function defaultModeFor(owner: Owner): 'official_3' | 'trial' {
+  return owner.kind === 'user' ? 'official_3' : 'trial';
+}
+
+/**
+ * 경기 시작 화면(`/play`, 0탭 진입)용.
  *
  * **새로고침이 체험 횟수를 깎지 않도록** 이 소유자의 진행 중 경기를 먼저 찾는다.
- * 없을 때만 새 체험 경기를 시작한다. 체험은 하루 2이닝이므로 페이지 로드마다
- * 세션을 새로 만들면 두 번 새로고침에 소진된다.
+ * 없을 때만 새 경기를 시작한다 — 비회원은 체험, 회원은 공식(`defaultModeFor`).
+ *
+ * 회원은 **공식 경기만** 이어 간다. 이 경로가 회원에게 체험을 열던 시절에 만들어진
+ * 미완료 체험이 남아 있으면, 그걸 이어 가는 한 "게임 시작"이 계속 체험이 된다.
+ * 모드 목록에서 직접 고른 체험은 `/play/[id]`로 가므로 여기서 건너뛰어도 잃지 않는다.
+ * 체험은 하루 2이닝이므로 페이지 로드마다 세션을 새로 만들면 두 번 새로고침에
+ * 소진된다.
  */
-export async function getOrStartTrial(owner: Owner): Promise<StartSessionDto> {
+export async function getOrStartGame(owner: Owner): Promise<StartSessionDto> {
   const db = getDb();
 
   const guest = owner.kind === 'guest' ? await findGuestSession(db, owner.tokenHash) : null;
@@ -45,7 +63,7 @@ export async function getOrStartTrial(owner: Owner): Promise<StartSessionDto> {
      where status = 'active'
        and ${
          owner.kind === 'user'
-           ? db`user_id = ${owner.userId}`
+           ? db`user_id = ${owner.userId} and official`
            : db`guest_session_id = ${guest?.id ?? null}`
        }
      order by started_at desc
@@ -58,7 +76,7 @@ export async function getOrStartTrial(owner: Owner): Promise<StartSessionDto> {
     if (pending) return buildDto(active, pending, owner, guest);
   }
 
-  return startSession({ mode: 'trial' }, owner);
+  return startSession({ mode: defaultModeFor(owner) }, owner);
 }
 
 async function buildDto(

@@ -25,7 +25,11 @@ export const dynamic = 'force-dynamic';
 const STEPS = [
   { emoji: '⚾', title: '문제가 날아와요', body: '야구 상식 문제 하나가 공 하나예요.' },
   { emoji: '💥', title: '빨리 맞히면 홈런!', body: '빠르고 정확할수록 타구가 멀리 날아가요.' },
-  { emoji: '🏆', title: '3아웃이면 경기 끝', body: '박스스코어와 업적 카드가 남아요.' },
+  {
+    emoji: '🏆',
+    title: '아웃이 쌓이면 경기 끝',
+    body: '체험은 1이닝, 회원 공식 경기는 3이닝. 박스스코어와 업적 카드가 남아요.',
+  },
 ] as const;
 
 async function loadRankingPreview(): Promise<RankingDto | null> {
@@ -93,7 +97,9 @@ export default async function HomePage() {
             <p className="text-xs text-ink-2">
               {member ? (
                 <span className="inline-flex flex-wrap items-center gap-2">
-                  지금 등급 <LevelBadge level={member.level} />
+                  {/* 회원의 "게임 시작"은 공식 3이닝이다(src/server/play/resume.ts defaultModeFor) */}
+                  공식 3이닝으로 시작해요 · 통산 기록·XP·랭킹에 반영 · 지금 등급{' '}
+                  <LevelBadge level={member.level} />
                 </span>
               ) : (
                 '로그인 없이 바로 시작해요. 비회원 체험은 하루 2이닝이에요.'
