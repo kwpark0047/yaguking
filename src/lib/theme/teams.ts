@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
-import { BASE, type Scheme } from './base';
-import { deriveAccent, deriveSurface } from './derive';
+import { SURFACES, type Scheme, type Style } from './base';
+import { deriveAccent, deriveSurface, type Profile } from './derive';
 
 /**
  * 구단 테마.
@@ -57,37 +57,47 @@ export interface TeamSchemeTokens {
 
 export interface TeamTheme {
   slug: TeamSlug | 'brand';
+  /** 기본·부드러운 스타일 공용 */
   dark: TeamSchemeTokens;
   light: TeamSchemeTokens;
+  /** 고대비 스타일(7:1) */
+  darkHc: TeamSchemeTokens;
+  lightHc: TeamSchemeTokens;
 }
 
 /**
  * 구단을 고르지 않았거나 테마가 꺼졌을 때의 값.
  * 띠는 야구장 잔디색(`--bg-field`)을 쓴다 — 특정 구단이 아니라 "야구"의 색이다.
  */
+function brandTokens(style: Style, scheme: Scheme): TeamSchemeTokens {
+  const surface = SURFACES[style][scheme];
+  return {
+    accent: surface.accent,
+    accentInk: surface.accentInk,
+    surface: surface.bgField,
+    surfaceAlt: surface.bgBase,
+  };
+}
+
 export const BRAND_THEME: TeamTheme = {
   slug: 'brand',
-  dark: {
-    accent: BASE.dark.accent,
-    accentInk: BASE.dark.accentInk,
-    surface: '#10251a',
-    surfaceAlt: '#0c1117',
-  },
-  light: {
-    accent: BASE.light.accent,
-    accentInk: BASE.light.accentInk,
-    surface: '#e8f2eb',
-    surfaceAlt: '#f7f8fa',
-  },
+  dark: brandTokens('default', 'dark'),
+  light: brandTokens('default', 'light'),
+  darkHc: brandTokens('contrast', 'dark'),
+  lightHc: brandTokens('contrast', 'light'),
 };
 
-function deriveScheme(identity: TeamIdentity, scheme: Scheme): TeamSchemeTokens {
-  const { accent, accentInk } = deriveAccent(identity.primary, scheme);
+function deriveScheme(
+  identity: TeamIdentity,
+  scheme: Scheme,
+  profile: Profile,
+): TeamSchemeTokens {
+  const { accent, accentInk } = deriveAccent(identity.primary, scheme, profile);
   return {
     accent,
     accentInk,
-    surface: deriveSurface(identity.primary, scheme),
-    surfaceAlt: deriveSurface(identity.secondary, scheme),
+    surface: deriveSurface(identity.primary, scheme, profile),
+    surfaceAlt: deriveSurface(identity.secondary, scheme, profile),
   };
 }
 
@@ -103,8 +113,10 @@ export function teamTheme(slug: string | null | undefined): TeamTheme {
   const identity = TEAM_IDENTITY[slug];
   const theme: TeamTheme = {
     slug,
-    dark: deriveScheme(identity, 'dark'),
-    light: deriveScheme(identity, 'light'),
+    dark: deriveScheme(identity, 'dark', 'standard'),
+    light: deriveScheme(identity, 'light', 'standard'),
+    darkHc: deriveScheme(identity, 'dark', 'contrast'),
+    lightHc: deriveScheme(identity, 'light', 'contrast'),
   };
   cache.set(slug, theme);
   return theme;
@@ -131,10 +143,19 @@ export function teamStyle(theme: TeamTheme): CSSProperties {
     '--team-accent-ink-l': theme.light.accentInk,
     '--team-surface-l': theme.light.surface,
     '--team-surface-alt-l': theme.light.surfaceAlt,
+    '--team-accent-dhc': theme.darkHc.accent,
+    '--team-accent-ink-dhc': theme.darkHc.accentInk,
+    '--team-surface-dhc': theme.darkHc.surface,
+    '--team-surface-alt-dhc': theme.darkHc.surfaceAlt,
+    '--team-accent-lhc': theme.lightHc.accent,
+    '--team-accent-ink-lhc': theme.lightHc.accentInk,
+    '--team-surface-lhc': theme.lightHc.surface,
+    '--team-surface-alt-lhc': theme.lightHc.surfaceAlt,
   } as CSSProperties;
 }
 
-/** 브라우저 주소창 색(모바일). 구단 띠의 첫 색을 쓴다. */
-export function teamThemeColor(theme: TeamTheme, scheme: Scheme): string {
-  return scheme === 'dark' ? theme.dark.surface : theme.light.surface;
+/** 스타일·색 구성표에 맞는 토큰 묶음 */
+export function teamTokens(theme: TeamTheme, scheme: Scheme, style: Style): TeamSchemeTokens {
+  if (style === 'contrast') return scheme === 'dark' ? theme.darkHc : theme.lightHc;
+  return scheme === 'dark' ? theme.dark : theme.light;
 }

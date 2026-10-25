@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { StylePicker } from '@/components/theme/StylePicker';
 import { TeamPicker, type TeamOption } from '@/components/theme/TeamPicker';
 import { NICKNAME_MESSAGE, validateNickname } from '@/lib/game/nickname';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
+import type { StylePreference } from '@/lib/theme/style';
 
 const CLASSIC_MODE_KEY = 'yk.classicMode';
 
@@ -17,7 +19,14 @@ const CLASSIC_MODE_KEY = 'yk.classicMode';
  * 동일하며 전환율·완주율 A/B 측정 대상이다 (06 문서 §4.4).
  * 브라우저 저장소는 기기별 편의 설정에만 쓰고, 서버 기록과 섞지 않는다.
  */
-export function SettingsClient({ teamThemes }: { teamThemes: boolean }) {
+export function SettingsClient({
+  teamThemes,
+  stylePreference,
+}: {
+  teamThemes: boolean;
+  /** 이 기기에 저장된 화면 스타일(쿠키) */
+  stylePreference: StylePreference;
+}) {
   const [nickname, setNickname] = useState('');
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -209,6 +218,10 @@ export function SettingsClient({ teamThemes }: { teamThemes: boolean }) {
           이 설정은 이 브라우저에만 저장됩니다. 표기 전환은 단계 9에서 화면에
           연결합니다.
         </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <StylePicker initial={stylePreference} />
       </section>
 
       <section className="flex flex-col gap-2">

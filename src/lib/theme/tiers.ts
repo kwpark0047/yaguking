@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
-import { BASE, type Scheme } from './base';
-import { deriveAccent, deriveOrnament } from './derive';
+import { SURFACES, type Scheme, type Style } from './base';
+import { deriveAccent, deriveOrnament, type Profile } from './derive';
 
 /**
  * 레벨 등급 테마 (06 문서 §9의 7단계).
@@ -63,8 +63,12 @@ export interface TierTheme {
   level: number;
   name: string;
   ornament: Ornament;
+  /** 기본·부드러운 스타일 공용 */
   dark: TierSchemeTokens;
   light: TierSchemeTokens;
+  /** 고대비 스타일(7:1) */
+  darkHc: TierSchemeTokens;
+  lightHc: TierSchemeTokens;
 }
 
 export function clampLevel(level: number): number {
@@ -72,16 +76,23 @@ export function clampLevel(level: number): number {
   return Math.min(MAX_LEVEL, Math.max(1, Math.trunc(level)));
 }
 
-function deriveScheme(definition: TierDefinition, scheme: Scheme): TierSchemeTokens {
+function deriveScheme(
+  definition: TierDefinition,
+  scheme: Scheme,
+  profile: Profile,
+): TierSchemeTokens {
   if (!definition.base) {
     // 중립 등급은 채우지 않는다. 보조 글자색으로 외곽선만 그린다.
-    return { color: BASE[scheme].ink2, ink: BASE[scheme].ink1, prism: null };
+    // 기본·부드러운 공용 값은 기본 스타일의 보조 글자색이다. 부드러운 표면
+    // 위에서도 4.5:1인지는 테스트가 확인한다.
+    const surface = SURFACES[profile === 'contrast' ? 'contrast' : 'default'][scheme];
+    return { color: surface.ink2, ink: surface.ink1, prism: null };
   }
 
-  const { accent, accentInk } = deriveAccent(definition.base, scheme);
+  const { accent, accentInk } = deriveAccent(definition.base, scheme, profile);
   const prism = definition.prism
     ? `linear-gradient(120deg, ${definition.prism
-        .map((stop) => deriveOrnament(stop, scheme))
+        .map((stop) => deriveOrnament(stop, scheme, profile))
         .join(', ')})`
     : null;
 
@@ -100,8 +111,10 @@ export function tierTheme(level: number): TierTheme {
     level: safe,
     name: definition.name,
     ornament: definition.ornament,
-    dark: deriveScheme(definition, 'dark'),
-    light: deriveScheme(definition, 'light'),
+    dark: deriveScheme(definition, 'dark', 'standard'),
+    light: deriveScheme(definition, 'light', 'standard'),
+    darkHc: deriveScheme(definition, 'dark', 'contrast'),
+    lightHc: deriveScheme(definition, 'light', 'contrast'),
   };
   cache.set(safe, theme);
   return theme;
@@ -122,5 +135,17 @@ export function tierStyle(theme: TierTheme): CSSProperties {
     '--tier-l': theme.light.color,
     '--tier-ink-l': theme.light.ink,
     '--tier-prism-l': theme.light.prism ?? 'none',
+    '--tier-dhc': theme.darkHc.color,
+    '--tier-ink-dhc': theme.darkHc.ink,
+    '--tier-prism-dhc': theme.darkHc.prism ?? 'none',
+    '--tier-lhc': theme.lightHc.color,
+    '--tier-ink-lhc': theme.lightHc.ink,
+    '--tier-prism-lhc': theme.lightHc.prism ?? 'none',
   } as CSSProperties;
+}
+
+/** 스타일·색 구성표에 맞는 토큰 묶음 */
+export function tierTokens(theme: TierTheme, scheme: Scheme, style: Style): TierSchemeTokens {
+  if (style === 'contrast') return scheme === 'dark' ? theme.darkHc : theme.lightHc;
+  return scheme === 'dark' ? theme.dark : theme.light;
 }
