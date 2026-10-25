@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { SURFACES, type Scheme, type Style } from './base';
 import { deriveAccent, deriveOrnament, type Profile } from './derive';
+import type { Material } from './material';
 
 /**
  * 레벨 등급 테마 (06 문서 §9의 7단계).
@@ -27,23 +28,26 @@ interface TierDefinition {
   /** 등급 기준 색. null이면 중립(보조 글자색)을 쓴다. */
   base: string | null;
   ornament: Ornament;
+  /** 선수 카드 테두리 여백의 소재 (14 문서 §4.1) */
+  material: Material;
   /** 명예의 전당 테두리에 도는 색들 */
   prism?: readonly string[];
 }
 
 export const TIER_DEFINITIONS: Record<number, TierDefinition> = {
-  1: { name: '육성선수', base: null, ornament: 'none' },
+  1: { name: '육성선수', base: null, ornament: 'none', material: 'paper' },
   // 동은 구리 쪽(붉은 기)으로 둔다. 노란 기가 섞인 동은 라이트 모드에서 금을
   // 어둡게 한 색과 거의 같은 갈색이 되어 골든글러브와 구분되지 않았다(ΔE 0.049).
-  2: { name: '백업', base: '#b85c38', ornament: 'badge' }, // 동
-  3: { name: '주전', base: '#a8b4c4', ornament: 'frame' }, // 은
-  4: { name: '올스타', base: '#4f8cff', ornament: 'frame' }, // 별빛 청
-  5: { name: '골든글러브', base: '#e0a800', ornament: 'glow' }, // 금
-  6: { name: 'MVP', base: '#9b6bff', ornament: 'glow' }, // 자수정
+  2: { name: '백업', base: '#b85c38', ornament: 'badge', material: 'kraft' }, // 동
+  3: { name: '주전', base: '#a8b4c4', ornament: 'frame', material: 'coated' }, // 은
+  4: { name: '올스타', base: '#4f8cff', ornament: 'frame', material: 'gloss' }, // 별빛 청
+  5: { name: '골든글러브', base: '#e0a800', ornament: 'glow', material: 'foil' }, // 금
+  6: { name: 'MVP', base: '#9b6bff', ornament: 'glow', material: 'holo' }, // 자수정
   7: {
     name: '명예의 전당',
     base: '#e0a800',
     ornament: 'prismatic',
+    material: 'metal',
     prism: ['#e0a800', '#ff5c8a', '#9b6bff', '#3ec7ff'],
   },
 };
@@ -63,6 +67,7 @@ export interface TierTheme {
   level: number;
   name: string;
   ornament: Ornament;
+  material: Material;
   /** 기본·부드러운 스타일 공용 */
   dark: TierSchemeTokens;
   light: TierSchemeTokens;
@@ -111,6 +116,7 @@ export function tierTheme(level: number): TierTheme {
     level: safe,
     name: definition.name,
     ornament: definition.ornament,
+    material: definition.material,
     dark: deriveScheme(definition, 'dark', 'standard'),
     light: deriveScheme(definition, 'light', 'standard'),
     darkHc: deriveScheme(definition, 'dark', 'contrast'),

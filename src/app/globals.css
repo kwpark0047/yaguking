@@ -537,3 +537,180 @@ body {
     0 0 0 1px color-mix(in oklab, var(--tier) 22%, transparent),
     0 16px 40px -18px color-mix(in oklab, var(--tier) 55%, transparent);
 }
+
+/* ── 선수 카드 (14 문서 §4.1, §5.1) ───────────────────────────────────── */
+/*
+ * 세 겹이다.
+ *   .player-card            — 등급 테두리(.tier-frame과 함께 쓴다). 5:7 비율
+ *   .player-card__material  — 테두리 여백의 소재. 등급마다 다르다
+ *   .player-card__face      — 글자가 올라가는 단색 면
+ *
+ * 소재는 여백에만 깔고 글자는 늘 단색 면 위에 둔다. 질감이 글자 대비를
+ * 흔들지 않게 하기 위해서다. 그림 자산 없이 그라데이션만 쓰며(1단계), 자산이
+ * 오면 소재 층만 바꾼다. Satori용 값은 src/lib/theme/material.ts.
+ */
+.player-card {
+  display: flex;
+  width: min(100%, 22rem);
+  aspect-ratio: 5 / 7;
+  margin-inline: auto;
+  overflow: hidden;
+}
+
+.player-card__material {
+  display: flex;
+  flex: 1;
+  padding: 0.625rem;
+  border-radius: inherit;
+  background: var(--bg-card);
+}
+
+.player-card__face {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: calc(var(--radius-card) - 0.5rem);
+  background: var(--bg-card);
+}
+
+/* 닉네임 첫 글자. 구단 이니셜이 아니다(14 문서 §3) */
+.player-card__initial {
+  display: grid;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border: 2px solid var(--tier);
+  border-radius: var(--radius-option);
+  background: color-mix(in oklab, var(--bg-card) 35%, transparent);
+  color: var(--ink-1);
+  font-size: 3.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* 1 육성선수 — 무지 종이: 아주 옅은 결만 */
+.player-card__material[data-material='paper'] {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--ink-1) 4%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    color-mix(in oklab, var(--ink-1) 6%, var(--bg-card));
+}
+
+/* 2 백업 — 크라프트지 + 모서리 리벳. 둥근 모서리에 잘리지 않게 곡선이 끝난 자리에 박는다 */
+.player-card__material[data-material='kraft'] {
+  --rivet: radial-gradient(circle, var(--tier) 0 0.18rem, transparent 0.22rem);
+  background:
+    var(--rivet) left 1.25rem top 0.06rem / 0.5rem 0.5rem no-repeat,
+    var(--rivet) right 1.25rem top 0.06rem / 0.5rem 0.5rem no-repeat,
+    var(--rivet) left 1.25rem bottom 0.06rem / 0.5rem 0.5rem no-repeat,
+    var(--rivet) right 1.25rem bottom 0.06rem / 0.5rem 0.5rem no-repeat,
+    repeating-linear-gradient(
+      100deg,
+      color-mix(in oklab, var(--tier) 12%, transparent) 0 2px,
+      transparent 2px 7px
+    ),
+    color-mix(in oklab, var(--tier) 40%, var(--bg-card));
+}
+
+/* 3 주전 — 코팅지: 은빛 반사 한 줄 */
+.player-card__material[data-material='coated'] {
+  background: linear-gradient(
+    135deg in oklab,
+    color-mix(in oklab, var(--tier) 60%, var(--bg-card)),
+    color-mix(in oklab, var(--tier) 25%, var(--bg-card)) 45%,
+    color-mix(in oklab, var(--tier) 60%, var(--bg-card)) 55%,
+    color-mix(in oklab, var(--tier) 30%, var(--bg-card))
+  );
+}
+
+/* 4 올스타 — 광택지 + 별 무늬 */
+.player-card__material[data-material='gloss'] {
+  background:
+    radial-gradient(circle, color-mix(in oklab, var(--ink-1) 45%, transparent) 0 1px, transparent 1.5px)
+      0 0 / 0.875rem 0.875rem,
+    linear-gradient(
+      160deg in oklab,
+      color-mix(in oklab, var(--tier) 70%, var(--bg-card)),
+      color-mix(in oklab, var(--tier) 30%, var(--bg-card)) 50%,
+      color-mix(in oklab, var(--tier) 60%, var(--bg-card))
+    );
+}
+
+/* 5 골든글러브 — 금박 */
+.player-card__material[data-material='foil'] {
+  background: linear-gradient(
+    120deg in oklab,
+    color-mix(in oklab, var(--tier) 75%, var(--bg-card)),
+    color-mix(in oklab, var(--tier) 70%, #fff) 35%,
+    color-mix(in oklab, var(--tier) 60%, var(--bg-card)) 60%,
+    color-mix(in oklab, var(--tier) 80%, #fff) 85%,
+    color-mix(in oklab, var(--tier) 70%, var(--bg-card))
+  );
+}
+
+/* 6 MVP — 홀로그램: 등급색에 무지개가 은은히 흐른다 */
+.player-card__material[data-material='holo'] {
+  background: linear-gradient(
+      115deg in oklab,
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #3ec7ff) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #ff5c8a) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #e0a800) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #9b6bff) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #3ec7ff) 70%, var(--bg-card))
+    )
+    0 0 / 300% 300%;
+  animation: player-card-holo 10s ease-in-out infinite;
+}
+
+@keyframes player-card-holo {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 7 명예의 전당 — 금속판: 헤어라인 결 (테두리 무지개는 .tier-frame이 그린다) */
+.player-card__material[data-material='metal'] {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, #fff 7%, transparent) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(
+      180deg in oklab,
+      color-mix(in oklab, var(--tier) 30%, #c9d0d8),
+      color-mix(in oklab, var(--tier) 30%, #5b636c) 50%,
+      color-mix(in oklab, var(--tier) 30%, #c9d0d8)
+    );
+}
+
+/* 면 둘레의 두 번째 선 — 이중선, 또는 글러브 실밥 */
+.player-card__material[data-inlay='solid'] .player-card__face {
+  outline: 1px solid color-mix(in oklab, var(--tier) 75%, transparent);
+  outline-offset: 3px;
+}
+
+/* 실밥은 금박과 같은 색이면 묻힌다. 바탕색 쪽으로 당겨 금박 위에서 드러나게 한다 */
+.player-card__material[data-inlay='dashed'] .player-card__face {
+  outline: 2px dashed color-mix(in oklab, var(--bg-base) 60%, var(--tier));
+  outline-offset: 3px;
+}
+
+/* 고대비: 질감·광채·흐름을 모두 빼고 단색 프레임만 (08 문서 §2.6) */
+:root[data-style='contrast'] .player-card__material {
+  background: var(--bg-card);
+  animation: none;
+}
+
+:root[data-style='contrast'] .player-card__material:not([data-inlay='none']) .player-card__face {
+  outline: 2px solid var(--tier);
+}

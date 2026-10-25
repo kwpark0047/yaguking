@@ -74,6 +74,22 @@ describe('공유 카드 OG 이미지', () => {
     await expect(render('s')).resolves.toBeInstanceOf(Uint8Array);
   });
 
+  // 선수 카드의 소재·테두리는 등급마다 다른 Satori 경로를 탄다(무지개 테두리,
+  // 리벳 요소, 점선 실밥 등). 하나라도 Satori가 거부하면 그 등급의 공유만 깨진다.
+  it.each([
+    [1, '육성선수'],
+    [2, '백업'],
+    [3, '주전'],
+    [4, '올스타'],
+    [5, '골든글러브'],
+    [6, 'MVP'],
+    [7, '명예의 전당'],
+  ])('Lv.%i %s 선수 카드가 렌더된다', async (level, levelName) => {
+    card.value = { ...sample, level, levelName };
+    const png = await render('s');
+    expect([...png.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+  });
+
   it('구단·등급이 없는 비회원 기록도 렌더된다', async () => {
     card.value = { ...sample, teamSlug: null, teamShortName: null, level: 1, levelName: '육성선수' };
     await expect(render('s')).resolves.toBeInstanceOf(Uint8Array);
