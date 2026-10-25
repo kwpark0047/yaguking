@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { applyDocumentStyle, STYLE_OPTIONS, type StylePreference } from '@/lib/theme/style';
 
 /**
- * 화면 스타일 고르기 (설정).
+ * 화면 스타일 고르기 (설정 화면, 경기·결과 화면의 "화면" 메뉴).
  *
  * 고르는 순간 화면 전체가 바뀐다 — 그게 가장 정확한 미리보기다.
  * 라디오 그룹이라 화살표 키로 옮겨 다닐 수 있고, 바뀐 결과를 화면 낭독기에
@@ -13,6 +13,8 @@ import { applyDocumentStyle, STYLE_OPTIONS, type StylePreference } from '@/lib/t
 export function StylePicker({ initial }: { initial: StylePreference }) {
   const [value, setValue] = useState<StylePreference>(initial);
   const [announcement, setAnnouncement] = useState('');
+  // 같은 화면에 고르기가 둘 생겨도 라디오 묶음이 섞이지 않게 이름을 따로 만든다.
+  const name = useId();
 
   function choose(next: StylePreference) {
     setValue(next);
@@ -42,7 +44,7 @@ export function StylePicker({ initial }: { initial: StylePreference }) {
           >
             <input
               type="radio"
-              name="style-preference"
+              name={name}
               value={option.value}
               checked={selected}
               onChange={() => choose(option.value)}

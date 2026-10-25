@@ -5,6 +5,7 @@ import { ClaimedBanner } from '@/components/result/ClaimedBanner';
 import { ShareButton } from '@/components/result/ShareButton';
 import { SignupGate } from '@/components/result/SignupGate';
 import { LevelBadge } from '@/components/theme/LevelBadge';
+import { StyleMenu } from '@/components/theme/StyleMenu';
 import { formatRate } from '@/lib/engine';
 import { resolveOwnerFromCookies } from '@/server/auth/resolveOwner';
 import { getBoxScore } from '@/server/play/getState';
@@ -43,6 +44,14 @@ export default async function ResultPage({
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-6 lg:max-w-2xl">
+      {/*
+        비회원도 화면 스타일을 고를 수 있게 한다(설정 화면은 회원 전용).
+        결과 화면은 타석 시간이 흐르지 않아 고르기 편한 곳이다.
+      */}
+      <div className="-mb-2 flex justify-end">
+        <StyleMenu />
+      </div>
+
       <header className="text-center">
         <p className="text-sm text-ink-2">경기 종료</p>
         <h1 className="num-tabular text-2xl font-bold">

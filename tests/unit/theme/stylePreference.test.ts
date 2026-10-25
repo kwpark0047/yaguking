@@ -4,6 +4,7 @@ import {
   AUTO_STYLE_SCRIPT,
   explicitStyle,
   parseStylePreference,
+  readStylePreference,
   STYLE_COOKIE,
   STYLE_OPTIONS,
 } from '@/lib/theme/style';
@@ -49,6 +50,17 @@ describe('parseStylePreference', () => {
     expect(parseStylePreference('')).toBe('auto');
     expect(parseStylePreference('pink')).toBe('auto');
     expect(parseStylePreference('auto')).toBe('auto');
+  });
+
+  it('쿠키 문자열에서 읽는다 (다른 쿠키 사이에 있어도)', () => {
+    expect(readStylePreference('')).toBe('auto');
+    expect(readStylePreference(`${STYLE_COOKIE}=soft`)).toBe('soft');
+    expect(readStylePreference(`yk_guest=abc.def; ${STYLE_COOKIE}=contrast; other=1`)).toBe(
+      'contrast',
+    );
+    // 이름이 접두어로만 겹치는 쿠키에 속지 않는다
+    expect(readStylePreference(`${STYLE_COOKIE}_old=soft`)).toBe('auto');
+    expect(readStylePreference(`${STYLE_COOKIE}=bogus`)).toBe('auto');
   });
 
   it('서버가 확정해 그리는 것은 직접 고른 값뿐', () => {

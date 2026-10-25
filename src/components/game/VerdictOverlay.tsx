@@ -116,7 +116,9 @@ export function VerdictOverlay({
 
       {autoAdvanceMs === null && !verdict.finished && (
         <p className="mt-2 text-xs text-ink-2">
-          해설을 보는 동안 자동 전환이 멈췄습니다. 준비되면 다음 타석을 누르세요.
+          {/* 멈춘 이유를 정확히 말한다. 화면 메뉴를 열었는데 "해설을 보는 동안"이라고 하면 안 된다. */}
+          {explanationOpen ? '해설을 보는 동안' : '화면 설정을 여는 동안'} 자동 전환이
+          멈췄습니다. 준비되면 다음 타석을 누르세요.
         </p>
       )}
     </section>

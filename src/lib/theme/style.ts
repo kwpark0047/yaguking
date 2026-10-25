@@ -49,6 +49,15 @@ export function parseStylePreference(value: string | null | undefined): StylePre
   return value === 'default' || value === 'soft' || value === 'contrast' ? value : 'auto';
 }
 
+/** 쿠키 문자열에서 선택값을 읽는다. 브라우저에서 메뉴가 현재 값을 보여 줄 때 쓴다. */
+export function readStylePreference(cookie: string): StylePreference {
+  const entry = cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${STYLE_COOKIE}=`));
+  return parseStylePreference(entry?.slice(STYLE_COOKIE.length + 1));
+}
+
 /** 서버가 확정해 그릴 수 있는 스타일. auto면 null — 기기 설정은 브라우저만 안다. */
 export function explicitStyle(preference: StylePreference): Style | null {
   return preference === 'auto' ? null : preference;

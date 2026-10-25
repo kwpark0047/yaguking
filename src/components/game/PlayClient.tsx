@@ -17,6 +17,7 @@ import { ScoreBoard } from './ScoreBoard';
 import { VerdictOverlay } from './VerdictOverlay';
 import { InfoPanel } from '@/components/shell/InfoPanel';
 import { ErrorNotice } from '@/components/shell/states/ErrorNotice';
+import { StyleMenu } from '@/components/theme/StyleMenu';
 import type {
   AtBatDto,
   AtBatLogEntryDto,
@@ -77,6 +78,8 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
   );
   const [offline, setOffline] = useState(false);
   const [exitPrompt, setExitPrompt] = useState(false);
+  /** 화면 스타일 메뉴. 열려 있으면 판정 후 자동 진행과 답 단축키를 멈춘다. */
+  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const trialRemaining = initial.guestTrialRemaining;
 
   const lockUntil = useRef(0);
@@ -273,7 +276,9 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
       setAutoAdvanceMs(null);
       return;
     }
-    if (explanationOpen) {
+    // 해설을 펼쳤거나 화면 메뉴를 열었으면 다음 타석으로 넘어가지 않는다.
+    // 메뉴를 고르는 사이 화면이 바뀌어 버리면 무엇을 바꿨는지 볼 수 없다.
+    if (explanationOpen || styleMenuOpen) {
       setAutoAdvanceMs(null);
       return;
     }
@@ -291,12 +296,18 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
       }
     }, TICK_MS);
     return () => window.clearInterval(id);
-  }, [phase, explanationOpen, advance]);
+  }, [phase, explanationOpen, styleMenuOpen, advance]);
 
   // ── 키보드 (08 문서 §8.1) ───────────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // 입력 요소(화면 메뉴의 라디오 등) 안에서 누른 키는 단축키가 아니다.
+      // 그대로 두면 메뉴에서 A를 누르는 순간 1번 보기로 답이 제출된다.
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.('input, textarea, select, [data-shortcuts="off"]')) return;
+      if (styleMenuOpen) return;
 
       if (event.key === 'Escape') {
         setExitPrompt((prev) => !prev);
@@ -329,7 +340,7 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, atBat, submit, advance]);
+  }, [phase, atBat, submit, advance, styleMenuOpen]);
 
   // ── 나가기 / 다시 하기 ──────────────────────────────────────────────
   async function confirmExit() {
@@ -355,10 +366,24 @@ export function PlayClient({ initial }: { initial: StartSessionDto }) {
           >
             ◀ 나가기
           </button>
-          <span className="text-xs text-ink-2">
-            {MODE_LABEL[mode] ?? mode}
-            {trialRemaining !== null && ` · 오늘 체험 ${trialRemaining}이닝 남음`}
-          </span>
+          <div className="flex min-w-0 items-center gap-1">
+            <span className="truncate text-xs text-ink-2">
+              {MODE_LABEL[mode] ?? mode}
+              {trialRemaining !== null && ` · 오늘 체험 ${trialRemaining}이닝 남음`}
+            </span>
+            {/*
+              비회원의 화면 스타일 진입점. 랜딩이 곧 첫 타석이라 여기에 둔다.
+              타석 제한 시간은 서버 기준이라 메뉴를 여는 동안에도 흐른다 — 막지는
+              않는다(고대비가 당장 필요한 사람에게는 한 타석보다 플레이 자체가
+              중요하다). 대신 그 사실을 알린다.
+            */}
+            <StyleMenu
+              warning={
+                phase === 'active' ? '타석 시간은 멈추지 않습니다. 다 고르면 닫아 주세요.' : null
+              }
+              onOpenChange={setStyleMenuOpen}
+            />
+          </div>
         </header>
 
         <ScoreBoard
