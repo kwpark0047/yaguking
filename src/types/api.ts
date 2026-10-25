@@ -185,6 +185,18 @@ export interface ShareCardDto {
   ops: string;
 }
 
+/** 업적 카드 한 장 (14 문서 §5.2). 획득 여부는 타석 원장에서 매번 계산한다. */
+export interface AchievementDto {
+  id: string;
+  title: string;
+  condition: string;
+  /** 1~7. 같은 숫자의 등급 프레임을 쓴다 */
+  rarity: number;
+  earned: boolean;
+  /** 처음 획득한 날(KST, YYYY-MM-DD). 원장에 시각이 없는 업적이면 null */
+  earnedOn: string | null;
+}
+
 /** 내 데이터 내보내기 (08 문서 V17). 다른 회원의 정보는 담기지 않는다. */
 export interface AccountExportDto {
   exportedAt: string;

@@ -68,6 +68,12 @@ test('공유 카드: 문항과 정답이 담기지 않는다', async ({ page }) 
   expect(html).not.toContain('정답:');
 });
 
+test('컬렉션: 로그인하지 않으면 로그인 화면으로 보내고 돌아올 곳을 기억한다', async ({ page }) => {
+  // 업적은 회원의 타석 원장에서 계산한다(14 문서 §5.2). 비회원에게는 보여 줄 것이 없다.
+  await page.goto('/me/collection');
+  await expect(page).toHaveURL(/\/auth\?returnTo=(%2F|\/)me(%2F|\/)collection/);
+});
+
 test('하단 탭은 좁은 화면에서만 보인다', async ({ page }, testInfo) => {
   await page.goto('/modes');
   const bottomNav = page.locator('nav.fixed');

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/shell/AppShell';
 import { BattingToggle } from '@/components/me/BattingToggle';
+import { MeTabs } from '@/components/me/MeTabs';
 import { getDb } from '@/lib/db/sql';
 import { getAuthUserId } from '@/lib/supabase/server';
 import { getCareerBatting } from '@/server/stats/batting';
@@ -65,6 +66,7 @@ export default async function BattingPage() {
     <AppShell active="me">
       <main className="flex flex-col gap-4 px-4 py-6">
         <h1 className="text-2xl font-bold">내 기록</h1>
+        <MeTabs active="batting" />
 
         <BattingToggle career={career} season={season} />
 
