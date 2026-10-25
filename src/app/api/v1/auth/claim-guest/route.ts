@@ -4,6 +4,8 @@ import { handle, ok } from '@/lib/api/respond';
 import { buildBoxScore } from '@/lib/engine';
 import { getAuthUserId } from '@/lib/supabase/server';
 import { claimGuestSessions } from '@/server/auth/claimGuest';
+import { getDb } from '@/lib/db/sql';
+import { requireAgeConfirmed } from '@/server/me/age';
 import { readGuestTokenHash } from '@/server/auth/resolveOwner';
 import { CLAIM_GUEST_RULE, enforceRateLimit } from '@/server/security/rateLimit';
 
@@ -20,6 +22,8 @@ export async function POST(request: NextRequest) {
 
     const userId = await getAuthUserId();
     if (!userId) throw new ApiError('UNAUTHORIZED');
+    // 만 14세 확인 전에는 비회원 기록을 계정에 붙이지 않는다.
+    await requireAgeConfirmed(getDb(), userId);
 
     const tokenHash = await readGuestTokenHash(request);
     if (!tokenHash) {

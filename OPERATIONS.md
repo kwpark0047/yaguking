@@ -283,3 +283,29 @@ Playwright가 직접 띄운 서버는 `RATE_LIMIT=off`로 뜬다. **이미 떠 �
 3. 배포하면 반영된다. 글 주소는 빌드 때 만들어지므로(`generateStaticParams`) 배포 없이는 새 글이 404다
 
 **싣지 않는 것**: KBO 경기 결과·순위·기록. 정식 데이터 이용 허락 전에는 어떤 경로로도 가져오지 않는다(12·13 문서).
+
+## 개인정보 보관 기간 파기
+
+처리방침(`/privacy`)에 적은 보관 기간을 지키는 작업이다. 기간의 단일 출처는
+`src/lib/privacy/retention.ts`, 실제 삭제는 DB 함수 `public.purge_expired_personal_data()`(0016).
+
+| 대상 | 기간 |
+|---|---|
+| 비회원 체험 기록(게스트 토큰 해시 + 그 경기·타석) | 마지막 이용 후 30일 |
+| 로그인 기록(`auth.audit_log_entries`) | 90일 |
+| 쓰지 않는 로그인 세션(`auth.sessions`) | 마지막 갱신 후 90일 |
+| 레이트 리밋 카운터 | 1시간 |
+
+1. **매일 한 번** 실행한다: `npm run privacy:purge` (크론·호스팅 스케줄러). 지운 행 수만 출력한다
+2. 빠뜨려도 앱이 안전망으로 돌린다 — 경기를 시작할 때 마지막 실행이 하루를 넘었으면 응답 뒤에 한 번
+   (`src/server/privacy/purge.ts`, 기록은 `maintenance_runs`). 방문이 없는 날은 돌지 않으므로 크론이 원칙이다
+3. 기간을 바꾸면 `retention.ts`와 0016 함수의 기본 인자를 **함께** 바꾸는 새 마이그레이션을 만든다.
+   통합 테스트(`tests/integration/privacyPurge.test.ts`)가 둘이 어긋나면 실패한다
+4. 운영 Supabase에서 `auth` 스키마 삭제 권한이 서버 연결 역할에 있는지 배포 직후 한 번 확인한다
+   (`npm run privacy:purge`가 오류 없이 끝나면 된다)
+
+## 만 14세 확인
+
+첫 로그인 직후 `/welcome/age`에서 만 14세 이상인지 묻는다(0017 `profiles.age_confirmed_at`).
+확인 전 회원은 공식 경기 시작·비회원 기록 승계가 서버에서 막힌다(`AGE_CONFIRMATION_REQUIRED`).
+미만이라고 답하면 계정을 즉시 지운다 — `SUPABASE_SERVICE_ROLE_KEY`가 없으면 삭제가 실패하므로 운영에 꼭 넣는다.

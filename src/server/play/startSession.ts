@@ -51,8 +51,9 @@ export async function startSession(
 
     let teamSnapshotId: string | null = null;
     if (owner.kind === 'user') {
-      const [profile] = await tx<{ primary_team_id: string | null }[]>`
-        select primary_team_id from public.profiles where id = ${owner.userId}
+      const [profile] = await tx<{ primary_team_id: string | null; age_confirmed: boolean }[]>`
+        select primary_team_id, age_confirmed_at is not null as age_confirmed
+          from public.profiles where id = ${owner.userId}
       `;
       if (!profile) {
         throw new ApiError(
@@ -60,6 +61,8 @@ export async function startSession(
           '프로필이 없습니다. 닉네임과 대표 구단을 먼저 설정해 주세요.',
         );
       }
+      // 만 14세 확인 전에는 회원 기록을 쌓지 않는다(src/server/me/age.ts).
+      if (!profile.age_confirmed) throw new ApiError('AGE_CONFIRMATION_REQUIRED');
       teamSnapshotId = profile.primary_team_id;
     }
 

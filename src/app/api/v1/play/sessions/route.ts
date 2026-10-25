@@ -5,6 +5,7 @@ import { GUEST_COOKIE_MAX_AGE, GUEST_COOKIE_NAME } from '@/lib/guest/token';
 import { startSessionSchema } from '@/lib/schemas/play';
 import { resolveOwner } from '@/server/auth/resolveOwner';
 import { startSession } from '@/server/play/startSession';
+import { scheduleDailyPurge } from '@/server/privacy/purge';
 import { enforceRateLimit, START_SESSION_RULE } from '@/server/security/rateLimit';
 
 export const runtime = 'nodejs';
@@ -23,6 +24,8 @@ export async function POST(request: NextRequest) {
 
     const { owner, newGuestCookie } = await resolveOwner(request);
     const result = await startSession(parsed.data, owner);
+    // 보관 기간 파기 안전망 — 응답 뒤에 하루 한 번 (src/server/privacy/purge.ts)
+    scheduleDailyPurge();
 
     const response = ok(result, 201);
     if (newGuestCookie) {

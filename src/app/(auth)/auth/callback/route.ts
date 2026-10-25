@@ -1,7 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { sanitizeReturnTo, withFlag } from '@/lib/auth/returnTo';
+import { getDb } from '@/lib/db/sql';
 import { claimGuestSessions } from '@/server/auth/claimGuest';
+import { ageCheckPath, isAgeConfirmed } from '@/server/me/age';
 import { readGuestTokenHash } from '@/server/auth/resolveOwner';
 
 export const runtime = 'nodejs';
@@ -11,8 +13,9 @@ export const dynamic = 'force-dynamic';
  * OAuth / 매직링크 복귀 지점.
  *
  *   1) 인증 코드를 세션으로 교환하고 쿠키에 심는다
- *   2) **게스트 기록을 승계한다** (멱등)
- *   3) 원래 보던 화면으로 되돌린다 — 결과 화면이면 적립 결과가 바로 보인다
+ *   2) 만 14세 확인 전이면 확인 화면으로 보낸다 — **승계는 확인 뒤에** 한다
+ *   3) **게스트 기록을 승계한다** (멱등)
+ *   4) 원래 보던 화면으로 되돌린다 — 결과 화면이면 적립 결과가 바로 보인다
  *
  * returnTo는 내부 경로만 허용한다(오픈 리다이렉트 차단).
  */
@@ -67,6 +70,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL(withFlag('/auth', 'error', '로그인을 완료하지 못했습니다.'), url.origin),
     );
+  }
+
+  // ── 만 14세 확인 ─────────────────────────────────────────────────
+  // 확인 전이면 기록을 붙이지 않고 확인 화면으로 보낸다. 승계는 확인 API가 한다.
+  // 확인 여부를 못 읽으면(일시 장애) 안전한 쪽 — 확인 화면 — 으로 보낸다.
+  const confirmed = await isAgeConfirmed(getDb(), data.user.id).catch(() => false);
+  if (!confirmed) {
+    const toAgeCheck = NextResponse.redirect(new URL(ageCheckPath(returnTo), url.origin));
+    for (const cookie of response.cookies.getAll()) {
+      toAgeCheck.cookies.set(cookie);
+    }
+    return toAgeCheck;
   }
 
   // ── 게스트 기록 승계 ──────────────────────────────────────────────

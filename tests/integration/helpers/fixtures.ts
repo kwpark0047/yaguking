@@ -203,10 +203,16 @@ export async function createAuthUser(): Promise<string> {
   return userId;
 }
 
-/** auth.users + profiles 를 함께 만든다. */
+/**
+ * auth.users + profiles 를 함께 만든다.
+ *
+ * 기본은 만 14세 확인을 마친 회원이다(0017). 확인 전 회원을 시험하려면
+ * `ageConfirmed: false`.
+ */
 export async function createUser(params?: {
   nickname?: string;
   primaryTeamSlug?: string;
+  ageConfirmed?: boolean;
 }): Promise<string> {
   const db = getDb();
   const userId = await createAuthUser();
@@ -221,8 +227,11 @@ export async function createUser(params?: {
   }
 
   await db`
-    insert into public.profiles (id, nickname, primary_team_id, onboarding_status)
-    values (${userId}, ${nickname}, ${teamId}, 'completed')
+    insert into public.profiles (id, nickname, primary_team_id, onboarding_status, age_confirmed_at)
+    values (
+      ${userId}, ${nickname}, ${teamId}, 'completed',
+      ${params?.ageConfirmed === false ? null : new Date()}
+    )
   `;
 
   return userId;

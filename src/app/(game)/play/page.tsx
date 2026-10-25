@@ -1,7 +1,11 @@
+import { redirect } from 'next/navigation';
 import { PlayClient } from '@/components/game/PlayClient';
 import { TrialStarter } from '@/components/game/TrialStarter';
+import { getDb } from '@/lib/db/sql';
 import { resolveOwnerFromCookies } from '@/server/auth/resolveOwner';
+import { ageCheckPath, isAgeConfirmed } from '@/server/me/age';
 import { defaultModeFor, getOrStartGame } from '@/server/play/resume';
+import { scheduleDailyPurge } from '@/server/privacy/purge';
 
 /**
  * 경기 시작 = 1번 타석.
@@ -22,8 +26,15 @@ export default async function PlayStartPage() {
   // 쿠키가 없으면 서버에서 세션을 만들 수 없다(쿠키 설정 불가). 클라이언트에 맡긴다.
   if (!owner) return <TrialStarter />;
 
+  // 만 14세 확인 전 회원은 공식 경기를 시작할 수 없다(서버도 막는다). 확인부터 받는다.
+  if (owner.kind === 'user' && !(await isAgeConfirmed(getDb(), owner.userId))) {
+    redirect(ageCheckPath('/play'));
+  }
+
   try {
     const session = await getOrStartGame(owner);
+    // 보관 기간 파기 안전망 — 응답 뒤에 하루 한 번 (src/server/privacy/purge.ts)
+    scheduleDailyPurge();
     return <PlayClient initial={session} />;
   } catch {
     // 체험 소진·문항 부족 등은 대체 진입에서 사람이 읽을 메시지로 보여준다.

@@ -184,3 +184,14 @@ test('약관·처리방침: 로그인·가입 화면과 메인 바닥글에서 �
   await expect(page.getByRole('heading', { level: 1, name: '이용약관' })).toBeVisible();
   await expect(page.getByText('확정 전', { exact: true })).toBeVisible();
 });
+
+test('나이 확인 화면은 로그인하지 않으면 로그인으로 보낸다', async ({ page }) => {
+  // 만 14세 확인은 회원 계정에만 묻는다(15 문서 §3).
+  await page.goto('/welcome/age?returnTo=%2Fplay');
+  await expect(page).toHaveURL(/\/auth\?returnTo=/);
+});
+
+test('나이 확인 API는 로그인하지 않으면 401이다', async ({ request }) => {
+  const response = await request.post('/api/v1/me/age', { data: { over14: true } });
+  expect(response.status()).toBe(401);
+});
