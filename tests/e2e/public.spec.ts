@@ -178,7 +178,7 @@ test('약관·처리방침: 로그인·가입 화면과 메인 바닥글에서 �
   await footer.getByRole('link', { name: /개인정보처리방침/ }).click();
   await expect(page).toHaveURL(/\/privacy$/);
   await expect(page.getByRole('heading', { level: 1, name: '개인정보처리방침' })).toBeVisible();
-  await expect(page.getByText('아직 확정되지 않은 문서입니다')).toBeVisible();
+  await expect(page.getByText('확정 전', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: '이용약관 보기' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '이용약관' })).toBeVisible();

@@ -27,7 +27,8 @@
     "db:fingerprint": "node scripts/db-fingerprint.mjs",
     "content:check": "node scripts/content-check.mjs",
     "content:rebalance": "node scripts/rebalance-option-labels.mjs",
-    "funnel": "node scripts/funnel-report.mjs"
+    "funnel": "node scripts/funnel-report.mjs",
+    "privacy:purge": "node scripts/privacy-purge.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
