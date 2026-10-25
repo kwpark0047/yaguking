@@ -23,7 +23,16 @@ const MARK: Record<string, string> = {
  * 그래도 **제목과 조건은 그대로 읽힌다** — 무엇을 하면 얻는지 알아야 모은다.
  * 글자를 흐리게(opacity) 하지 않는다. 흐린 글자는 대비 기준을 깬다.
  */
-export function AchievementCard({ achievement }: { achievement: AchievementDto }) {
+export function AchievementCard({
+  achievement,
+  titleAs: Title = 'h2',
+  className,
+}: {
+  achievement: AchievementDto;
+  /** 카드 제목의 제목 단계. 상위 제목이 h2인 구역 안에서는 h3 */
+  titleAs?: 'h2' | 'h3';
+  className?: string;
+}) {
   const tier = tierTheme(achievement.earned ? achievement.rarity : 1);
   const titleId = `achievement-${achievement.id}`;
 
@@ -34,7 +43,9 @@ export function AchievementCard({ achievement }: { achievement: AchievementDto }
       data-ornament={tier.ornament}
       data-locked={achievement.earned ? undefined : ''}
       style={tierStyle(tier)}
-      className="player-card player-card--mini tier-frame rounded-card"
+      className={['player-card player-card--mini tier-frame rounded-card', className]
+        .filter(Boolean)
+        .join(' ')}
     >
       <div
         className="player-card__material"
@@ -48,9 +59,9 @@ export function AchievementCard({ achievement }: { achievement: AchievementDto }
             {achievement.earned ? (MARK[achievement.id] ?? '★') : '?'}
           </span>
 
-          <h2 id={titleId} className="text-center text-sm font-bold break-keep">
+          <Title id={titleId} className="text-center text-sm font-bold break-keep">
             {achievement.title}
-          </h2>
+          </Title>
           <p className="flex-1 text-center text-xs text-ink-2 break-keep">
             {achievement.condition}
           </p>

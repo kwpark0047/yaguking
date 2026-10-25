@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { closeDb, getDb } from '@/lib/db/sql';
 import type { AtBatResult } from '@/lib/engine';
-import { getAchievements } from '@/server/me/achievements';
+import { getAchievements, getNewAchievements } from '@/server/me/achievements';
 import {
   assertLocalDatabase,
   cleanup,
@@ -129,5 +129,92 @@ describe.skipIf(!hasDatabase())('업적 카드 조회', () => {
 
     const list = await getAchievements(getDb(), userId);
     expect(byId(list, 'hall_of_fame')).toMatchObject({ earned: true, earnedOn: null });
+  });
+
+  describe('경기 결과 화면의 새 카드', () => {
+    const ids = (list: Awaited<ReturnType<typeof getNewAchievements>>) =>
+      list.map((achievement) => achievement.id);
+
+    it('처음 조건을 채운 경기에서만 새 카드다', async () => {
+      const userId = await createUser();
+      const first = await insertGame(userId, [
+        { result: 'HR', submittedAt: '2026-10-20T03:00:00Z' },
+      ]);
+      const second = await insertGame(userId, [
+        { result: 'HR', submittedAt: '2026-10-21T03:00:00Z' },
+      ]);
+
+      expect(ids(await getNewAchievements(getDb(), userId, first))).toEqual([
+        'first_hit',
+        'first_hr',
+      ]);
+      expect(await getNewAchievements(getDb(), userId, second)).toEqual([]);
+    });
+
+    it('예전에 친 안타가 있어도 이 경기의 사이클은 새 카드다', async () => {
+      const userId = await createUser();
+      await insertGame(userId, [{ result: '1B', submittedAt: '2026-10-20T03:00:00Z' }]);
+      const cycleGame = await insertGame(userId, [
+        { result: '1B', submittedAt: '2026-10-21T03:00:00Z' },
+        { result: '2B', submittedAt: '2026-10-21T03:01:00Z' },
+        { result: '3B', submittedAt: '2026-10-21T03:02:00Z' },
+        { result: 'HR', submittedAt: '2026-10-21T03:03:00Z' },
+      ]);
+
+      expect(ids(await getNewAchievements(getDb(), userId, cycleGame))).toEqual([
+        'first_hr',
+        'cycle',
+      ]);
+    });
+
+    it('다른 회원의 경기 ID를 넣어도 내 카드는 나오지 않는다', async () => {
+      const me = await createUser();
+      const other = await createUser();
+      const othersGame = await insertGame(other, [{ result: 'HR' }]);
+      await insertGame(me, [{ result: 'HR' }]);
+
+      expect(await getNewAchievements(getDb(), me, othersGame)).toEqual([]);
+    });
+
+    /** XP 원장에 지급을 넣는다. 키 형식은 grantXp와 같다(사유:대상:회원). */
+    async function grant(userId: string, entity: string, amount: number, at: string) {
+      await getDb()`
+        insert into public.xp_transactions (user_id, amount, reason, idempotency_key, created_at)
+        values (${userId}, ${amount}, 'inning_complete',
+                ${'inning_complete:' + entity + ':' + userId}, ${at}::timestamptz)
+      `;
+    }
+
+    async function setLevel(userId: string, level: number) {
+      await getDb()`
+        insert into public.user_private_stats (user_id, level) values (${userId}, ${level})
+        on conflict (user_id) do update set level = excluded.level
+      `;
+    }
+
+    it('이 경기의 XP로 Lv.7 문턱을 넘었을 때만 명예의 전당이 새 카드다', async () => {
+      const userId = await createUser();
+      const earlier = await insertGame(userId, [{ result: 'K' }]);
+      const crossing = await insertGame(userId, [{ result: 'K' }]);
+      const later = await insertGame(userId, [{ result: 'K' }]);
+
+      // Lv.7 문턱은 20000 XP(public.level_for_xp)
+      await grant(userId, earlier, 19_990, '2026-10-20T03:00:00Z');
+      await grant(userId, crossing, 50, '2026-10-21T03:00:00Z');
+      await grant(userId, later, 50, '2026-10-22T03:00:00Z');
+      await setLevel(userId, 7);
+
+      expect(ids(await getNewAchievements(getDb(), userId, crossing))).toEqual(['hall_of_fame']);
+      expect(await getNewAchievements(getDb(), userId, earlier)).toEqual([]);
+      expect(await getNewAchievements(getDb(), userId, later)).toEqual([]);
+    });
+
+    it('XP 지급이 없는 경기(기권 등)는 명예의 전당 새 카드가 아니다', async () => {
+      const userId = await createUser();
+      const game = await insertGame(userId, [{ result: 'K' }]);
+      await setLevel(userId, 7);
+
+      expect(await getNewAchievements(getDb(), userId, game)).toEqual([]);
+    });
   });
 });

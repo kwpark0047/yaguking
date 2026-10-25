@@ -2,19 +2,22 @@ import Link from 'next/link';
 import { AtBatLogDetailed } from '@/components/result/AtBatLogDetailed';
 import { BoxScore } from '@/components/result/BoxScore';
 import { ClaimedBanner } from '@/components/result/ClaimedBanner';
+import { NewAchievements } from '@/components/result/NewAchievements';
 import { ShareButton } from '@/components/result/ShareButton';
 import { SignupGate } from '@/components/result/SignupGate';
 import { LevelBadge } from '@/components/theme/LevelBadge';
 import { StyleMenu } from '@/components/theme/StyleMenu';
+import { getDb } from '@/lib/db/sql';
 import { formatRate } from '@/lib/engine';
 import { resolveOwnerFromCookies } from '@/server/auth/resolveOwner';
 import { getBoxScore } from '@/server/play/getState';
+import { getNewAchievements } from '@/server/me/achievements';
 import { getMe } from '@/server/me/profile';
 
 /**
  * V03 결과 + 가입 게이트 (08 문서 §5).
  *
- * 노출 순서: 최종 스코어 → 박스스코어 → 타석 로그 → 게이트 → 다음 행동.
+ * 노출 순서: 최종 스코어 → 박스스코어 → (새 업적 카드) → 타석 로그 → 게이트 → 다음 행동.
  * **박스스코어는 비회원에게도 전부 공개한다.**
  */
 export const dynamic = 'force-dynamic';
@@ -40,6 +43,9 @@ export default async function ResultPage({
   }
 
   const me = owner.kind === 'user' ? await getMe(owner.userId) : null;
+  // 업적은 회원의 원장에서만 판정한다. 비회원 기록은 가입해 승계되면 그때 잡힌다.
+  const newAchievements =
+    owner.kind === 'user' ? await getNewAchievements(getDb(), owner.userId, sessionId) : [];
   const returnTo = `/play/${sessionId}/result`;
 
   return (
@@ -65,6 +71,8 @@ export default async function ResultPage({
       </header>
 
       <BoxScore box={result.boxScore} runs={result.runs} />
+
+      <NewAchievements achievements={newAchievements} />
 
       <AtBatLogDetailed entries={result.atBats} />
 

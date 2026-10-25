@@ -63,20 +63,20 @@ describe('judgeAchievements', () => {
   it('첫 안타는 처음 친 안타의 시각이다', () => {
     const first = atBat('2B');
     const earned = judgeAchievements([first, atBat('1B')], 1);
-    expect(earned.get('first_hit')).toEqual(first.submittedAt);
+    expect(earned.get('first_hit')?.at).toEqual(first.submittedAt);
   });
 
   it('홈런은 첫 안타이자 첫 홈런이다', () => {
     const hr = atBat('HR');
     const earned = judgeAchievements([hr], 1);
-    expect(earned.get('first_hit')).toEqual(hr.submittedAt);
-    expect(earned.get('first_hr')).toEqual(hr.submittedAt);
+    expect(earned.get('first_hit')?.at).toEqual(hr.submittedAt);
+    expect(earned.get('first_hr')?.at).toEqual(hr.submittedAt);
   });
 
   it('입력 순서가 아니라 시간순으로 처음을 고른다', () => {
     const early = atBat('HR', { at: new Date(Date.UTC(2026, 0, 1)) });
     const late = atBat('HR', { at: new Date(Date.UTC(2026, 5, 1)) });
-    expect(judgeAchievements([late, early], 1).get('first_hr')).toEqual(early.submittedAt);
+    expect(judgeAchievements([late, early], 1).get('first_hr')?.at).toEqual(early.submittedAt);
   });
 
   it.each<[UpgradeReason, boolean]>([
@@ -91,7 +91,7 @@ describe('judgeAchievements', () => {
   describe('사이클링 히트', () => {
     it('한 경기에서 네 가지 안타를 모두 치면 얻는다 — 마지막 안타의 시각', () => {
       const hits = [atBat('1B'), atBat('K'), atBat('2B'), atBat('3B'), atBat('HR')];
-      expect(judgeAchievements(hits, 1).get('cycle')).toEqual(hits[4]!.submittedAt);
+      expect(judgeAchievements(hits, 1).get('cycle')?.at).toEqual(hits[4]!.submittedAt);
     });
 
     it('여러 경기에 나눠 친 것은 사이클이 아니다', () => {
@@ -113,7 +113,7 @@ describe('judgeAchievements', () => {
   describe('빅 이닝', () => {
     it(`한 이닝 타점 합이 ${BIG_INNING_RUNS}점에 닿는 타석에서 얻는다`, () => {
       const plays = [atBat('HR', { rbi: 3 }), atBat('1B', { rbi: 1 }), atBat('2B', { rbi: 1 })];
-      expect(judgeAchievements(plays, 1).get('big_inning')).toEqual(plays[2]!.submittedAt);
+      expect(judgeAchievements(plays, 1).get('big_inning')?.at).toEqual(plays[2]!.submittedAt);
     });
 
     it('한 점 모자라면 아니다', () => {
@@ -138,11 +138,23 @@ describe('judgeAchievements', () => {
     });
   });
 
+  it('처음 조건을 채운 타석의 경기를 함께 알려 준다 — 결과 화면의 새 카드 기준', () => {
+    const plays = [
+      atBat('1B', { session: 'a' }),
+      atBat('HR', { session: 'b' }),
+      atBat('HR', { session: 'c' }),
+    ];
+    const earned = judgeAchievements(plays, 1);
+    expect(earned.get('first_hit')?.sessionId).toBe('a');
+    // 경기 c의 홈런은 두 번째라 c의 새 카드가 아니다
+    expect(earned.get('first_hr')?.sessionId).toBe('b');
+  });
+
   describe('명예의 전당', () => {
     it('Lv.7이면 얻고, 시각은 지어내지 않는다', () => {
       const earned = judgeAchievements([], 7);
       expect(earned.has('hall_of_fame')).toBe(true);
-      expect(earned.get('hall_of_fame')).toBeNull();
+      expect(earned.get('hall_of_fame')).toEqual({ at: null, sessionId: null });
     });
 
     it('Lv.6이면 아니다', () => {

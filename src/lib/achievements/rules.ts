@@ -76,19 +76,30 @@ export interface LedgerAtBat {
   submittedAt: Date;
 }
 
+/** 업적을 **처음** 얻은 순간 */
+export interface EarnedAchievement {
+  /** 조건을 채운 타석의 제출 시각. 원장에 시각이 없으면 null */
+  at: Date | null;
+  /** 조건을 채운 타석의 경기. 경기 결과 화면의 "새 업적"을 가르는 기준이다 */
+  sessionId: string | null;
+}
+
 /**
- * 획득한 업적과 **처음** 획득한 시각.
+ * 획득한 업적과 처음 획득한 순간.
  *
- * 시각은 조건을 채운 타석의 제출 시각이다. 명예의 전당은 레벨에서 판정하는데
- * 레벨에 오른 시각은 원장에 없으므로 `null`이다(지어내지 않는다).
+ * 명예의 전당은 레벨에서 판정하는데 레벨에 오른 시각·경기는 타석 원장에
+ * 없으므로 둘 다 `null`이다(지어내지 않는다). 어느 경기에서 올랐는지는 XP
+ * 원장으로 따로 가린다(src/server/me/achievements.ts).
  */
 export function judgeAchievements(
   atBats: readonly LedgerAtBat[],
   level: number,
-): Map<AchievementId, Date | null> {
-  const earned = new Map<AchievementId, Date | null>();
-  const earn = (id: AchievementId, at: Date | null) => {
-    if (!earned.has(id)) earned.set(id, at);
+): Map<AchievementId, EarnedAchievement> {
+  const earned = new Map<AchievementId, EarnedAchievement>();
+  const earn = (id: AchievementId, atBat: LedgerAtBat | null) => {
+    if (!earned.has(id)) {
+      earned.set(id, { at: atBat?.submittedAt ?? null, sessionId: atBat?.sessionId ?? null });
+    }
   };
 
   // 시간순으로 한 번 훑는다. 처음 조건을 채운 타석이 획득 시각이 된다.
@@ -103,27 +114,25 @@ export function judgeAchievements(
   const runsByInning = new Map<string, number>();
 
   for (const atBat of ordered) {
-    const at = atBat.submittedAt;
-
     if (HITS.includes(atBat.result)) {
-      earn('first_hit', at);
+      earn('first_hit', atBat);
 
       const hits = hitsBySession.get(atBat.sessionId) ?? new Set<AtBatResult>();
       hits.add(atBat.result);
       hitsBySession.set(atBat.sessionId, hits);
-      if (hits.size === HITS.length) earn('cycle', at);
+      if (hits.size === HITS.length) earn('cycle', atBat);
     }
 
-    if (atBat.result === 'HR') earn('first_hr', at);
+    if (atBat.result === 'HR') earn('first_hr', atBat);
 
     if (atBat.upgradeReason === 'streak' || atBat.upgradeReason === 'both') {
-      earn('streak_bonus', at);
+      earn('streak_bonus', atBat);
     }
 
     const inningKey = `${atBat.sessionId}:${atBat.inning}`;
     const runs = (runsByInning.get(inningKey) ?? 0) + atBat.rbi;
     runsByInning.set(inningKey, runs);
-    if (runs >= BIG_INNING_RUNS) earn('big_inning', at);
+    if (runs >= BIG_INNING_RUNS) earn('big_inning', atBat);
   }
 
   if (level >= 7) earn('hall_of_fame', null);

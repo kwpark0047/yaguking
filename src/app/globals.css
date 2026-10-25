@@ -750,3 +750,19 @@ body {
 :root[data-style='contrast'] .player-card__material:not([data-inlay='none']) .player-card__face {
   outline: 2px solid var(--tier);
 }
+
+/* 새 업적 카드가 결과 화면에 떠오른다. 움직임 줄이기에서는 전역 규칙이 없앤다 */
+.achievement-reveal {
+  animation: achievement-reveal 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes achievement-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
