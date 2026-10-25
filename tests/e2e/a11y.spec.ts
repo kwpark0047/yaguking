@@ -10,7 +10,7 @@ import { WCAG_TAGS } from './helpers/env';
  * 스크린리더 실사용 확인은 09 문서 §7.4의 수동 항목으로 남아 있다.
  */
 
-const PAGES = ['/', '/auth', '/modes', '/rankings'];
+const PAGES = ['/', '/auth', '/auth?mode=signup', '/modes', '/rankings', '/news', '/news/about-league-news'];
 
 for (const path of PAGES) {
   test(`${path}: axe critical/serious 위반 0`, async ({ page }) => {

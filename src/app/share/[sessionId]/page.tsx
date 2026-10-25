@@ -45,7 +45,7 @@ export default async function SharePage({
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
         <h1 className="text-xl font-bold">기록을 찾을 수 없습니다.</h1>
         <Link
-          href="/"
+          href="/play"
           className="flex min-h-14 items-center justify-center rounded-option px-4 font-semibold"
           style={{
             backgroundColor: "var(--accent)",
@@ -69,7 +69,7 @@ export default async function SharePage({
       <PlayerCard card={card} headingId="player-card-name" />
 
       <Link
-        href="/"
+        href="/play"
         className="flex min-h-14 items-center justify-center rounded-option px-4 font-semibold"
         style={{ backgroundColor: "var(--accent)", color: "var(--accent-ink)" }}
       >

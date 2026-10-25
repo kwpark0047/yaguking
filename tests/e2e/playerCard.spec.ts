@@ -21,7 +21,7 @@ let sharePath = '';
 async function finishedSharePath(page: Page): Promise<string> {
   if (sharePath) return sharePath;
 
-  await page.goto('/');
+  await page.goto('/play');
   for (let i = 0; i < 20; i += 1) {
     if ((await waitForPlayable(page)) === 'result') break;
     await page.getByRole('group', { name: '보기' }).getByRole('button').first().click();

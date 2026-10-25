@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const tier = tierTheme(data.level);
 
   return (
-    <AppShell active="home">
+    <AppShell active="me">
       <main className="flex flex-col gap-4 px-4 py-6">
         {/*
           히어로 카드. 두 겹으로 나눈 이유: 바깥은 **등급 테두리**, 안쪽은

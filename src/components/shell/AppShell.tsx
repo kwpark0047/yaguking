@@ -3,7 +3,10 @@ import Link from 'next/link';
 /**
  * 앱 셸 (08 문서 §6.1, §6.7).
  *
- *   sm — 하단 탭 4개
+ *   sm — 하단 탭 5개
+ *
+ * 홈은 메인 페이지(`/`)다. 회원의 덕아웃(`/dashboard`)은 메인 페이지 머리줄의
+ * "마이"에서 들어간다. 홈이 회원 전용 화면이면 비회원이 누를 때 로그인으로 튕긴다.
  *   md — 하단 탭 유지
  *   lg — 좌측 사이드바 고정, 최대 폭 1320px 중앙 정렬
  *
@@ -11,9 +14,10 @@ import Link from 'next/link';
  */
 
 const NAV = [
-  { key: 'home', href: '/dashboard', label: '홈' },
+  { key: 'home', href: '/', label: '홈' },
   { key: 'play', href: '/modes', label: '경기' },
   { key: 'rankings', href: '/rankings', label: '랭킹' },
+  { key: 'news', href: '/news', label: '소식' },
   { key: 'me', href: '/me/batting', label: '마이' },
 ] as const;
 
@@ -58,7 +62,7 @@ export function AppShell({
 
       {/* 하단 탭 — lg에서는 사이드바가 대신한다 */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t lg:hidden"
         style={{
           borderColor: 'var(--line)',
           backgroundColor: 'var(--bg-card)',

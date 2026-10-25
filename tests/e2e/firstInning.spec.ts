@@ -16,8 +16,16 @@ test.beforeEach(async ({}, testInfo) => {
   );
 });
 
-test('랜딩 진입부터 첫 타석 제출까지 탭 0회', async ({ page }) => {
+test('메인 페이지에서 "게임 시작" 한 번이면 첫 타석이 뜬다', async ({ page }) => {
+  // 메인 페이지는 소개 화면이다(2026-10-26, 08 문서 §3 변경 기록). 첫 투구까지 1탭.
   await page.goto('/');
+  await page.getByRole('link', { name: /게임 시작/ }).click();
+  await expect(page).toHaveURL(/\/play$/);
+  await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
+});
+
+test('경기 시작 화면 진입부터 첫 타석 제출까지 탭 0회', async ({ page }) => {
+  await page.goto('/play');
 
   // 0탭 진입: 문항이 이미 떠 있어야 한다 (08 문서 §3).
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
@@ -34,7 +42,7 @@ test('랜딩 진입부터 첫 타석 제출까지 탭 0회', async ({ page }) =>
 });
 
 test('3아웃이면 결과 화면으로 이동한다', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/play');
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 
   // 정답을 모르므로 첫 보기를 계속 눌러 아웃을 쌓는다. 최대 20타석.
@@ -50,7 +58,7 @@ test('3아웃이면 결과 화면으로 이동한다', async ({ page }) => {
 });
 
 test('경기 중 새로고침해도 상태가 복원되고 타석이 중복되지 않는다', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/play');
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 
   const beforeStem = await page.locator('#question-stem').textContent();
@@ -64,7 +72,7 @@ test('경기 중 새로고침해도 상태가 복원되고 타석이 중복되�
 });
 
 test('제출 직후 새로고침해도 중복 제출이 생기지 않는다', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/play');
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 
   const options = page.getByRole('group', { name: '보기' }).getByRole('button');
@@ -78,7 +86,7 @@ test('제출 직후 새로고침해도 중복 제출이 생기지 않는다', as
 });
 
 test('오프라인이면 입력이 잠기고 안내가 뜬다', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/play');
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 
   await context.setOffline(true);

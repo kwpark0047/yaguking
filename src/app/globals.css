@@ -766,3 +766,280 @@ body {
     transform: none;
   }
 }
+
+/* ── 메인 페이지 — 귀엽고 깜찍하게 (2026-10-26) ──────────────────────── */
+/*
+ * 색은 모두 기존 토큰(--accent, --bg-*, --ink-*)에서 나온다. 그래서 구단 테마·
+ * 화면 스타일(부드러운·고대비)·다크/라이트가 그대로 적용된다. 새 색을 만들지
+ * 않는 대신 모양(둥근 모서리, 스티커 그림자, 통통 튀는 움직임)으로 귀여움을 낸다.
+ */
+.font-cute {
+  font-family: var(--font-cute), system-ui, 'Malgun Gothic', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* 캐릭터 — 공은 흰색, 실밥은 빨강, 헬멧은 강조색(구단 테마). 그 밖은 고정색 장식 */
+.mascot {
+  overflow: visible;
+}
+.mascot__wave {
+  fill: #2d7dd2;
+}
+.mascot__wave-front {
+  fill: #5bb4f5;
+}
+.mascot__foam {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+.mascot__bat-barrel {
+  fill: none;
+  stroke: #c8892f;
+  stroke-width: 16;
+  stroke-linecap: round;
+}
+.mascot__bat-barrel-tip {
+  fill: none;
+  stroke: #c8892f;
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+.mascot__bat-shine {
+  fill: none;
+  stroke: #f3c66b;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.mascot__bat-grip {
+  fill: none;
+  stroke: #2a2f3a;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+.mascot__fist {
+  fill: #6b4423;
+  stroke: #3b2512;
+  stroke-width: 2;
+}
+.mascot__fist-line,
+.mascot__nose {
+  fill: none;
+  stroke: #3b2512;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.mascot__ball {
+  fill: #ffffff;
+  stroke: color-mix(in oklab, #8c97a3 60%, transparent);
+  stroke-width: 3;
+}
+.mascot__seam {
+  fill: none;
+  stroke: #e24b57;
+  stroke-width: 2;
+}
+.mascot__stitch {
+  fill: none;
+  stroke: #e24b57;
+  stroke-width: 8;
+  stroke-dasharray: 2.5 7;
+  stroke-linecap: round;
+}
+.mascot__helmet {
+  fill: var(--accent);
+  stroke: color-mix(in oklab, var(--accent) 55%, #000);
+  stroke-width: 2;
+}
+.mascot__visor {
+  fill: color-mix(in oklab, var(--accent) 62%, #000);
+}
+.mascot__helmet-shine {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.4);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+/* 왕관은 헬멧 위 글자색(accent-ink)으로 — 어느 구단색 헬멧에서도 드러난다 */
+.mascot__crown {
+  fill: var(--accent-ink);
+  stroke: none;
+}
+.mascot__brow {
+  fill: none;
+  stroke: #1b1f24;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.mascot__eye-white {
+  fill: #ffffff;
+  stroke: #1b1f24;
+  stroke-width: 2.5;
+}
+.mascot__iris {
+  fill: #6b4a2b;
+}
+.mascot__pupil {
+  fill: #1b1f24;
+}
+.mascot__glint {
+  fill: #ffffff;
+}
+.mascot__wink,
+.mascot__mouth {
+  fill: none;
+  stroke: #1b1f24;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+.mascot__cheek {
+  fill: #ff8fa3;
+  opacity: 0.5;
+}
+.mascot__glove {
+  fill: #8a5a2b;
+  stroke: #4e3117;
+  stroke-width: 2.5;
+}
+.mascot__lace {
+  fill: none;
+  stroke: #d9a46a;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.mascot__body {
+  animation: mascot-bob 3.2s ease-in-out infinite;
+  transform-origin: 125px 190px;
+}
+.mascot__bat {
+  animation: mascot-bat 3.2s ease-in-out infinite;
+  transform-origin: 84px 150px;
+}
+.mascot__eyes {
+  animation: mascot-blink 5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(2deg);
+  }
+}
+
+/* 방망이를 어깨에 걸치고 까딱까딱 */
+@keyframes mascot-bat {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* 말풍선 */
+.speech-bubble {
+  position: relative;
+  border-radius: 1.25rem;
+  background: var(--bg-card);
+  border: 2px solid var(--line);
+  padding: 0.5rem 0.875rem;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  left: 1.5rem;
+  bottom: -0.55rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  background: var(--bg-card);
+  border-right: 2px solid var(--line);
+  border-bottom: 2px solid var(--line);
+  transform: rotate(45deg);
+}
+
+/* 히어로 바탕 — 강조색이 은은하게 번진 몽글몽글한 원 */
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in oklab, var(--accent) 22%, transparent) 0 22%, transparent 23%),
+    radial-gradient(circle at 88% 12%, color-mix(in oklab, var(--accent) 14%, transparent) 0 14%, transparent 15%),
+    radial-gradient(circle at 80% 92%, color-mix(in oklab, var(--on-base) 16%, transparent) 0 18%, transparent 19%),
+    var(--bg-card);
+  border: 2px solid var(--line);
+}
+
+/* 스티커 카드 — 두툼한 테두리 + 아래로 밀린 단색 그림자 */
+.sticker {
+  border-radius: 1.5rem;
+  border: 2px solid var(--line);
+  background: var(--bg-card);
+  box-shadow: 0 5px 0 color-mix(in oklab, var(--line) 85%, var(--ink-1));
+}
+
+/* 통통 버튼 — 누르면 쏙 들어간다 */
+.squishy {
+  border-radius: 9999px;
+  box-shadow: 0 5px 0 color-mix(in oklab, var(--accent) 65%, #000);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.squishy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 color-mix(in oklab, var(--accent) 65%, #000);
+}
+.squishy:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--accent) 65%, #000);
+}
+
+/* 번호 동그라미 */
+.step-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+
+/* 고대비: 장식 바탕·그림자·움직임을 빼고 경계를 또렷하게 */
+:root[data-style='contrast'] .home-hero {
+  background: var(--bg-card);
+  border-width: 3px;
+}
+:root[data-style='contrast'] .sticker,
+:root[data-style='contrast'] .squishy {
+  box-shadow: none;
+  border-width: 3px;
+}
+:root[data-style='contrast'] .mascot__body,
+:root[data-style='contrast'] .mascot__bat,
+:root[data-style='contrast'] .mascot__eyes {
+  animation: none;
+}

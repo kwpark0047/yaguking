@@ -15,7 +15,7 @@ test.beforeEach(async ({}, testInfo) => {
 });
 
 async function playUntilResult(page: Page) {
-  await page.goto('/');
+  await page.goto('/play');
 
   for (let i = 0; i < 20; i += 1) {
     if ((await waitForPlayable(page)) === 'result') return;

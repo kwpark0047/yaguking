@@ -6,7 +6,7 @@ import { hasDatabase, measureOverflow, waitForPlayable, WCAG_TAGS } from './help
  * 비회원의 화면 스타일 진입점 (08 문서 §2.6).
  *
  * 설정 화면은 회원 전용이라 비회원은 스타일을 고를 곳이 없었다. 비회원에게는
- * 랜딩이 곧 첫 타석이므로 경기 화면 헤더와 결과 화면에 "화면" 메뉴를 둔다.
+ * 경기 화면 헤더와 결과 화면, 메인 페이지 머리줄에 "화면" 메뉴를 둔다.
  *
  * 경기 화면이라 생기는 위험을 함께 지킨다.
  *   - 메뉴 안에서 누른 키가 답 단축키(1~4, A·S·D·F)로 새면 안 된다
@@ -24,7 +24,7 @@ test.beforeEach(async ({}, testInfo) => {
 });
 
 async function openGame(page: Page) {
-  await page.goto('/');
+  await page.goto('/play');
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15000 });
 }
 

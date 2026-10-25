@@ -62,7 +62,7 @@ function Unavailable({ message }: { message: string }) {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
       <h1 className="text-xl font-bold">{message}</h1>
       <Link
-        href="/"
+        href="/play"
         className="min-h-14 rounded-option px-4 py-4 text-center font-semibold"
         style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
       >

@@ -9,7 +9,10 @@ import { measureOverflow, measureTouchTargets } from './helpers/env';
  */
 
 const PUBLIC_PATHS = [
-  { path: '/', name: '랜딩' },
+  { path: '/', name: '메인' },
+  { path: '/news', name: '최신 소식' },
+  { path: '/news/achievement-collection-open', name: '소식 글' },
+  { path: '/auth?mode=signup', name: '가입' },
   { path: '/auth', name: '로그인' },
   { path: '/modes', name: '모드 선택' },
   { path: '/rankings', name: '랭킹' },
@@ -84,4 +87,75 @@ test('하단 탭은 좁은 화면에서만 보인다', async ({ page }, testInfo
   } else {
     await expect(bottomNav, `${testInfo.project.name}: 하단 탭이 보여야 한다`).toBeVisible();
   }
+});
+
+test('메인: 소개·게임 시작·랭킹·소식·로그인/가입으로 가는 길이 있다', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('홈런 치자');
+  await expect(page.getByRole('link', { name: /게임 시작/ })).toHaveAttribute('href', '/play');
+
+  const siteNav = page.getByRole('navigation', { name: '사이트 메뉴' });
+  await expect(siteNav.getByRole('link', { name: '랭킹' })).toHaveAttribute('href', '/rankings');
+  await expect(siteNav.getByRole('link', { name: '최신 소식' })).toHaveAttribute('href', '/news');
+
+  // 비회원 머리줄: 로그인과 가입
+  await expect(page.getByRole('link', { name: '로그인', exact: true })).toHaveAttribute(
+    'href',
+    '/auth?mode=login',
+  );
+  await expect(page.getByRole('link', { name: '가입하기' })).toHaveAttribute(
+    'href',
+    '/auth?mode=signup',
+  );
+});
+
+test('메인: 게임 시작 버튼이 첫 화면 안에 보인다', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /게임 시작/ })).toBeInViewport();
+});
+
+test('메인: 터치 타깃이 규격을 지킨다', async ({ page }) => {
+  await page.goto('/');
+  const targets = await measureTouchTargets(page, 'main a, header a, header button');
+  for (const target of targets) {
+    expect(target.height, `"${target.text}" 높이`).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('최신 소식: 목록에서 글을 열 수 있고, 없는 글은 404다', async ({ page }) => {
+  await page.goto('/news');
+  await expect(page.getByRole('heading', { level: 1, name: '최신 소식' })).toBeVisible();
+  const first = page.getByRole('article').first().getByRole('link');
+  const title = (await first.textContent()) ?? '';
+  await first.click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+
+  const missing = await page.goto('/news/no-such-post');
+  expect(missing?.status()).toBe(404);
+});
+
+test('가입·로그인은 같은 흐름이고 서로 오갈 수 있다', async ({ page }) => {
+  await page.goto('/auth?mode=signup');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('야구왕 선수 등록');
+  await page.getByRole('link', { name: '로그인', exact: true }).click();
+  await expect(page).toHaveURL(/mode=login/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('다시 만나서 반가워요!');
+});
+
+test('로그아웃은 POST만 받고, 다른 출처의 요청은 거절한다', async ({ request, baseURL }) => {
+  const viaGet = await request.get('/auth/signout', { maxRedirects: 0 });
+  expect(viaGet.status()).toBe(405);
+
+  const foreign = await request.post('/auth/signout', {
+    headers: { origin: 'https://evil.example' },
+    maxRedirects: 0,
+  });
+  expect(foreign.status()).toBe(403);
+
+  const sameOrigin = await request.post('/auth/signout', {
+    headers: { origin: new URL(baseURL!).origin },
+    maxRedirects: 0,
+  });
+  expect(sameOrigin.status()).toBe(303);
+  expect(new URL(sameOrigin.headers()['location']!, baseURL).pathname).toBe('/');
 });

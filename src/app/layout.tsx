@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { cuteFont } from '@/lib/fonts/cute';
 import { indexingAllowed } from '@/lib/seo/indexing';
 import { SURFACES } from '@/lib/theme/base';
 import { AUTO_STYLE_SCRIPT, explicitStyle } from '@/lib/theme/style';
@@ -69,6 +70,7 @@ export default async function RootLayout({
   return (
     <html
       lang="ko"
+      className={cuteFont.variable}
       data-team={team?.slug}
       data-level={level ?? undefined}
       data-style={style ?? undefined}

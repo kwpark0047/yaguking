@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import {
   createSupabaseBrowserClient,
@@ -12,13 +13,48 @@ const PROVIDER_LABEL: Record<'google' | 'kakao', string> = {
   kakao: '카카오로 계속하기',
 };
 
+export type AuthMode = 'login' | 'signup';
+
+/** 모드별 문구. 경기 결과에서 저장하러 온 경우는 따로 말한다. */
+function copyFor(mode: AuthMode, returnTo: string) {
+  if (returnTo.startsWith('/play/')) {
+    return {
+      title: '3초 만에 저장하기',
+      lead: '로그인하면 지금까지의 타석이 통산 기록에 적립되고, 다음에 이어서 쌓입니다.',
+    };
+  }
+  return mode === 'signup'
+    ? {
+        title: '야구왕 선수 등록',
+        lead: '가입하면 기록이 쌓이고, 등급이 오르고, 업적 카드를 모을 수 있어요. 비회원으로 친 기록도 그대로 옮겨 와요.',
+      }
+    : {
+        title: '다시 만나서 반가워요!',
+        lead: '로그인하고 이어서 기록을 쌓아요.',
+      };
+}
+
 /**
- * V04 로그인 (08 문서).
+ * V04 로그인·가입 (08 문서).
  *
  * 소셜이 1차, 이메일은 접힌 보조 옵션이다. 실제로 설정된 공급자만 보여준다.
  * 약관·개인정보 동의는 버튼 지점에 한 줄 + 링크로 둔다.
+ *
+ * 로그인과 가입은 **같은 흐름**이다. 소셜·이메일 링크 모두 처음 오는 사람이면
+ * 계정을 새로 만든다. 그래서 비밀번호 칸이 없고, 모드는 문구만 바꾼다.
  */
-export function AuthForm({ returnTo, error }: { returnTo: string; error?: string }) {
+export function AuthForm({
+  returnTo,
+  error,
+  mode = 'login',
+}: {
+  returnTo: string;
+  error?: string;
+  mode?: AuthMode;
+}) {
+  const copy = copyFor(mode, returnTo);
+  const otherMode: AuthMode = mode === 'signup' ? 'login' : 'signup';
+  const otherHref = `/auth?mode=${otherMode}&returnTo=${encodeURIComponent(returnTo)}`;
   const [email, setEmail] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -57,7 +93,9 @@ export function AuthForm({ returnTo, error }: { returnTo: string; error?: string
         options: { emailRedirectTo: redirectTo() },
       });
       setMessage(
-        otpError ? otpError.message : '메일함을 확인해 주세요. 로그인 링크를 보냈습니다.',
+        otpError
+          ? otpError.message
+          : `메일함을 확인해 주세요. ${mode === 'signup' ? '가입' : '로그인'} 링크를 보냈습니다.`,
       );
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : '로그인에 실패했습니다.');
@@ -68,10 +106,8 @@ export function AuthForm({ returnTo, error }: { returnTo: string; error?: string
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-4">
-      <h1 className="text-2xl font-bold">3초 만에 저장하기</h1>
-      <p className="text-sm text-ink-2 break-keep">
-        로그인하면 지금까지의 타석이 통산 기록에 적립되고, 다음에 이어서 쌓입니다.
-      </p>
+      <h1 className="font-cute text-3xl">{copy.title}</h1>
+      <p className="text-sm text-ink-2 break-keep">{copy.lead}</p>
 
       {error && (
         <p className="text-sm" style={{ color: 'var(--out)' }} role="alert">
@@ -113,7 +149,7 @@ export function AuthForm({ returnTo, error }: { returnTo: string; error?: string
               onClick={() => setEmailOpen(true)}
               className="min-h-11 text-sm text-ink-2 underline"
             >
-              이메일로 로그인
+              {mode === 'signup' ? '이메일로 가입하기' : '이메일로 로그인'}
             </button>
           ) : (
             <div className="flex flex-col gap-2">
@@ -136,7 +172,7 @@ export function AuthForm({ returnTo, error }: { returnTo: string; error?: string
                 className="min-h-14 rounded-option font-semibold disabled:opacity-60"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
               >
-                로그인 링크 받기
+                {mode === 'signup' ? '가입 링크 받기' : '로그인 링크 받기'}
               </button>
             </div>
           )}
@@ -148,6 +184,13 @@ export function AuthForm({ returnTo, error }: { returnTo: string; error?: string
           {message}
         </p>
       )}
+
+      <p className="text-sm text-ink-2">
+        {mode === 'signup' ? '이미 선수 등록을 했나요? ' : '야구왕이 처음인가요? '}
+        <Link href={otherHref} className="font-semibold underline" style={{ color: 'var(--ink-1)' }}>
+          {mode === 'signup' ? '로그인' : '가입하기'}
+        </Link>
+      </p>
 
       <p className="text-xs text-ink-2">
         계속하면 이용약관과 개인정보 처리방침에 동의하는 것으로 봅니다. (문서 링크는
