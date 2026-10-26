@@ -17,8 +17,11 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   build: {
-    // Hosting 무료 전송량(하루 360 MB)을 아끼려고 화면 묶음 크기를 본다.
-    chunkSizeWarningLimit: 300,
+    // Hosting 무료 전송량(하루 360 MB)을 아끼려고 화면 묶음 크기를 본다. Firestore SDK 묶음(약
+    // 545 KB, 압축 158 KB)은 더 줄일 수 없어 그것을 쓰는 화면에 들어갈 때만 내려받는다(묶음 이름은
+    // 처음 들어간 모듈 이름을 따라 meter-*.js가 된다). 이름을 붙여 따로 묶으면 첫 화면 묶음이 커져서
+    // 그대로 둔다. 측정: npm run usage:transfer
+    chunkSizeWarningLimit: 600,
   },
   test: {
     environment: 'node',

@@ -4,36 +4,45 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   limit,
   orderBy,
   query,
   serverTimestamp,
+  startAfter,
   writeBatch,
   type DocumentData,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import type { Question } from '@/content/questions';
 import { kstDayKey } from '@/lib/data/keys';
 import type { AtBatRecord } from '@/lib/data/types';
 import { buildBoxScore } from '@/lib/engine';
 import { firestore } from '@/lib/firebase/db';
+import { countReads, countWrites, queryReads } from '@/lib/firebase/meter';
 import type { PlayedAtBat } from './match';
-import { noteAfterReviewCorrect, noteAfterWrong, type NoteState } from './review';
+import { noteAfterReviewCorrect, noteAfterWrong, REVIEW_DAYS, type NoteState } from './review';
 
 /**
  * 경기·레벨 테스트·오답노트 저장 (docs/data-model.md §2).
  *
  * **경기는 끝날 때 한 번(한 묶음)만 쓴다** — 무료 쓰기 한도(하루 2만). 타석마다 쓰지 않는다.
- * 규칙이 요구하는 묶음: 비회원 경기 = 경기 + 오늘 카운터 +1, 닉네임 = 프로필 + 예약.
+ * **저장할 때 읽지 않는다** — 누적·비회원 카운터·오답 횟수는 서버의 증가 연산(increment)으로
+ * 올린다. 규칙은 증가가 끝난 값을 보고 검사한다(경기 수 +1, 카운터 +1 ≤ 2 등).
  *
  * 시각은 서버 시각을 쓴다. 기기 시계가 빠르면 "미래 시각으로 틀렸다"가 되어 규칙이
  * 거절한다(오답노트의 lastWrongAt ≤ request.time).
  */
 
 export const GUEST_DAILY_GAMES = 2;
+/** 오답노트 한 번에 읽는 수 — 복습 시각 순이라 복습할 문항이 앞에 온다 */
+export const NOTES_PAGE_SIZE = 30;
+const DAY_MS = 86_400_000;
 
 /** 비회원이 오늘(KST) 남은 경기 수. 읽기 1번. */
 export async function guestGamesLeft(uid: string): Promise<number> {
   const snapshot = await getDoc(doc(firestore(), 'users', uid, 'daily', kstDayKey()));
+  countReads('guestGamesLeft', 1);
   const used = snapshot.exists() ? Number(snapshot.get('count') ?? 0) : 0;
   return Math.max(0, GUEST_DAILY_GAMES - used);
 }
@@ -53,7 +62,6 @@ function noteFromDoc(data: DocumentData): NoteState {
   const ms = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : 0);
   return {
     wrongCount: Number(data.wrongCount ?? 0),
-    firstWrongAt: ms(data.firstWrongAt),
     lastWrongAt: ms(data.lastWrongAt),
     stage: Number(data.stage ?? 0),
     nextReviewAt: ms(data.nextReviewAt),
@@ -76,10 +84,12 @@ export interface SaveMatchResult {
   wrongSaved: number;
 }
 
+/** 경기 저장 — 읽기 0, 쓰기 = 경기 1 + 누적 1 + (비회원) 카운터 1 + 틀린 문항 수 */
 export async function saveMatch(input: SaveMatchInput): Promise<SaveMatchResult> {
   const db = firestore();
   const batch = writeBatch(db);
   const userRef = doc(db, 'users', input.uid);
+  let writes = 0;
 
   batch.set(doc(collection(userRef, 'games')), {
     mode: input.mode,
@@ -89,31 +99,32 @@ export async function saveMatch(input: SaveMatchInput): Promise<SaveMatchResult>
     pa: input.atBats.length,
     atBats: input.atBats.map(toRecord),
   });
+  writes += 1;
 
   if (input.mode === 'practice') {
-    // 누적(비공식) — 경기마다 하나씩
-    const summaryRef = doc(userRef, 'summary', 'main');
-    const current = await getDoc(summaryRef);
+    // 누적(비공식) — 경기마다 하나씩. 없으면 증가 연산이 0에서 시작해 새로 만든다
     const box = buildBoxScore(input.atBats.map((atBat) => ({ result: atBat.result, rbi: atBat.rbi })));
-    const before = current.exists() ? current.data() : {};
-    const add = (key: string, value: number) => Number(before[key] ?? 0) + value;
-    batch.set(summaryRef, {
-      games: add('games', 1),
-      pa: add('pa', box.pa),
-      ab: add('ab', box.ab),
-      h: add('h', box.h),
-      hr: add('hr', box.hr),
-      bb: add('bb', box.bb),
-      so: add('so', box.so),
-      runs: add('runs', input.runs),
-      xp: add('xp', input.xp),
-      updatedAt: serverTimestamp(),
-    });
+    batch.set(
+      doc(userRef, 'summary', 'main'),
+      {
+        games: increment(1),
+        pa: increment(box.pa),
+        ab: increment(box.ab),
+        h: increment(box.h),
+        hr: increment(box.hr),
+        bb: increment(box.bb),
+        so: increment(box.so),
+        runs: increment(input.runs),
+        xp: increment(input.xp),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    writes += 1;
 
     if (input.isGuest) {
-      const dayRef = doc(userRef, 'daily', kstDayKey());
-      const day = await getDoc(dayRef);
-      batch.set(dayRef, { count: (day.exists() ? Number(day.get('count') ?? 0) : 0) + 1 });
+      batch.set(doc(userRef, 'daily', kstDayKey()), { count: increment(1) }, { merge: true });
+      writes += 1;
     }
   }
 
@@ -122,28 +133,31 @@ export async function saveMatch(input: SaveMatchInput): Promise<SaveMatchResult>
       levelTest: { ...input.levelTest, completedAt: serverTimestamp() },
       updatedAt: serverTimestamp(),
     });
+    writes += 1;
   }
 
-  // 틀린 문항 → 오답노트(같은 문항은 한 번)
+  // 틀린 문항 → 오답노트(같은 문항은 한 번). 이전 노트를 읽지 않고 덮어쓴다 — 틀리면 어차피
+  // 단계가 처음(0)으로 돌아가고, 틀린 횟수만 서버에서 1 올린다.
   const wrongIds = [...new Set(input.atBats.filter((atBat) => !atBat.correct).map((atBat) => atBat.questionId))];
-  const now = Date.now();
+  const nextReviewAt = Timestamp.fromMillis(Date.now() + REVIEW_DAYS[0] * DAY_MS);
   for (const questionId of wrongIds) {
-    const ref = doc(userRef, 'wrongNotes', questionId);
-    const existing = await getDoc(ref);
-    const previous = existing.exists() ? noteFromDoc(existing.data()) : null;
-    const next = noteAfterWrong(previous, now);
-    batch.set(ref, {
-      questionId,
-      wrongCount: next.wrongCount,
-      firstWrongAt: existing.exists() ? existing.get('firstWrongAt') : serverTimestamp(),
-      lastWrongAt: serverTimestamp(),
-      stage: next.stage,
-      nextReviewAt: Timestamp.fromMillis(next.nextReviewAt),
-      mastered: false,
-    });
+    batch.set(
+      doc(userRef, 'wrongNotes', questionId),
+      {
+        questionId,
+        wrongCount: increment(1),
+        lastWrongAt: serverTimestamp(),
+        stage: 0,
+        nextReviewAt,
+        mastered: false,
+      },
+      { merge: true },
+    );
+    writes += 1;
   }
 
   await batch.commit();
+  countWrites(`saveMatch:${input.mode}`, writes);
   return { wrongSaved: wrongIds.length };
 }
 
@@ -151,41 +165,58 @@ export interface WrongNote extends NoteState {
   questionId: string;
 }
 
-/** 오답노트 — 복습 시각 순으로 최대 100개(읽기 = 문서 수) */
-export async function loadWrongNotes(uid: string): Promise<WrongNote[]> {
+export interface WrongNotePage {
+  notes: WrongNote[];
+  /** 다음 쪽을 읽을 자리. 없으면 끝 */
+  cursor: QueryDocumentSnapshot | null;
+}
+
+/**
+ * 오답노트 한 쪽 — 복습 시각 순으로 NOTES_PAGE_SIZE개(읽기 = 문서 수).
+ * 복습할 문항이 앞에, 익힌 문항은 맨 뒤에 온다(review.ts MASTERED_PARK_DAYS).
+ */
+export async function loadWrongNotes(uid: string, after: QueryDocumentSnapshot | null = null): Promise<WrongNotePage> {
+  const notes = collection(firestore(), 'users', uid, 'wrongNotes');
   const snapshot = await getDocs(
-    query(collection(firestore(), 'users', uid, 'wrongNotes'), orderBy('nextReviewAt'), limit(100)),
+    after
+      ? query(notes, orderBy('nextReviewAt'), startAfter(after), limit(NOTES_PAGE_SIZE))
+      : query(notes, orderBy('nextReviewAt'), limit(NOTES_PAGE_SIZE)),
   );
-  return snapshot.docs.map((item) => ({ questionId: item.id, ...noteFromDoc(item.data()) }));
+  countReads('loadWrongNotes', queryReads(snapshot.size));
+  return {
+    notes: snapshot.docs.map((item) => ({ questionId: item.id, ...noteFromDoc(item.data()) })),
+    cursor: snapshot.size === NOTES_PAGE_SIZE ? snapshot.docs[snapshot.size - 1]! : null,
+  };
 }
 
 /** 복습 한 문항의 결과를 남긴다(쓰기 1번) */
 export async function saveReview(uid: string, note: WrongNote, correct: boolean): Promise<WrongNote> {
   const ref = doc(firestore(), 'users', uid, 'wrongNotes', note.questionId);
   const now = Date.now();
+  const batch = writeBatch(firestore());
+  let next: NoteState;
   if (correct) {
-    const next = noteAfterReviewCorrect(note, now);
-    const batch = writeBatch(firestore());
+    next = noteAfterReviewCorrect(note, now);
     batch.update(ref, {
       stage: next.stage,
       nextReviewAt: Timestamp.fromMillis(next.nextReviewAt),
       mastered: next.mastered,
     });
-    await batch.commit();
-    return { ...note, ...next };
+  } else {
+    next = noteAfterWrong(note, now);
+    batch.update(ref, {
+      wrongCount: increment(1),
+      lastWrongAt: serverTimestamp(),
+      stage: 0,
+      nextReviewAt: Timestamp.fromMillis(next.nextReviewAt),
+      mastered: false,
+    });
   }
-  const next = noteAfterWrong(note, now);
-  const batch = writeBatch(firestore());
-  batch.update(ref, {
-    wrongCount: next.wrongCount,
-    lastWrongAt: serverTimestamp(),
-    stage: 0,
-    nextReviewAt: Timestamp.fromMillis(next.nextReviewAt),
-    mastered: false,
-  });
   await batch.commit();
+  countWrites('saveReview', 1);
   return { ...note, ...next };
 }
+
 
 /** 이 기기에서 최근 본 문항 — 다음 경기에서 뒤로 미룬다(서버 기록 없이, 기기에만) */
 const SEEN_KEY = 'yk_seen_questions';

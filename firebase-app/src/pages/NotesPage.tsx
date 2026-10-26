@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { QuestionView } from '@/components/game/QuestionView';
 import { loadQuestions, type OptionLabel, type Question } from '@/content/questions';
 import { LIMIT_MS } from '@/lib/engine';
-import { byId, loadWrongNotes, saveReview, type WrongNote } from '@/lib/game/persist';
+import { byId, loadWrongNotes, saveReview, type WrongNote, type WrongNotePage } from '@/lib/game/persist';
+import { dataErrorMessage } from '@/lib/firebase/errors';
 import { REVIEW_DAYS, dueNotes } from '@/lib/game/review';
 
 type Mode =
@@ -17,24 +18,45 @@ const dateText = (ms: number) =>
 
 /**
  * 오답노트 — 틀린 문항을 1·3·7·14일 간격으로 다시 푼다(01 PRD F08).
- * 비회원도 쓴다(가입하면 그대로 이어진다). 한 번에 최대 100개를 읽는다(무료 읽기 한도).
+ * 비회원도 쓴다(가입하면 그대로 이어진다). 한 번에 30개씩 읽는다(무료 읽기 한도) — 복습 시각
+ * 순이라 복습할 문항이 앞에 온다.
  */
 export function NotesPage() {
   const { user } = useAuth();
   const [notes, setNotes] = useState<WrongNote[] | null>(null);
+  const [cursor, setCursor] = useState<WrongNotePage['cursor']>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [bank, setBank] = useState<Map<string, Question>>(new Map());
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
   const [error, setError] = useState<string | null>(null);
 
+  // 사람마다 한 번만 읽는다(개발 모드의 StrictMode가 효과를 두 번 돌려도 읽기는 한 번)
+  const loadedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!user) return;
+    if (!user || loadedFor.current === user.uid) return;
+    loadedFor.current = user.uid;
     Promise.all([loadWrongNotes(user.uid), loadQuestions()])
-      .then(([loaded, questions]) => {
-        setNotes(loaded);
+      .then(([page, questions]) => {
+        setNotes(page.notes);
+        setCursor(page.cursor);
         setBank(byId(questions));
       })
-      .catch(() => setError('오답노트를 불러오지 못했어요. 연결을 확인해 주세요.'));
+      .catch((reason) => setError(dataErrorMessage(reason, '오답노트를 불러오지 못했어요. 연결을 확인해 주세요.')));
   }, [user]);
+
+  async function loadMore() {
+    if (!user || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const page = await loadWrongNotes(user.uid, cursor);
+      setNotes((current) => [...(current ?? []), ...page.notes]);
+      setCursor(page.cursor);
+    } catch (reason) {
+      setError(dataErrorMessage(reason, '더 불러오지 못했어요.'));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const due = useMemo(() => dueNotes(notes ?? [], Date.now()), [notes]);
 
@@ -48,8 +70,8 @@ export function NotesPage() {
     try {
       const updated = await saveReview(user!.uid, note, correct);
       setNotes((current) => current?.map((item) => (item.questionId === updated.questionId ? updated : item)) ?? null);
-    } catch {
-      setError('복습 결과를 저장하지 못했어요.');
+    } catch (reason) {
+      setError(dataErrorMessage(reason, '복습 결과를 저장하지 못했어요.'));
     }
   }
 
@@ -104,6 +126,17 @@ export function NotesPage() {
                   );
                 })}
               </ul>
+              {cursor && (
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={() => void loadMore()}
+                  className="min-h-12 rounded-option border-2 font-semibold disabled:opacity-60"
+                  style={{ borderColor: 'var(--line)' }}
+                >
+                  {loadingMore ? '불러오는 중…' : '더 보기'}
+                </button>
+              )}
             </>
           )}
         </>

@@ -1,8 +1,17 @@
 /*
- * 제목용 둥근 글꼴(Jua, SIL OFL) — @fontsource로 **자체 호스팅**한다.
- * 방문자 브라우저가 Google 글꼴 서버에 요청하지 않는다. 한글은 글자 범위별로
- * 쪼개져 있어 쓰인 글자만 내려받는다. 기존 앱(next/font)의 --font-cute와 같은 자리.
+ * 제목용 둥근 글꼴(Jua, SIL OFL) — **자체 호스팅**한다(구글 글꼴 서버에 요청하지 않음).
+ * 원본 한글 파일(360 KB)은 첫 방문 전송량의 절반이라, 화면 문구에 쓰인 글자만 남긴
+ * 줄인 판을 쓴다(scripts/subset-font.mjs, 약 124 KB). 없는 글자는 다음 글꼴로 그린다.
+ * 기존 앱(next/font)의 --font-cute와 같은 자리.
  */
+@font-face {
+  font-family: 'Jua';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/jua-subset.woff2') format('woff2');
+}
+
 :root {
   --font-cute: 'Jua';
 }

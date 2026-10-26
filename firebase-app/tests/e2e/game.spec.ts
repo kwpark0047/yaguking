@@ -1,8 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import questions from '../../src/content/questions.generated.json' with { type: 'json' };
 import {
   answerQuestion as answer,
   accounts,
+  becomeGuest,
   clearEmulators,
   finishOnboarding,
   hasFirestore,
@@ -127,6 +129,34 @@ test('회원: 레벨 테스트 20문제 → 등급 카드, 한 번만', async ({
   await expect(page.getByRole('link', { name: /레벨 테스트/ })).toHaveCount(0);
   await page.goto('/level-test');
   await expect(page.getByText('이미 끝냈어요', { exact: false })).toBeVisible();
+});
+
+test('오답노트는 30개씩 읽고 "더 보기"로 이어 읽는다(6단계 — 읽기 절약)', async ({ page }) => {
+  test.setTimeout(60_000);
+  const before = await accounts();
+  await becomeGuest(page);
+  const uid = (await newGuestUid(before))!;
+  const ids = (questions as { id: string }[]).slice(0, 35).map((question) => question.id);
+  const future = Date.now() + 86_400_000;
+  await Promise.all(
+    ids.map((id, index) =>
+      patchDoc(`users/${uid}/wrongNotes/${id}`, {
+        questionId: { stringValue: id },
+        wrongCount: { integerValue: '1' },
+        lastWrongAt: { timestampValue: new Date().toISOString() },
+        stage: { integerValue: '0' },
+        nextReviewAt: { timestampValue: new Date(future + index * 60_000).toISOString() },
+        mastered: { booleanValue: false },
+      }),
+    ),
+  );
+
+  await page.goto('/notes');
+  const items = page.getByRole('list', { name: '틀린 문제' }).getByRole('listitem');
+  await expect(items).toHaveCount(30);
+  await page.getByRole('button', { name: '더 보기' }).click();
+  await expect(items).toHaveCount(35);
+  await expect(page.getByRole('button', { name: '더 보기' })).toHaveCount(0);
 });
 
 test('경기 화면·오답노트: axe critical/serious 위반 0', async ({ page }) => {

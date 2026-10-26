@@ -20,6 +20,7 @@ import {
   type PlayedAtBat,
 } from '@/lib/game/match';
 import { guestGamesLeft, recentlySeen, rememberSeen, saveMatch } from '@/lib/game/persist';
+import { dataErrorMessage } from '@/lib/firebase/errors';
 
 type Phase =
   | { kind: 'loading' }
@@ -28,7 +29,7 @@ type Phase =
   | { kind: 'question'; question: Question }
   | { kind: 'verdict'; question: Question; atBat: PlayedAtBat }
   | { kind: 'saving' }
-  | { kind: 'done'; wrongSaved: number; saveFailed: boolean };
+  | { kind: 'done'; wrongSaved: number; saveError: string | null };
 
 /**
  * 개인 퀴즈 — 1이닝(3아웃). **비공식**: 정답과 시계가 기기에 있다.
@@ -91,8 +92,8 @@ export function PlayPage() {
         }
         bank.current = await loadQuestions();
         await begin();
-      } catch {
-        setPhase({ kind: 'error', message: '경기를 준비하지 못했어요. 연결을 확인해 주세요.' });
+      } catch (reason) {
+        setPhase({ kind: 'error', message: dataErrorMessage(reason, '경기를 준비하지 못했어요. 연결을 확인해 주세요.') });
       }
     })();
   }, [user, begin]);
@@ -117,9 +118,9 @@ export function PlayPage() {
         xp: xpOf(final.atBats, final.state.finished),
       });
       if (user.isAnonymous) setGuestLeft((left) => (left === null ? null : Math.max(0, left - 1)));
-      setPhase({ kind: 'done', wrongSaved, saveFailed: false });
-    } catch {
-      setPhase({ kind: 'done', wrongSaved: 0, saveFailed: true });
+      setPhase({ kind: 'done', wrongSaved, saveError: null });
+    } catch (reason) {
+      setPhase({ kind: 'done', wrongSaved: 0, saveError: dataErrorMessage(reason, '기록을 저장하지 못했어요.') });
     }
   }
 
@@ -209,7 +210,7 @@ export function PlayPage() {
           <Results
             match={match}
             wrongSaved={phase.wrongSaved}
-            saveFailed={phase.saveFailed}
+            saveError={phase.saveError}
             onRetrySave={() => void finish(match)}
             canPlayAgain={!isGuest || (guestLeft ?? 0) > 0}
             onPlayAgain={() => void begin()}
@@ -281,14 +282,14 @@ function Verdict({
 function Results({
   match,
   wrongSaved,
-  saveFailed,
+  saveError,
   onRetrySave,
   canPlayAgain,
   onPlayAgain,
 }: {
   match: Match;
   wrongSaved: number;
-  saveFailed: boolean;
+  saveError: string | null;
   onRetrySave: () => void;
   canPlayAgain: boolean;
   onPlayAgain: () => void;
@@ -306,9 +307,9 @@ function Results({
         비공식 XP <span className="num-tabular font-semibold">+{xp}</span>
         {wrongSaved > 0 && ` · 틀린 ${wrongSaved}문항을 오답노트에 담았어요`}
       </p>
-      {saveFailed && (
+      {saveError && (
         <div role="alert" className="flex flex-col gap-2 text-sm" style={{ color: 'var(--out)' }}>
-          기록을 저장하지 못했어요.
+          {saveError}
           <button type="button" onClick={onRetrySave} className="min-h-11 underline">
             다시 저장하기
           </button>

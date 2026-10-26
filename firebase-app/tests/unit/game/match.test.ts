@@ -110,11 +110,11 @@ describe('오답노트 간격 복습(1·3·7·14일)', () => {
   const DAY = 86_400_000;
   const t0 = Date.UTC(2026, 9, 26);
 
-  it('틀리면 단계 0, 하루 뒤 복습. 다시 틀리면 횟수가 늘고 처음 틀린 날은 그대로', () => {
+  it('틀리면 단계 0, 하루 뒤 복습. 다시 틀리면 횟수가 늘고 단계는 처음부터', () => {
     const first = noteAfterWrong(null, t0);
     expect(first).toMatchObject({ wrongCount: 1, stage: 0, nextReviewAt: t0 + DAY, mastered: false });
     const again = noteAfterWrong(first, t0 + 5 * DAY);
-    expect(again).toMatchObject({ wrongCount: 2, firstWrongAt: t0, stage: 0 });
+    expect(again).toMatchObject({ wrongCount: 2, lastWrongAt: t0 + 5 * DAY, stage: 0 });
   });
 
   it('복습에서 맞히면 1→3→7→14일 뒤로, 14일 복습을 통과하면 익힌 문항', () => {
@@ -129,6 +129,8 @@ describe('오답노트 간격 복습(1·3·7·14일)', () => {
     note = noteAfterReviewCorrect(note, note.nextReviewAt);
     expect(note.mastered).toBe(true);
     expect(note.stage).toBeLessThanOrEqual(4); // 규칙: 0~4
+    // 익힌 문항은 복습 시각 순 목록의 끝으로 밀린다
+    expect(note.nextReviewAt).toBeGreaterThan(t0 + 365 * DAY);
   });
 
   it('복습할 노트만, 오래 기다린 것부터', () => {

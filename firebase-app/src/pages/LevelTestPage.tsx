@@ -7,6 +7,7 @@ import { LIMIT_MS } from '@/lib/engine';
 import { LEVEL_TEST_SIZE, buildLevelTest, tierFor } from '@/lib/game/levelTest';
 import type { PlayedAtBat } from '@/lib/game/match';
 import { saveMatch } from '@/lib/game/persist';
+import { dataErrorMessage } from '@/lib/firebase/errors';
 import { tierStyle, tierTheme } from '@/lib/theme/tiers';
 
 type Phase =
@@ -14,7 +15,7 @@ type Phase =
   | { kind: 'question'; index: number }
   | { kind: 'feedback'; index: number; correct: boolean }
   | { kind: 'saving' }
-  | { kind: 'done'; saveFailed: boolean }
+  | { kind: 'done'; saveError: string | null }
   | { kind: 'error' };
 
 /**
@@ -80,9 +81,9 @@ export function LevelTestPage() {
         levelTest: { correct, total: answers.current.length, tier: tierFor(correct, answers.current.length), byCategory },
       });
       await refreshProfile();
-      setPhase({ kind: 'done', saveFailed: false });
-    } catch {
-      setPhase({ kind: 'done', saveFailed: true });
+      setPhase({ kind: 'done', saveError: null });
+    } catch (reason) {
+      setPhase({ kind: 'done', saveError: dataErrorMessage(reason, '결과를 저장하지 못했어요.') });
     }
   }
 
@@ -169,7 +170,7 @@ export function LevelTestPage() {
             acc[category] = [right + (item.correct ? 1 : 0), all + 1];
             return acc;
           }, {})}
-          saveFailed={phase.saveFailed}
+          saveError={phase.saveError}
           onRetry={() => void finish()}
         />
       )}
@@ -182,13 +183,13 @@ function TierCard({
   correct,
   total,
   byCategory,
-  saveFailed,
+  saveError,
   onRetry,
 }: {
   correct: number;
   total: number;
   byCategory: Record<string, [number, number]>;
-  saveFailed: boolean;
+  saveError: string | null;
   onRetry: () => void;
 }) {
   const tier = tierTheme(tierFor(correct, total));
@@ -217,9 +218,9 @@ function TierCard({
         </ul>
         <p className="text-xs text-ink-2">기기에서 채점한 비공식 등급이에요.</p>
       </div>
-      {saveFailed && (
+      {saveError && (
         <div role="alert" className="flex flex-col gap-2 text-sm" style={{ color: 'var(--out)' }}>
-          결과를 저장하지 못했어요.
+          {saveError}
           <button type="button" onClick={onRetry} className="min-h-11 underline">
             다시 저장하기
           </button>

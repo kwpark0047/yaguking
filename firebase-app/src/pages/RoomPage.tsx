@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
 import { QuestionView } from '@/components/game/QuestionView';
 import { loadQuestions, type OptionLabel, type Question } from '@/content/questions';
+import { dataErrorMessage } from '@/lib/firebase/errors';
 import { byId } from '@/lib/game/persist';
 import {
   RoomJoinError,
@@ -72,13 +73,13 @@ export function RoomPage() {
 
   useEffect(() => {
     if (!code || !uid) return;
-    return watchRoom(code, setRoom, () => setError('방을 불러오지 못했어요. 연결을 확인해 주세요.'));
+    return watchRoom(code, setRoom, (reason) => setError(dataErrorMessage(reason, '방을 불러오지 못했어요. 연결을 확인해 주세요.')));
   }, [code, uid]);
 
   // 자리는 방에 들어간 사람만 구독한다(구경꾼의 읽기를 줄인다)
   useEffect(() => {
     if (!code || !joined) return;
-    return watchSeats(code, setSeats, () => setError('참가자를 불러오지 못했어요.'));
+    return watchSeats(code, setSeats, (reason) => setError(dataErrorMessage(reason, '참가자를 불러오지 못했어요.')));
   }, [code, joined]);
 
   useEffect(() => {
@@ -128,7 +129,7 @@ export function RoomPage() {
       if (isGuest) rememberGuestName(name);
       await joinRoom(code, uid, name);
     } catch (reason) {
-      setError(reason instanceof RoomJoinError ? JOIN_ERROR[reason.reason] : '들어가지 못했어요. 다시 해 주세요.');
+      setError(reason instanceof RoomJoinError ? JOIN_ERROR[reason.reason] : dataErrorMessage(reason, '들어가지 못했어요. 다시 해 주세요.'));
     } finally {
       setBusy(false);
     }
@@ -140,8 +141,8 @@ export function RoomPage() {
     try {
       await action();
       after?.();
-    } catch {
-      setError(failure);
+    } catch (reason) {
+      setError(dataErrorMessage(reason, failure));
     } finally {
       setBusy(false);
     }

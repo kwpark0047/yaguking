@@ -6,7 +6,7 @@
   "description": "야구왕 — Firebase Spark(무료) 전용 판. Supabase·Vercel·Cloud Functions를 쓰지 않는다.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/subset-font.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -14,10 +14,12 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-yaguking \"vitest run tests/rules\"",
     "test:e2e": "playwright test",
     "emulators:auth": "firebase emulators:start --only auth --project demo-yaguking",
-    "content:build": "node scripts/build-questions.mjs"
+    "content:build": "node scripts/build-questions.mjs",
+    "font:subset": "node scripts/subset-font.mjs",
+    "usage:measure": "cross-env USAGE_REPORT=docs/usage-measured.json playwright test tests/e2e/usage.spec.ts --project=sm-360",
+    "usage:transfer": "npm run build && firebase emulators:exec --only auth,firestore --project demo-yaguking \"node scripts/measure-transfer.mjs\""
   },
   "dependencies": {
-    "@fontsource/jua": "5.3.0",
     "firebase": "13.1.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@firebase/rules-unit-testing": "6.0.0",
+    "@fontsource/jua": "5.3.0",
     "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.6.5",
@@ -34,6 +37,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "firebase-tools": "15.34.1",
+    "subset-font": "2.9.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vite": "8.3.5",

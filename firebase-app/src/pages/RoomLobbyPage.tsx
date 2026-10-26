@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
 import { loadQuestions } from '@/content/questions';
+import { dataErrorMessage } from '@/lib/firebase/errors';
 import { createRoom } from '@/lib/room/api';
 import {
   DEFAULT_QUESTION_COUNT,
@@ -50,8 +51,8 @@ export function RoomLobbyPage() {
       const questionIds = pickBattleQuestions(await loadQuestions(), count);
       const roomCode = await createRoom({ uid: user.uid, nickname: name, maxPlayers: size, questionIds });
       navigate(`/room/${roomCode}`);
-    } catch {
-      setError('방을 만들지 못했어요. 연결을 확인하고 다시 해 주세요.');
+    } catch (reason) {
+      setError(dataErrorMessage(reason, '방을 만들지 못했어요. 연결을 확인하고 다시 해 주세요.'));
       setBusy(false);
     }
   }

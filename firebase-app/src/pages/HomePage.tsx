@@ -21,7 +21,7 @@ export function HomePage() {
       <SiteHeader />
       <main className="home-hero flex flex-col items-center gap-4 px-5 py-10 text-center">
         <Mascot className="h-36 w-36" />
-        <h1 className="font-cute text-4xl">야구 상식으로 홈런 치자!</h1>
+        <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
 
         {user === undefined ? (
           <p className="text-sm text-ink-2">불러오는 중…</p>

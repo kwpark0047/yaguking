@@ -214,11 +214,11 @@ service cloud.firestore {
 
         function validNote(questionId) {
           let n = request.resource.data;
-          return n.keys().hasOnly(['questionId', 'wrongCount', 'firstWrongAt', 'lastWrongAt', 'stage', 'nextReviewAt', 'mastered'])
+          return n.keys().hasOnly(['questionId', 'wrongCount', 'lastWrongAt', 'stage', 'nextReviewAt', 'mastered'])
             && n.questionId == questionId
             && questionId.matches('^q[0-9a-f]{12}$')
             && isNonNegativeInt(n.wrongCount, 9999) && n.wrongCount >= 1
-            && n.firstWrongAt is timestamp && n.lastWrongAt is timestamp
+            && n.lastWrongAt is timestamp
             && n.lastWrongAt <= request.time
             && isNonNegativeInt(n.stage, 4)
             && n.nextReviewAt is timestamp

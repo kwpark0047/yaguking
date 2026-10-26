@@ -1,0 +1,64 @@
+{
+  "measuredAt": "2026-10-26T06:38:47.586Z",
+  "home": 258440,
+  "play": 211802,
+  "firstVisit": 470242,
+  "firstVisitsPerDay": 802,
+  "files": [
+    {
+      "path": "/assets/meter-B6D8ksZP.js",
+      "at": "게임 시작",
+      "bytes": 161819
+    },
+    {
+      "path": "/assets/jua-subset-CgisSQP3.woff2",
+      "at": "메인",
+      "bytes": 128088
+    },
+    {
+      "path": "/assets/index-1fAF9dTt.js",
+      "at": "메인",
+      "bytes": 90469
+    },
+    {
+      "path": "/assets/questions.generated-CGxcbWBv.js",
+      "at": "게임 시작",
+      "bytes": 41215
+    },
+    {
+      "path": "/assets/index.esm-D5JmbGlO.js",
+      "at": "메인",
+      "bytes": 32477
+    },
+    {
+      "path": "/assets/index-BJJYbuAg.css",
+      "at": "메인",
+      "bytes": 7092
+    },
+    {
+      "path": "/assets/PlayPage-B-ekz_3i.js",
+      "at": "게임 시작",
+      "bytes": 4559
+    },
+    {
+      "path": "/assets/persist-B-jr47e2.js",
+      "at": "게임 시작",
+      "bytes": 3212
+    },
+    {
+      "path": "/assets/errors-DuvVNWBv.js",
+      "at": "게임 시작",
+      "bytes": 769
+    },
+    {
+      "path": "/",
+      "at": "메인",
+      "bytes": 314
+    },
+    {
+      "path": "/assets/keys-BUa6MBxi.js",
+      "at": "게임 시작",
+      "bytes": 228
+    }
+  ]
+}

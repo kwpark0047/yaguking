@@ -77,7 +77,6 @@ export interface SummaryDoc {
 export interface WrongNoteDoc {
   questionId: string;
   wrongCount: number;
-  firstWrongAt: Timestamp;
   lastWrongAt: Timestamp;
   /** 0~4: 다음 복습까지 1·3·7·14일, 4면 끝 */
   stage: number;

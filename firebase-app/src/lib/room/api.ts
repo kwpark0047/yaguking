@@ -12,6 +12,7 @@ import {
 import { roomCode } from '@/lib/data/keys';
 import type { RoomDoc } from '@/lib/data/types';
 import { firestore } from '@/lib/firebase/db';
+import { countReads, countWrites } from '@/lib/firebase/meter';
 import { ROOM_QUESTION_SECONDS, scoreOf, type BattleAnswer } from './battle';
 
 /**
@@ -74,6 +75,7 @@ export async function createRoom(input: {
     batch.set(seatRef(code, input.uid), seat(input.nickname));
     try {
       await batch.commit();
+      countWrites('createRoom', 2);
       return code;
     } catch (error) {
       lastError = error;
@@ -85,6 +87,7 @@ export async function createRoom(input: {
 /** 참가 = 명단 끝에 나를 더하기 + 내 자리(한 묶음). 이미 명단에 있으면 아무것도 안 한다 */
 export async function joinRoom(code: string, uid: string, nickname: string): Promise<void> {
   const snapshot = await getDoc(roomRef(code));
+  countReads('joinRoom', 1);
   if (!snapshot.exists()) throw new RoomJoinError('missing');
   const room = snapshot.data() as RoomDoc;
   if (room.playerIds.includes(uid)) return;
@@ -94,6 +97,7 @@ export async function joinRoom(code: string, uid: string, nickname: string): Pro
   batch.update(roomRef(code), { playerIds: arrayUnion(uid) });
   batch.set(seatRef(code, uid), seat(nickname));
   await batch.commit();
+  countWrites('joinRoom', 2);
 }
 
 /** 대기 중에 나간다(방장이 아닌 사람). 명단에서 빼고 자리를 지운다 */
@@ -102,6 +106,7 @@ export async function leaveRoom(code: string, uid: string): Promise<void> {
   batch.update(roomRef(code), { playerIds: arrayRemove(uid) });
   batch.delete(seatRef(code, uid));
   await batch.commit();
+  countWrites('leaveRoom', 2);
 }
 
 /** 방장이 대기 중인 방을 닫는다. 다른 사람의 자리 문서는 남는다(관리 스크립트가 정리, 8단계) */
@@ -110,14 +115,17 @@ export async function closeRoom(code: string, uid: string): Promise<void> {
   batch.delete(seatRef(code, uid));
   batch.delete(roomRef(code));
   await batch.commit();
+  countWrites('closeRoom', 2);
 }
 
 export async function startRoom(code: string): Promise<void> {
   await updateDoc(roomRef(code), { status: 'playing', startedAt: serverTimestamp() });
+  countWrites('startRoom', 1);
 }
 
 export async function finishRoom(code: string): Promise<void> {
   await updateDoc(roomRef(code), { status: 'finished', finishedAt: serverTimestamp() });
+  countWrites('finishRoom', 1);
 }
 
 /**
@@ -126,13 +134,15 @@ export async function finishRoom(code: string): Promise<void> {
  */
 export async function submitAnswers(code: string, uid: string, answers: BattleAnswer[]): Promise<void> {
   await updateDoc(seatRef(code, uid), { answers, score: scoreOf(answers), updatedAt: serverTimestamp() });
+  countWrites('submitAnswers', 1);
 }
 
 /** 방 문서 구독. 없어지면 null */
-export function watchRoom(code: string, onChange: (room: RoomView | null) => void, onError: () => void) {
+export function watchRoom(code: string, onChange: (room: RoomView | null) => void, onError: (error: unknown) => void) {
   return onSnapshot(
     roomRef(code),
     (snapshot) => {
+      if (!snapshot.metadata.fromCache) countReads('watchRoom', 1);
       if (!snapshot.exists()) return onChange(null);
       const data = snapshot.data() as RoomDoc;
       onChange({
@@ -149,10 +159,11 @@ export function watchRoom(code: string, onChange: (room: RoomView | null) => voi
 }
 
 /** 자리 구독(참가 순서) */
-export function watchSeats(code: string, onChange: (seats: SeatView[]) => void, onError: () => void) {
+export function watchSeats(code: string, onChange: (seats: SeatView[]) => void, onError: (error: unknown) => void) {
   return onSnapshot(
     collection(firestore(), 'rooms', code, 'players'),
     (snapshot) => {
+      if (!snapshot.metadata.fromCache) countReads('watchSeats', snapshot.docChanges().length);
       const seats = snapshot.docs
         .map((item) => ({ uid: item.id, data: item.data({ serverTimestamps: 'estimate' }) }))
         .sort((a, b) => (a.data.joinedAt?.toMillis?.() ?? Infinity) - (b.data.joinedAt?.toMillis?.() ?? Infinity))

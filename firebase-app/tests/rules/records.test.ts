@@ -1,6 +1,16 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import {
+  doc,
+  getDoc,
+  increment,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  writeBatch,
+  type Firestore,
+} from 'firebase/firestore';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { emulatorHost, guest, kstDayKey, member, now, seedConfirmedMember, startRulesEnv } from './setup';
 
 /** 경기 기록·비회원 하루 제한·누적 기록·오답노트 (4단계가 쓴다). */
@@ -131,7 +141,6 @@ describe.skipIf(!emulatorHost)('기록 규칙', () => {
     const note = (questionId: string, overrides: object = {}) => ({
       questionId,
       wrongCount: 1,
-      firstWrongAt: now(),
       lastWrongAt: now(),
       stage: 0,
       nextReviewAt: Timestamp.fromMillis(Date.now() + 86_400_000),
@@ -158,6 +167,80 @@ describe.skipIf(!emulatorHost)('기록 규칙', () => {
           doc(db, 'users/alice/wrongNotes/q0123456789ab'),
           note('q0123456789ab', { lastWrongAt: Timestamp.fromMillis(Date.now() + 3_600_000) }),
         ),
+      );
+    });
+  });
+
+  describe('읽지 않는 저장 — 증가 연산(6단계)', () => {
+    /** 앱이 실제로 쓰는 묶음: 경기 + 누적(증가) + 카운터(증가) + 오답(증가). 읽기 없이 */
+    function savedGame(db: Firestore, uid: string, id: string, wrongId = 'q0123456789ab') {
+      const batch = writeBatch(db);
+      batch.set(doc(db, `users/${uid}/games/${id}`), game());
+      const counters = { games: increment(1), pa: increment(3), ab: increment(3), h: increment(2), hr: increment(1) };
+      batch.set(
+        doc(db, `users/${uid}/summary/main`),
+        { ...counters, bb: increment(0), so: increment(1), runs: increment(2), xp: increment(30), updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+      if (uid !== 'alice') batch.set(doc(db, `users/${uid}/daily/${kstDayKey()}`), { count: increment(1) }, { merge: true });
+      batch.set(
+        doc(db, `users/${uid}/wrongNotes/${wrongId}`),
+        {
+          questionId: wrongId,
+          wrongCount: increment(1),
+          lastWrongAt: serverTimestamp(),
+          stage: 0,
+          nextReviewAt: Timestamp.fromMillis(Date.now() + 86_400_000),
+          mastered: false,
+        },
+        { merge: true },
+      );
+      return batch.commit();
+    }
+
+    it('비회원: 증가 연산으로도 하루 2경기까지, 3번째는 막힌다', async () => {
+      const db = guest(env, 'anon');
+      await assertSucceeds(savedGame(db, 'anon', 'g1'));
+      await assertSucceeds(savedGame(db, 'anon', 'g2'));
+      await assertFails(savedGame(db, 'anon', 'g3'));
+    });
+
+    it('회원: 누적·오답 횟수가 서버에서 올라간다', async () => {
+      const db = member(env, 'alice');
+      await assertSucceeds(savedGame(db, 'alice', 'g1'));
+      await assertSucceeds(savedGame(db, 'alice', 'g2'));
+      const summary = await getDoc(doc(db, 'users/alice/summary/main'));
+      const note = await getDoc(doc(db, 'users/alice/wrongNotes/q0123456789ab'));
+      expect([summary.get('games'), summary.get('h'), note.get('wrongCount')]).toEqual([2, 4, 2]);
+    });
+
+    it('증가 연산으로 경기 수를 2씩 올리거나 안타를 타수보다 많게 할 수 없다', async () => {
+      const db = member(env, 'alice');
+      await assertSucceeds(savedGame(db, 'alice', 'g1'));
+      await assertFails(
+        setDoc(doc(db, 'users/alice/summary/main'), { games: increment(2), updatedAt: serverTimestamp() }, { merge: true }),
+      );
+      await assertFails(
+        setDoc(
+          doc(db, 'users/alice/summary/main'),
+          { games: increment(1), h: increment(5), updatedAt: serverTimestamp() },
+          { merge: true },
+        ),
+      );
+    });
+
+    it('오답노트에 없어진 필드(처음 틀린 시각)는 받지 않는다', async () => {
+      const db = member(env, 'alice');
+      await assertFails(
+        setDoc(doc(db, 'users/alice/wrongNotes/q0123456789ab'), {
+          questionId: 'q0123456789ab',
+          wrongCount: 1,
+          firstWrongAt: now(),
+          lastWrongAt: now(),
+          stage: 0,
+          nextReviewAt: now(),
+          mastered: false,
+        }),
       );
     });
   });

@@ -1,6 +1,7 @@
 import { deleteUser, type User } from 'firebase/auth';
 import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase/db';
+import { countReads, countWrites } from '@/lib/firebase/meter';
 import type { ProfileState } from './gate';
 
 /**
@@ -12,6 +13,7 @@ import type { ProfileState } from './gate';
 export async function loadProfile(uid: string): Promise<ProfileState> {
   try {
     const snapshot = await getDoc(doc(firestore(), 'users', uid));
+    countReads('loadProfile', 1);
     if (!snapshot.exists()) return { status: 'missing' };
     const strings = (value: unknown) =>
       Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
@@ -44,6 +46,7 @@ export async function confirmAge(user: User): Promise<void> {
     ageConfirmedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
+  countWrites('confirmAge', 1);
 }
 
 /**

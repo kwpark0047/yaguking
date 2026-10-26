@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { nicknameKey } from '@/lib/data/keys';
 import { firestore } from '@/lib/firebase/db';
+import { countReads, countWrites } from '@/lib/firebase/meter';
 
 export interface ProfileInput {
   nickname: string;
@@ -26,6 +27,7 @@ export class NicknameTakenError extends Error {
 /** 이 닉네임을 다른 사람이 쓰는가(대소문자 무시). 읽기 1번 — 저장 전에 빠르게 알려 준다. */
 export async function isNicknameTaken(nickname: string, uid: string): Promise<boolean> {
   const snapshot = await getDoc(doc(firestore(), 'nicknames', nicknameKey(nickname)));
+  countReads('isNicknameTaken', 1);
   return snapshot.exists() && snapshot.get('uid') !== uid;
 }
 
@@ -44,6 +46,7 @@ export async function saveProfile(
   const db = firestore();
   const nickname = input.nickname.trim();
   const batch = writeBatch(db);
+  let writes = 1; // 프로필
   const update: Record<string, unknown> = {
     favoriteTeams: input.favoriteTeams,
     favoritePlayers: input.favoritePlayers,
@@ -57,13 +60,18 @@ export async function saveProfile(
     if (newKey !== oldKey) {
       if (await isNicknameTaken(nickname, uid)) throw new NicknameTakenError();
       batch.set(doc(db, 'nicknames', newKey), { uid });
-      if (oldKey) batch.delete(doc(db, 'nicknames', oldKey));
+      writes += 1;
+      if (oldKey) {
+        batch.delete(doc(db, 'nicknames', oldKey));
+        writes += 1;
+      }
     }
   }
 
   batch.update(doc(db, 'users', uid), update);
   try {
     await batch.commit();
+    countWrites('saveProfile', writes);
   } catch (error) {
     // 확인과 저장 사이에 누가 먼저 잡았을 수 있다
     if ((error as { code?: string }).code === 'permission-denied' && (await isNicknameTaken(nickname, uid))) {
