@@ -220,7 +220,7 @@ export default async function HomePage() {
             이용약관 (확정 전)
           </Link>
           <Link href="/privacy" className="flex min-h-11 items-center font-semibold underline">
-            개인정보처리방침 (확정 전)
+            개인정보처리방침
           </Link>
         </nav>
       </footer>

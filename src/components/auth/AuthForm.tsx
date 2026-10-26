@@ -193,8 +193,8 @@ export function AuthForm({
       </p>
 
       {/*
-        두 문서는 아직 확정 전이다. 링크는 자리 페이지로 가며, 확정 전이라는 사실을
-        여기서도 밝힌다 — 보지 못한 문서에 동의했다고 적지 않기 위해서다.
+        이용약관은 아직 확정 전이다(자리 페이지). 확정 전이라는 사실을 여기서도
+        밝힌다 — 보지 못한 문서에 동의했다고 적지 않기 위해서다. 처리방침은 시행 중이다.
       */}
       <p className="text-xs text-ink-2 break-keep">
         계속하면{' '}
@@ -205,7 +205,7 @@ export function AuthForm({
         <Link href="/privacy" className="underline" style={{ color: 'var(--ink-1)' }}>
           개인정보처리방침
         </Link>
-        에 동의하는 것으로 봅니다. 두 문서는 아직 확정 전입니다.
+        에 동의하는 것으로 봅니다. 이용약관은 아직 확정 전입니다.
       </p>
     </main>
   );

@@ -304,6 +304,16 @@ Playwright가 직접 띄운 서버는 `RATE_LIMIT=off`로 뜬다. **이미 떠 �
 4. 운영 Supabase에서 `auth` 스키마 삭제 권한이 서버 연결 역할에 있는지 배포 직후 한 번 확인한다
    (`npm run privacy:purge`가 오류 없이 끝나면 된다)
 
+### 배포가 처리방침과 맞는지 (2026-10-26 시행본 기준)
+
+처리방침(`src/content/privacy.ts`)은 아래를 사실로 적었다. 하나라도 다르면 방침을 먼저 고친다.
+
+- [ ] 운영 Supabase 프로젝트 리전이 **서울(ap-northeast-2)**
+- [ ] Vercel 함수 리전이 **서울(icn1)** — `vercel.json`의 `regions`
+- [ ] 사이트가 HTTPS로만 열린다
+- [ ] 서버 오류 기록을 1년보다 오래 두지 않는다(로그 보관 설정·외부 로그 저장소 포함)
+- [ ] `npm run security:check`가 배포 전마다 통과한다(비밀 키가 화면 코드에 없음)
+
 ## 만 14세 확인
 
 첫 로그인 직후 `/welcome/age`에서 만 14세 이상인지 묻는다(0017 `profiles.age_confirmed_at`).

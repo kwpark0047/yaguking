@@ -7,18 +7,31 @@ import {
 } from '@/lib/privacy/retention';
 
 /**
- * 개인정보처리방침 **초안** (15 문서).
+ * 개인정보처리방침 (15 문서).
  *
  * 사실 관계는 코드에서 가져왔다 — 수집 항목은 실제 테이블, 보관 기간은
  * retention.ts(파기는 0016 DB 함수), 권리 행사는 설정 화면에 실제로 있는 기능.
- * `〔 〕`는 운영 주체·배포 환경이 정해져야 채울 수 있는 칸이라 비워 두었다.
- * 지어 넣지 않는다.
  *
- * **법률 검토 전이다.** 검토와 빈칸 채움이 끝나면 시행일을 적고 `DRAFT`를 끈다.
+ * 운영 주체·보호책임자·호스팅·오류 기록 보관 기간은 운영자가 15 문서 §5에 적은
+ * 값이다. 리전·배포 후 안전 조치·시행일은 운영자가 "기본으로" 정하라고 해서
+ * 기본값으로 채웠다(2026-10-26):
+ *   - 리전: Supabase 서울(ap-northeast-2), Vercel 함수 서울(icn1, vercel.json)
+ *     → 데이터베이스는 국내. Vercel Inc.(미국)가 처리하는 요청·오류 기록은 국외 이전으로 고지
+ *   - 시행일: 2026-10-26
+ * **배포가 이 값과 어긋나면 이 방침이 거짓이 된다** — OPERATIONS.md "개인정보 보관 기간 파기"
+ * 아래 배포 점검 항목과 함께 확인한다. 법률 검토 항목은 운영자가 확인 표시했다(15 문서 §5).
+ *
+ * 바꿀 때는 시행 7일 전(불리하면 30일 전) 알리고 시행일을 고친다.
  */
 
-export const PRIVACY_DRAFT = true;
-export const PRIVACY_EFFECTIVE_DATE: string | null = null;
+export const PRIVACY_DRAFT = false;
+export const PRIVACY_EFFECTIVE_DATE: string | null = '2026-10-26';
+
+/** 운영자가 15 문서 §5에 적은 값 */
+export const PRIVACY_OPERATOR = '위마켓';
+export const PRIVACY_OFFICER = { name: '박강원', phone: '010-3890-0047' } as const;
+/** 서버 오류 기록 보관 기간(운영자 결정) */
+export const SERVER_ERROR_LOG_RETENTION = '1년';
 
 export interface PolicyTable {
   head: readonly string[];
@@ -28,13 +41,15 @@ export interface PolicyTable {
 export interface PolicySection {
   id: string;
   title: string;
+  /** 표보다 먼저 보일 문단 */
+  lead?: string;
   paragraphs?: readonly string[];
   items?: readonly string[];
   table?: PolicyTable;
 }
 
 export const PRIVACY_INTRO =
-  '〔운영 주체명〕(이하 "운영자")은 야구 상식 퀴즈 게임 "야구왕"(이하 "서비스")을 운영하며 「개인정보 보호법」에 따라 이용자의 개인정보를 보호합니다. 이 방침은 서비스가 어떤 개인정보를 왜 처리하고, 얼마나 보관하며, 이용자가 무엇을 할 수 있는지 알려 드립니다.';
+  `${PRIVACY_OPERATOR}(이하 "운영자")은 야구 상식 퀴즈 게임 "야구왕"(이하 "서비스")을 운영하며 「개인정보 보호법」에 따라 이용자의 개인정보를 보호합니다. 이 방침은 서비스가 어떤 개인정보를 왜 처리하고, 얼마나 보관하며, 이용자가 무엇을 할 수 있는지 알려 드립니다.`;
 
 export const PRIVACY_SECTIONS: readonly PolicySection[] = [
   {
@@ -101,7 +116,7 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
         ['로그인 기록(접속 주소·일시)', `${AUTH_LOG_RETENTION_DAYS}일`],
         ['사용하지 않는 로그인 세션', `마지막 사용 후 ${AUTH_LOG_RETENTION_DAYS}일. 로그아웃하면 즉시 종료`],
         ['과도한 요청 차단용 변환값', `${RATE_LIMIT_RETENTION_HOURS}시간`],
-        ['서버 오류 기록', '〔배포 환경 확정 후 기재〕'],
+        ['서버 오류 기록(요청 주소·오류 내용·발생 시각)', `${SERVER_ERROR_LOG_RETENTION} 이내`],
       ],
     },
     paragraphs: [
@@ -129,8 +144,8 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
     table: {
       head: ['수탁자', '위탁 업무'],
       rows: [
-        ['Supabase', '데이터베이스 보관, 회원 인증, 로그인 메일 발송'],
-        ['〔호스팅 사업자〕', '서비스 서버 운영'],
+        ['Supabase Inc.', '데이터베이스 보관(서울 리전), 회원 인증, 로그인 메일 발송'],
+        ['Vercel Inc.', '서비스 서버 운영과 전송(서울 함수 리전), 요청·오류 기록 보관'],
       ],
     },
     paragraphs: [
@@ -140,9 +155,22 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
   {
     id: 'overseas',
     title: '7. 국외 이전',
-    paragraphs: [
-      '〔Supabase 프로젝트와 호스팅 리전 확정 후 기재 — 국외 리전이면 이전받는 자, 국가, 시기·방법, 항목, 목적, 보유 기간, 거부 방법과 그 결과를 적는다〕',
-    ],
+    lead: '회원 정보와 경기 기록이 저장되는 데이터베이스는 국내(서울 리전)에 있습니다. 다만 서비스 서버를 운영하는 Vercel Inc.가 요청을 처리하면서 남기는 기록은 국외에서 처리·보관될 수 있어 아래와 같이 알립니다.',
+    table: {
+      head: ['구분', '내용'],
+      rows: [
+        ['이전받는 자', 'Vercel Inc. (vercel.com)'],
+        ['이전 국가', '미국'],
+        ['이전 시기와 방법', '서비스를 이용할 때마다 네트워크를 통해 전송'],
+        ['이전 항목', '접속 주소(IP), 요청 주소, 브라우저 정보, 서버 오류 기록'],
+        ['이전 목적', '서비스 제공과 운영, 장애·오류 분석'],
+        ['보유·이용 기간', `${SERVER_ERROR_LOG_RETENTION} 이내`],
+        [
+          '거부 방법과 그 결과',
+          '서비스 이용을 멈추면 이전되지 않습니다. 이 이전은 서비스 제공에 꼭 필요하므로 거부하면 서비스를 이용할 수 없습니다.',
+        ],
+      ],
+    },
   },
   {
     id: 'rights',
@@ -185,13 +213,15 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
       '게스트 식별 토큰과 접속 주소는 원래 값을 저장하지 않고 변환한 값만 저장합니다.',
       '데이터베이스는 행 단위 접근 제어로 다른 이용자의 기록에 접근할 수 없게 합니다.',
       '관리자 기능은 지정된 계정만 쓸 수 있고, 관리 작업은 기록으로 남깁니다.',
-      '〔배포 후: 전송 구간 암호화(HTTPS), 접근 권한 관리 절차 기재〕',
+      '서비스와 이용자 사이의 모든 통신은 HTTPS로 암호화합니다.',
+      '데이터베이스 접속 정보와 비밀 키는 호스팅 환경 설정에만 두고 코드나 이용자 화면에 담지 않으며, 배포 전마다 자동 점검합니다.',
+      '개인정보에 접근할 수 있는 관리 권한은 최소 인원에게만 주고 정기적으로 점검합니다.',
     ],
   },
   {
     id: 'officer',
     title: '12. 개인정보 보호책임자',
-    items: ['성명: 〔 〕', '연락처: 〔이메일〕'],
+    items: [`성명: ${PRIVACY_OFFICER.name}`, `연락처: ${PRIVACY_OFFICER.phone}`],
   },
   {
     id: 'remedy',
@@ -209,7 +239,7 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
     title: '14. 방침의 변경',
     paragraphs: [
       '이 방침을 바꾸면 시행 7일 전부터 서비스 안에 알립니다. 이용자에게 불리한 변경은 30일 전부터 알립니다.',
-      '시행일: 〔확정 후 기재〕',
+      `시행일: ${PRIVACY_EFFECTIVE_DATE}`,
     ],
   },
 ];

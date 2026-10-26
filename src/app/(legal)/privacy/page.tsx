@@ -7,11 +7,14 @@ import {
   PRIVACY_SECTIONS,
 } from '@/content/privacy';
 
-export const metadata: Metadata = { title: '개인정보처리방침 (초안) — 야구왕' };
+export const metadata: Metadata = {
+  title: PRIVACY_DRAFT ? '개인정보처리방침 (초안) — 야구왕' : '개인정보처리방침 — 야구왕',
+};
 
 /**
- * 개인정보처리방침 — **초안**(법률 검토 전). 본문은 src/content/privacy.ts,
- * 보관 기간은 src/lib/privacy/retention.ts(파기는 0016 DB 함수)에서 온다.
+ * 개인정보처리방침. 본문은 src/content/privacy.ts, 보관 기간은
+ * src/lib/privacy/retention.ts(파기는 0016 DB 함수)에서 온다.
+ * `PRIVACY_DRAFT`이면 초안 표시를, 아니면 시행일을 맨 위에 보인다.
  */
 export default function PrivacyPage() {
   return (
@@ -20,6 +23,12 @@ export default function PrivacyPage() {
         ← 야구왕
       </Link>
       <h1 className="font-cute text-3xl">개인정보처리방침</h1>
+
+      {!PRIVACY_DRAFT && PRIVACY_EFFECTIVE_DATE && (
+        <p className="text-sm text-ink-2">
+          시행일 <time dateTime={PRIVACY_EFFECTIVE_DATE}>{PRIVACY_EFFECTIVE_DATE}</time>
+        </p>
+      )}
 
       {PRIVACY_DRAFT && (
         <section aria-labelledby="legal-status" className="sticker flex flex-col gap-2 p-5">
@@ -46,6 +55,9 @@ export default function PrivacyPage() {
           <h2 id={`p-${section.id}`} className="font-cute text-xl">
             {section.title}
           </h2>
+          {section.lead && (
+            <p className="text-sm leading-relaxed break-keep">{section.lead}</p>
+          )}
           {section.table && (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
