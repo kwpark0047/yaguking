@@ -19,6 +19,11 @@ const ProfileSetupPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
 );
+const PlayPage = lazy(() => import('@/pages/PlayPage').then((module) => ({ default: module.PlayPage })));
+const LevelTestPage = lazy(() =>
+  import('@/pages/LevelTestPage').then((module) => ({ default: module.LevelTestPage })),
+);
+const NotesPage = lazy(() => import('@/pages/NotesPage').then((module) => ({ default: module.NotesPage })));
 
 function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -81,6 +86,9 @@ export function App() {
           </Route>
           <Route element={<MemberGate requireProfile />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/play" element={<Lazy><PlayPage /></Lazy>} />
+            <Route path="/level-test" element={<Lazy><LevelTestPage /></Lazy>} />
+            <Route path="/notes" element={<Lazy><NotesPage /></Lazy>} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

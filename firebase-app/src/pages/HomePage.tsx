@@ -1,30 +1,20 @@
-import { useState } from 'react';
+import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { Mascot } from '@/components/brand/Mascot';
 import { SiteHeader } from '@/components/layout/SiteHeader';
-import { startAsGuest } from '@/lib/auth/actions';
-import { authErrorMessage } from '@/lib/auth/messages';
+
+const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
+const secondary = { borderColor: 'var(--line)' };
 
 /**
- * 1단계 메인 — 로그인 상태가 보이는지만 확인하는 자리다. 게임 화면은 4단계.
+ * 메인 — 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트.
+ * 로그인하지 않았어도 "게임 시작"이면 비회원으로 바로 들어간다(첫 투구까지 한 번).
  */
 export function HomePage() {
   const { user, isGuest, profile } = useAuth();
+  const member = !!user && !isGuest;
   const nickname = profile.status === 'ready' ? profile.data.nickname : null;
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function guest() {
-    setPending(true);
-    setError(null);
-    try {
-      await startAsGuest();
-    } catch (caught) {
-      setError(authErrorMessage(caught));
-    } finally {
-      setPending(false);
-    }
-  }
+  const levelTestPending = member && profile.status === 'ready' && !profile.data.levelTestDone;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-4">
@@ -35,33 +25,33 @@ export function HomePage() {
 
         {user === undefined ? (
           <p className="text-sm text-ink-2">불러오는 중…</p>
-        ) : user && !isGuest ? (
-          <p className="text-sm text-ink-2" role="status">
-            {nickname ? `${nickname} 선수, 반가워요!` : `${user.email ?? '회원'} 계정으로 로그인했어요.`} 게임은 곧 열려요.
-          </p>
-        ) : isGuest ? (
-          <p className="text-sm text-ink-2" role="status">
-            비회원으로 플레이 중이에요. 가입하면 지금까지의 기록이 그대로 회원 기록이 돼요.
-          </p>
         ) : (
           <>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => void guest()}
-              className="squishy font-cute min-h-14 px-8 text-2xl disabled:opacity-60"
-              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
-            >
-              비회원으로 시작
-            </button>
-            <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 나중에 가입하면 기록이 이어져요.</p>
+            <p className="text-sm text-ink-2 break-keep" role="status">
+              {member
+                ? `${nickname ?? '회원'} 선수, 반가워요!`
+                : isGuest
+                  ? '비회원으로 플레이 중이에요. 가입하면 지금까지의 기록이 그대로 회원 기록이 돼요.'
+                  : '문제는 투구, 빨리 맞히면 홈런! 3아웃이면 1이닝이 끝나요.'}
+            </p>
+            <div className="flex w-full max-w-sm flex-col gap-2">
+              <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
+                게임 시작 <span aria-hidden="true">▶</span>
+              </Link>
+              {levelTestPending && (
+                <Link to="/level-test" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                  레벨 테스트로 처음 등급 정하기
+                </Link>
+              )}
+              {user && (
+                <Link to="/notes" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                  오답노트
+                </Link>
+              )}
+            </div>
+            {!user && <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 비회원은 하루 2판이에요.</p>}
+            <p className="text-xs text-ink-2">점수는 기기에서 채점하는 비공식 기록이에요.</p>
           </>
-        )}
-
-        {error && (
-          <p role="alert" className="text-sm" style={{ color: 'var(--out)' }}>
-            {error}
-          </p>
         )}
       </main>
     </div>

@@ -67,6 +67,47 @@ export async function readDoc(path: string): Promise<Record<string, unknown> | n
   return body.fields ?? {};
 }
 
+/** 컬렉션의 문서 ID 목록(관리자 읽기) */
+export async function listDocs(path: string): Promise<{ id: string; fields: Record<string, unknown> }[]> {
+  const encoded = path.split('/').map(encodeURIComponent).join('/');
+  const response = await fetch(
+    `${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents/${encoded}?pageSize=300`,
+    { headers: { Authorization: 'Bearer owner' } },
+  );
+  const body = (await response.json()) as { documents?: { name: string; fields?: Record<string, unknown> }[] };
+  return (body.documents ?? []).map((document) => ({
+    id: document.name.split('/').pop()!,
+    fields: document.fields ?? {},
+  }));
+}
+
+/** 관리자 권한으로 문서 필드를 고친다(복습 시각을 과거로 미는 등). 규칙을 건너뛴다. */
+export async function patchDoc(path: string, fields: Record<string, unknown>): Promise<void> {
+  const encoded = path.split('/').map(encodeURIComponent).join('/');
+  const mask = Object.keys(fields).map((key) => `updateMask.fieldPaths=${key}`).join('&');
+  await fetch(`${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents/${encoded}?${mask}`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+}
+
+/** 새로 생긴 비회원(익명) 계정 — 이메일 없는 계정 중 before에 없던 것 */
+export async function newGuestUid(before: EmulatorUser[]): Promise<string | undefined> {
+  const known = new Set(before.map((user) => user.localId));
+  return (await accounts()).find((user) => !user.email && !known.has(user.localId))?.localId;
+}
+
+/**
+ * 비회원으로 들어간다 — 메인에는 따로 버튼이 없고, "게임 시작"(/play)이 익명 로그인을 한다.
+ * 경기 화면이 뜨면 메인으로 돌아와 머리줄의 비회원 표시를 확인한다.
+ */
+export async function becomeGuest(page: Page): Promise<void> {
+  await page.goto('/play');
+  await page.getByRole('link', { name: '◀ 나가기' }).click();
+  await expect(page.getByText('비회원으로 플레이 중', { exact: true })).toBeVisible({ timeout: 15_000 });
+}
+
 export const uniqueEmail = () =>
   `fb-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.test`;
 

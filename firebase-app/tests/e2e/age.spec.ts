@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { accounts, clearEmulators, hasFirestore, readDoc, signUp, uniqueEmail } from './helpers';
+import { accounts, becomeGuest, clearEmulators, hasFirestore, readDoc, signUp, uniqueEmail } from './helpers';
 
 /**
  * 만 14세 확인 (1단계) — Firestore 에뮬레이터에 실제로 저장되는지까지 본다.
@@ -47,9 +47,7 @@ test('확인한 회원에게는 다시 묻지 않는다', async ({ page }) => {
 });
 
 test('비회원에서 가입한 회원도 확인을 거친다', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: '비회원으로 시작' }).click();
-  await expect(page.getByText('비회원으로 플레이 중', { exact: true })).toBeVisible();
+  await becomeGuest(page);
 
   await signUp(page, uniqueEmail());
   await expect(page).toHaveURL(/\/welcome\/age/, { timeout: 15_000 });

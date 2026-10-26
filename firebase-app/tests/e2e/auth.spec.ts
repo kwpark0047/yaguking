@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { accounts, clearEmulators, passAgeCheckIfAsked, signUp, uniqueEmail } from './helpers';
+import { accounts, becomeGuest, clearEmulators, passAgeCheckIfAsked, signUp, uniqueEmail } from './helpers';
 
 /**
  * 1단계 로그인 — Auth 에뮬레이터로 실제 흐름을 돈다(이메일·비밀번호 / 구글 / 익명).
@@ -13,17 +13,13 @@ test.beforeAll(async () => {
   await clearEmulators();
 });
 
-test('비회원으로 시작하면 머리줄에 비회원 표시가 뜬다', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: '비회원으로 시작' }).click();
-  await expect(page.getByText('비회원으로 플레이 중', { exact: true })).toBeVisible();
+test('게임 시작으로 들어온 비회원은 머리줄에 비회원 표시가 뜬다', async ({ page }) => {
+  await becomeGuest(page);
   await expect(page.getByRole('link', { name: '가입하기' })).toBeVisible();
 });
 
 test('비회원이 가입하면 같은 계정에 연결된다 — 기록이 이어진다', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: '비회원으로 시작' }).click();
-  await expect(page.getByText('비회원으로 플레이 중', { exact: true })).toBeVisible();
+  await becomeGuest(page);
   const before = await accounts();
 
   await page.getByRole('link', { name: '가입하기' }).click();

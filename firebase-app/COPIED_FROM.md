@@ -13,6 +13,7 @@
 | `src/lib/design/contrast.ts` | 같음 | 없음 |
 | `src/app/globals.css` | `src/app/globals.css` | 없음. `--font-cute` 글꼴은 1단계에서 연결(지금은 시스템 글꼴로 대체) |
 | `src/components/brand/Mascot.tsx` | 같음 | 없음 |
+| `src/components/game/BaseDiamond.tsx`, `ScoreBoard.tsx`, `BoxScore.tsx`(원본 `components/result/BoxScore.tsx`) (4단계) | 같음 | `ScoreBoard`: `ScoreboardDto` 형을 파일 안으로 옮김 |
 | `src/lib/auth/returnTo.ts`, `tests/unit/auth/returnTo.test.ts` (1단계) | 같음 | 없음 |
 | `tests/unit/engine`, `game`, `design`, `achievements/rules`, `theme/{color,palette,stylePreference,styles}` | 같음 | `palette.test.ts`: 구단 목록을 `supabase/seed.sql` 대신 `src/content/teams.ts`에서 읽음 |
 
