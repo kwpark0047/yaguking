@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { continueWithGoogle, signInWithEmail, signUpWithEmail } from '@/lib/auth/actions';
-import { authErrorMessage, passwordProblem } from '@/lib/auth/messages';
+import { authErrorMessage, emailProblem, passwordProblem, PASSWORD_MIN_LENGTH } from '@/lib/auth/messages';
 import { sanitizeReturnTo } from '@/lib/auth/returnTo';
 
 type Mode = 'login' | 'signup';
+type Field = 'email' | 'password' | 'confirm';
 
 const inputStyle = { borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' };
+/** 문제가 있는 칸은 테두리를 경고색으로(색만이 아니라 aria-invalid·문구로도 알린다) */
+const invalidStyle = { borderColor: 'var(--out)', backgroundColor: 'var(--bg-card)' };
 
 /**
  * 로그인·가입 (Firebase판). 이메일·비밀번호와 구글.
@@ -26,7 +29,9 @@ export function AuthPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [problemField, setProblemField] = useState<Field | null>(null);
   const [pending, setPending] = useState(false);
+  const fields = { email: useRef<HTMLInputElement>(null), password: useRef<HTMLInputElement>(null), confirm: useRef<HTMLInputElement>(null) };
 
   const signup = mode === 'signup';
   const other = `/auth?mode=${signup ? 'login' : 'signup'}&returnTo=${encodeURIComponent(returnTo)}`;
@@ -45,19 +50,33 @@ export function AuthPage() {
     }
   }
 
+  /** 칸 하나의 문제를 알리고 그 칸으로 초점을 옮긴다(무엇을 고칠지 바로 보이게) */
+  function flag(field: Field, message: string) {
+    setError(message);
+    setProblemField(field);
+    fields[field].current?.focus();
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
+    setProblemField(null);
+    const badEmail = emailProblem(email);
+    if (badEmail) return flag('email', badEmail);
     if (signup) {
       const problem = passwordProblem(password, confirm);
-      if (problem) {
-        setError(problem);
-        return;
-      }
+      if (problem) return flag(password.length < PASSWORD_MIN_LENGTH ? 'password' : 'confirm', problem);
       void run(() => signUpWithEmail(email.trim(), password));
     } else {
+      if (password.length === 0) return flag('password', '비밀번호를 적어 주세요.');
       void run(() => signInWithEmail(email.trim(), password));
     }
   }
+
+  const fieldProps = (field: Field) => ({
+    ref: fields[field],
+    'aria-invalid': problemField === field || undefined,
+    style: problemField === field ? invalidStyle : inputStyle,
+  });
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-4 py-8">
@@ -71,13 +90,22 @@ export function AuthPage() {
           : '로그인하고 이어서 기록을 쌓아요.'}
       </p>
 
-      {isGuest && (
-        <p className="sticker p-3 text-sm break-keep" role="note">
-          {signup
-            ? '지금 비회원으로 쌓은 기록이 가입한 계정으로 그대로 이어져요.'
-            : '기존 계정으로 로그인하면 지금 비회원으로 쌓은 기록은 따라가지 않아요. 기록을 이어 가려면 새로 가입해 주세요.'}
-        </p>
-      )}
+      {isGuest &&
+        (signup ? (
+          // 가입의 가장 큰 이유라 강조한다: 강조색 바탕 + 그 위 글자색(모든 구단 테마에서 4.5:1 — 테마 테스트)
+          <p
+            className="sticker flex items-start gap-2 p-4 text-base font-semibold break-keep"
+            role="note"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)', borderColor: 'var(--accent-ink)' }}
+          >
+            <span aria-hidden="true">⚾</span>
+            지금 비회원으로 쌓은 기록이 가입한 계정으로 그대로 이어져요.
+          </p>
+        ) : (
+          <p className="sticker p-3 text-sm break-keep" role="note">
+            기존 계정으로 로그인하면 지금 비회원으로 쌓은 기록은 따라가지 않아요. 기록을 이어 가려면 새로 가입해 주세요.
+          </p>
+        ))}
 
       {error && (
         <p role="alert" className="text-sm" style={{ color: 'var(--out)' }}>
@@ -95,24 +123,33 @@ export function AuthPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className="min-h-12 rounded-option border px-3 text-base"
-            style={inputStyle}
+            {...fieldProps('email')}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          비밀번호
-          <input
-            type="password"
-            autoComplete={signup ? 'new-password' : 'current-password'}
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="min-h-12 rounded-option border px-3 text-base"
-            style={inputStyle}
-          />
-        </label>
+        <div className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 text-sm">
+            비밀번호
+            <input
+              type="password"
+              autoComplete={signup ? 'new-password' : 'current-password'}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              aria-describedby={signup ? 'password-hint' : undefined}
+              className="min-h-12 rounded-option border px-3 text-base"
+              {...fieldProps('password')}
+            />
+          </label>
+          {signup && (
+            // 규칙은 첫 비밀번호 칸에 둔다(전에는 확인 칸에만 있어 짧게 적고 막히는 일이 있었다). 글자 수를 바로 보여 준다
+            <p id="password-hint" className="num-tabular text-xs text-ink-2">
+              {PASSWORD_MIN_LENGTH}자 이상 · 지금 {password.length}자{password.length >= PASSWORD_MIN_LENGTH ? ' ✓' : ''}
+            </p>
+          )}
+        </div>
         {signup && (
           <label className="flex flex-col gap-1 text-sm">
-            비밀번호 확인 (8자 이상)
+            비밀번호 확인
             <input
               type="password"
               autoComplete="new-password"
@@ -120,7 +157,7 @@ export function AuthPage() {
               value={confirm}
               onChange={(event) => setConfirm(event.target.value)}
               className="min-h-12 rounded-option border px-3 text-base"
-              style={inputStyle}
+              {...fieldProps('confirm')}
             />
           </label>
         )}

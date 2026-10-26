@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { needsAgeCheck, needsProfileSetup, type ProfileData } from '@/lib/auth/gate';
-import { authErrorMessage, passwordProblem } from '@/lib/auth/messages';
+import { authErrorMessage, emailProblem, passwordProblem } from '@/lib/auth/messages';
 
 const data = (overrides: Partial<ProfileData> = {}): ProfileData => ({
   nickname: null,
@@ -86,5 +86,14 @@ describe('가입 비밀번호', () => {
 
   it('규칙을 지키면 통과한다', () => {
     expect(passwordProblem('long-enough', 'long-enough')).toBeNull();
+  });
+});
+
+describe('이메일 칸 점검', () => {
+  it('비었거나 형식이 틀리면 알려 준다(비밀번호보다 먼저)', () => {
+    expect(emailProblem('  ')).toBe('이메일을 적어 주세요.');
+    expect(emailProblem('name')).toMatch(/이메일 주소를 확인/);
+    expect(emailProblem('name@example')).toMatch(/이메일 주소를 확인/);
+    expect(emailProblem(' name@example.com ')).toBeNull();
   });
 });

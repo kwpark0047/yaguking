@@ -116,3 +116,41 @@ test('처리방침: 시행본(2026-10-27)과 14개 항목, 이용약관은 확�
   await page.getByRole('link', { name: '이용약관 보기' }).click();
   await expect(page.getByText('확정 전', { exact: true })).toBeVisible();
 });
+
+test('가입 칸 안내: 이메일부터 짚고 그 칸으로 초점, 첫 비밀번호 칸에 8자 규칙과 글자 수', async ({ page }) => {
+  await page.goto('/auth?mode=signup');
+  await page.getByRole('button', { name: '이메일로 가입하기' }).click();
+  await expect(page.getByRole('alert')).toHaveText('이메일을 적어 주세요.');
+  const email = page.getByLabel('이메일');
+  await expect(email).toBeFocused();
+  await expect(email).toHaveAttribute('aria-invalid', 'true');
+
+  await email.fill('someone@example.test');
+  const password = page.getByLabel('비밀번호', { exact: true });
+  await password.fill('short');
+  await expect(page.getByText('8자 이상 · 지금 5자')).toBeVisible();
+  await page.getByRole('button', { name: '이메일로 가입하기' }).click();
+  await expect(page.getByRole('alert')).toHaveText(/8자/);
+  await expect(password).toBeFocused();
+  await expect(password).toHaveAttribute('aria-describedby', 'password-hint');
+
+  await password.fill('long-enough-1');
+  await expect(page.getByText('8자 이상 · 지금 13자 ✓')).toBeVisible();
+  await expect(page.getByLabel('비밀번호 확인')).toBeVisible();
+});
+
+test('비회원 가입 안내 카드: 강조색 바탕으로 눈에 띄고, 접근성 위반 없음', async ({ page }) => {
+  await becomeGuest(page);
+  await page.goto('/auth?mode=signup');
+  const card = page.getByRole('note').filter({ hasText: '그대로 이어져요' });
+  await expect(card).toBeVisible();
+  const colors = await card.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, weight: style.fontWeight };
+  });
+  expect(colors.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(Number(colors.weight)).toBeGreaterThanOrEqual(600);
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+  expect(blocking.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+});

@@ -34,6 +34,17 @@ export function authErrorMessage(error: unknown): string {
 /** 가입 비밀번호 규칙. Firebase 기본(6자)보다 길게 받는다. */
 export const PASSWORD_MIN_LENGTH = 8;
 
+/**
+ * 이메일 칸 점검(가입·로그인 공통). 서버에 보내기 전에 빈칸·형식만 본다 — 비어 있으면 비밀번호보다
+ * 먼저 알려야, "비밀번호 8자" 문구만 보고 무엇을 고칠지 헤매지 않는다.
+ */
+export function emailProblem(email: string): string | null {
+  const value = email.trim();
+  if (value.length === 0) return '이메일을 적어 주세요.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return '이메일 주소를 확인해 주세요. 예: name@example.com';
+  return null;
+}
+
 export function passwordProblem(password: string, confirm: string): string | null {
   if (password.length < PASSWORD_MIN_LENGTH) return '비밀번호는 8자 이상으로 정해 주세요.';
   if (password !== confirm) return '비밀번호 확인이 일치하지 않아요.';
