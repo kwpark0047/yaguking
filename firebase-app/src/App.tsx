@@ -1,23 +1,66 @@
-import { Mascot } from '@/components/brand/Mascot';
-import { usingEmulators } from '@/lib/env';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
+import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { needsAgeCheck } from '@/lib/auth/gate';
+import { AuthPage } from '@/pages/AuthPage';
+import { HomePage } from '@/pages/HomePage';
+import { LegalPage } from '@/pages/LegalPage';
+import { ResetPage } from '@/pages/ResetPage';
 
 /**
- * 0단계 자리 화면. 1단계부터 로그인·온보딩·퀴즈 화면이 들어온다.
- * 테마 토큰(globals.css)과 캐릭터가 기존 앱과 같게 보이는지만 확인한다.
+ * 만 14세 확인이 필요한 회원을 확인 화면으로 보낸다(어느 화면에 있든).
+ * 화면 안내일 뿐이고, 실제로 막는 것은 Firestore 보안 규칙이다.
  */
+function AgeGate() {
+  const { user, profile } = useAuth();
+  const location = useLocation();
+  if (user && needsAgeCheck(user, profile)) {
+    const returnTo = `${location.pathname}${location.search}`;
+    return <Navigate to={`/welcome/age?returnTo=${encodeURIComponent(returnTo)}`} replace />;
+  }
+  return <Outlet />;
+}
+
+// 만 14세 확인 화면은 Firestore를 쓰므로 들어갈 때 불러온다.
+const AgeCheckPage = lazy(() =>
+  import('@/pages/AgeCheckPage').then((module) => ({ default: module.AgeCheckPage })),
+);
+
+function NotFound() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-4 text-center">
+      <h1 className="font-cute text-3xl">찾는 화면이 없어요</h1>
+      <Link to="/" className="flex min-h-11 items-center justify-center underline">
+        메인으로
+      </Link>
+    </main>
+  );
+}
+
 export function App() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
-      <Mascot className="h-40 w-40" />
-      <h1 className="font-cute text-4xl">야구왕</h1>
-      <p className="text-sm text-ink-2 break-keep">
-        Firebase 무료 플랜판을 준비하고 있어요. 로그인·퀴즈·친구 대결은 다음 단계에서 열려요.
-      </p>
-      {usingEmulators && (
-        <p className="rounded-full px-3 py-1 text-xs" style={{ backgroundColor: 'var(--bg-card)' }}>
-          로컬 에뮬레이터 모드
-        </p>
-      )}
-    </main>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* 로그인·확인·약관 화면은 확인 게이트 밖에 둔다(돌아올 길이 막히지 않게) */}
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/reset" element={<ResetPage />} />
+          <Route
+            path="/welcome/age"
+            element={
+              <Suspense fallback={null}>
+                <AgeCheckPage />
+              </Suspense>
+            }
+          />
+          <Route path="/terms" element={<LegalPage kind="terms" />} />
+          <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+          <Route element={<AgeGate />}>
+            <Route path="/" element={<HomePage />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

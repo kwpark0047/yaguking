@@ -1,0 +1,8 @@
+/*
+ * 제목용 둥근 글꼴(Jua, SIL OFL) — @fontsource로 **자체 호스팅**한다.
+ * 방문자 브라우저가 Google 글꼴 서버에 요청하지 않는다. 한글은 글자 범위별로
+ * 쪼개져 있어 쓰인 글자만 내려받는다. 기존 앱(next/font)의 --font-cute와 같은 자리.
+ */
+:root {
+  --font-cute: 'Jua';
+}

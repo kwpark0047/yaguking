@@ -18,6 +18,9 @@ npm run dev          # http://localhost:5173 (기본: 로컬 에뮬레이터 모
 npm test             # 단위 테스트
 npm run build        # 정적 사이트 → dist/
 npm run emulators    # Auth·Firestore·Hosting 에뮬레이터 (JDK 21 필요 — 아직 이 PC에 없음)
+npm run emulators:auth  # Auth 에뮬레이터만 (Java 없이 돈다)
+npm run test:e2e     # Playwright — Auth 에뮬레이터와 개발 서버를 스스로 띄운다
+npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
 ```
 
 프로젝트 ID는 `demo-yaguking`이다. `demo-`로 시작하는 ID는 에뮬레이터 전용이라 실제 Firebase에
@@ -29,7 +32,7 @@ npm run emulators    # Auth·Firestore·Hosting 에뮬레이터 (JDK 21 필요 �
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | 0 | 골격, Firebase 설정, 기존 순수 코드 복사 | 완료 |
-| 1 | 로그인(이메일·비밀번호 / 구글 / 익명), 만 14세 확인 | |
+| 1 | 로그인(이메일·비밀번호 / 구글 / 익명), 만 14세 확인 | 완료 — Firestore 부분은 JDK 설치 후 검증 |
 | 2 | 데이터 구조, 보안 규칙 + 에뮬레이터 테스트 | |
 | 3 | 프로필: 닉네임, 최애 구단 TOP3, 최애 선수 | |
 | 4 | 레벨 테스트, 개인 퀴즈, 오답노트 | |
@@ -40,3 +43,20 @@ npm run emulators    # Auth·Firestore·Hosting 에뮬레이터 (JDK 21 필요 �
 | 9 | 문서 갱신, 검증 보고서 | |
 
 복사해 온 코드는 `COPIED_FROM.md`에 적었다.
+
+## 1단계 — 로그인 (2026-10-26)
+
+- **이메일·비밀번호 / 구글 / 익명(비회원)**. 이메일 링크 로그인은 Spark에서 하루 5통이라 쓰지 않는다
+- **비회원 → 가입은 계정 연결**(`linkWithCredential`·`linkWithPopup`): uid가 그대로라 비회원 기록이
+  자동으로 회원 기록이 된다. 기존 앱의 서버 "기록 승계"를 대신한다. 비회원이 **기존 계정으로 로그인**하면
+  그 계정으로 바뀌므로 비회원 기록은 따라가지 않는다 — 화면이 미리 알린다
+- **만 14세 확인**: 회원은 `users/{uid}`(확인 시각=서버 시각)를 만들 때까지 `/welcome/age`에 머문다.
+  화면은 안내일 뿐이고 **막는 것은 `firestore.rules`**(`ageConfirmed()` — 2단계부터 모든 회원 기록 규칙이 요구)
+- 미만이라고 답하면 프로필과 계정을 지운다. 비회원에서 가입한 계정이면 그 비회원 기록도 함께 지워진다
+- 비밀번호 재설정 메일(하루 150통). 없는 이메일이어도 같은 안내 — 가입 여부를 캐낼 수 없게
+- 로그인 실패 문구는 "없는 계정"과 "틀린 비밀번호"를 구분하지 않는다
+- 제목 글꼴 Jua는 `@fontsource/jua`로 자체 호스팅(구글 글꼴 서버에 요청하지 않음)
+
+**검증**: 단위 500개(+규칙 9개는 Firestore 에뮬레이터가 없어 건너뜀), E2E 22개(Auth 에뮬레이터 —
+가입·로그인·로그아웃·구글·비회원 연결·오류 문구·접근성). **Firestore가 필요한 부분(나이 확인 저장,
+보안 규칙)은 JDK 21을 설치한 뒤 `npm run test:rules`와 E2E로 확인해야 한다.**

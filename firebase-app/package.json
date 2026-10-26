@@ -10,15 +10,23 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "emulators": "firebase emulators:start --project demo-yaguking"
+    "emulators": "firebase emulators:start --project demo-yaguking",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-yaguking \"vitest run tests/rules\"",
+    "test:e2e": "playwright test",
+    "emulators:auth": "firebase emulators:start --only auth --project demo-yaguking"
   },
   "dependencies": {
+    "@fontsource/jua": "5.3.0",
     "firebase": "13.1.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-router": "8.5.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@firebase/rules-unit-testing": "6.0.0",
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.6.5",
     "@types/react": "19.3.0",
