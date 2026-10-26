@@ -60,16 +60,16 @@ export function buildLevelTest(bank: readonly Question[], random: () => number =
 }
 
 /**
- * 맞힌 수 → 등급 1~7(육성선수 … 명예의 전당). 20문항 기준 구간:
- * 0~5 → 1, 6~8 → 2, 9~11 → 3, 12~14 → 4, 15~16 → 5, 17~18 → 6, 19~20 → 7
+ * 맞힌 수 → 처음 등급 1~5 (01 PRD §6, 03 §4): 0~5 → 1, 6~9 → 2, 10~13 → 3, 14~17 → 4, 18~20 → 5.
+ * 정답 **수**만 본다(비율이 아니다). 처음 테스트로는 Lv5(골든글러브)까지만 — Lv6·7은 2차 승급 시험.
+ * firestore.rules의 validLevelTest()가 같은 구간으로 등급과 맞힌 수가 맞는지 검사한다.
  */
-export function tierFor(correct: number, total: number = LEVEL_TEST_SIZE): number {
-  const rate = total > 0 ? correct / total : 0;
-  if (rate >= 0.95) return 7;
-  if (rate >= 0.85) return 6;
-  if (rate >= 0.75) return 5;
-  if (rate >= 0.6) return 4;
-  if (rate >= 0.45) return 3;
-  if (rate >= 0.3) return 2;
+export const PLACEMENT_MAX_TIER = 5;
+
+export function tierFor(correct: number): number {
+  if (correct >= 18) return 5;
+  if (correct >= 14) return 4;
+  if (correct >= 10) return 3;
+  if (correct >= 6) return 2;
   return 1;
 }

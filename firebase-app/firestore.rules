@@ -128,6 +128,12 @@ service cloud.firestore {
         );
       }
 
+      // 처음 등급 = 맞힌 수 구간(01 PRD §6): 0~5 → 1, 6~9 → 2, 10~13 → 3, 14~17 → 4, 18~ → 5.
+      // src/lib/game/levelTest.ts tierFor()와 같아야 한다. 처음 테스트로는 Lv5까지만.
+      function placementTier(correct) {
+        return correct >= 18 ? 5 : correct >= 14 ? 4 : correct >= 10 ? 3 : correct >= 6 ? 2 : 1;
+      }
+
       // 최초 레벨 테스트 — **한 번만** 남긴다(이미 있으면 바꿀 수 없다). 완료 시각은 서버 시각.
       function validLevelTest() {
         let test = request.resource.data.get('levelTest', null);
@@ -138,7 +144,7 @@ service cloud.firestore {
           && test.completedAt == request.time
           && isNonNegativeInt(test.total, 40) && test.total >= 1
           && isNonNegativeInt(test.correct, 40) && test.correct <= test.total
-          && isNonNegativeInt(test.tier, 7) && test.tier >= 1
+          && test.tier == placementTier(test.correct)
           && test.byCategory is map
         );
       }

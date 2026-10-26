@@ -125,6 +125,21 @@ describe.skipIf(!emulatorHost)('프로필 갱신 규칙', () => {
       await assertFails(update(levelTest({ tier: 0 })));
     });
 
+    it('등급은 맞힌 수 구간과 맞아야 한다(PRD) — 처음 테스트로 Lv6·7은 없다', async () => {
+      await assertFails(update(levelTest({ correct: 20, tier: 7 })));
+      await assertFails(update(levelTest({ correct: 20, tier: 6 })));
+      await assertFails(update(levelTest({ correct: 17, tier: 5 }))); // 17개는 Lv4
+      await assertFails(update(levelTest({ correct: 5, tier: 2 }))); // 5개는 Lv1
+    });
+
+    it('구간 경계: 18개 → Lv5', async () => {
+      await assertSucceeds(update(levelTest({ correct: 18, tier: 5 })));
+    });
+
+    it('구간 경계: 6개 → Lv2', async () => {
+      await assertSucceeds(update(levelTest({ correct: 6, tier: 2 })));
+    });
+
     it('완료 시각을 지어낼 수 없다', async () => {
       await assertFails(update(levelTest({ completedAt: Timestamp.fromMillis(0) })));
     });

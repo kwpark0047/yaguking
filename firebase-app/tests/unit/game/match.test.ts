@@ -11,7 +11,8 @@ import {
   startMatch,
   xpOf,
 } from '@/lib/game/match';
-import { LEVEL_TEST_SIZE, buildLevelTest, tierFor } from '@/lib/game/levelTest';
+import { LEVEL_TEST_SIZE, PLACEMENT_MAX_TIER, buildLevelTest, tierFor } from '@/lib/game/levelTest';
+import { tierTheme } from '@/lib/theme/tiers';
 import { REVIEW_DAYS, dueNotes, noteAfterReviewCorrect, noteAfterWrong } from '@/lib/game/review';
 
 const bank = questions as Question[];
@@ -99,10 +100,13 @@ describe('레벨 테스트', () => {
     }
   });
 
-  it('맞힌 수 → 등급 1~7 구간', () => {
-    expect([0, 5, 6, 8, 9, 11, 12, 14, 15, 16, 17, 18, 19, 20].map((n) => tierFor(n))).toEqual([
-      1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7,
-    ]);
+  it('맞힌 수 → 처음 등급 1~5 (PRD: 0~5·6~9·10~13·14~17·18~20)', () => {
+    expect([0, 5, 6, 9, 10, 13, 14, 17, 18, 19, 20].map((n) => tierFor(n))).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5]);
+  });
+
+  it('처음 테스트로는 Lv5(골든글러브)까지만 — 비율이 아니라 정답 수', () => {
+    expect(Math.max(...Array.from({ length: LEVEL_TEST_SIZE + 1 }, (_, n) => tierFor(n)))).toBe(PLACEMENT_MAX_TIER);
+    expect(tierTheme(tierFor(20)).name).toBe('골든글러브');
   });
 });
 

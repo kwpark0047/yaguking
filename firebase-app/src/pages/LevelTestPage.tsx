@@ -78,7 +78,7 @@ export function LevelTestPage() {
         atBats: answers.current,
         runs: 0,
         xp: 0,
-        levelTest: { correct, total: answers.current.length, tier: tierFor(correct, answers.current.length), byCategory },
+        levelTest: { correct, total: answers.current.length, tier: tierFor(correct), byCategory },
       });
       await refreshProfile();
       setPhase({ kind: 'done', saveError: null });
@@ -192,7 +192,7 @@ function TierCard({
   saveError: string | null;
   onRetry: () => void;
 }) {
-  const tier = tierTheme(tierFor(correct, total));
+  const tier = tierTheme(tierFor(correct));
 
   return (
     <section className="flex flex-col gap-4" aria-labelledby="tier-title">

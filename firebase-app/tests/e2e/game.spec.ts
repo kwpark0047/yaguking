@@ -118,12 +118,12 @@ test('회원: 레벨 테스트 20문제 → 등급 카드, 한 번만', async ({
     await answer(page, index < 19); // 19개 맞히고 1개 틀린다
     await page.getByRole('button', { name: index < 19 ? '다음 문제' : '결과 보기' }).click();
   }
-  await expect(page.getByRole('heading', { name: 'Lv.7 명예의 전당' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Lv.5 골든글러브' })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('20문제 중 19문제 정답')).toBeVisible();
 
   const uid = (await accounts()).find((user) => user.email === email)!.localId;
   const profile = await readDoc(`users/${uid}`);
-  expect(profile).toHaveProperty('levelTest.mapValue.fields.tier.integerValue', '7');
+  expect(profile).toHaveProperty('levelTest.mapValue.fields.tier.integerValue', '5');
 
   await page.goto('/');
   await expect(page.getByRole('link', { name: /레벨 테스트/ })).toHaveCount(0);
