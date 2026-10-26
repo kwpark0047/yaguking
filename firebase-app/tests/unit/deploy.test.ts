@@ -88,6 +88,17 @@ describe('Hosting 설정(firebase.json)', () => {
     hosting: { predeploy: string[]; headers: { source: string; headers: { key: string; value: string }[] }[]; ignore: string[] };
   };
 
+  it('화면 주소만 index.html로 — 점이 든 주소(없는 묶음 파일 등)는 404', () => {
+    // "**" 하나로 다 받으면 없는 /assets/x.js에도 index.html을 1년 캐시로 돌려줬다(첫 배포 뒤 발견).
+    // 확인: Hosting 에뮬레이터·미리보기에서 /play 200, /assets/없는파일.js 404
+    const rewrites = (config.hosting as unknown as { rewrites: { source?: string; destination: string }[] }).rewrites;
+    expect(rewrites).toEqual([{ source: '**/!(*.*)', destination: '/index.html' }]);
+    const app = readFileSync(join(__dirname, '../../src/App.tsx'), 'utf8');
+    const routes = [...app.matchAll(/path="([^"]+)"/g)].map((match) => match[1]!);
+    expect(routes.length).toBeGreaterThan(5);
+    for (const route of routes) expect(route, `화면 주소에 점이 있으면 404가 난다: ${route}`).not.toContain('.');
+  });
+
   it('배포 직전에 점검이 자동으로 돈다', () => {
     expect(config.hosting.predeploy).toEqual(['node scripts/predeploy-check.mjs']);
     expect(config.hosting.ignore).toContain('**/*.map');

@@ -4,7 +4,7 @@
     "predeploy": ["node scripts/predeploy-check.mjs"],
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/*.map"],
     "trailingSlash": false,
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "rewrites": [{ "source": "**/!(*.*)", "destination": "/index.html" }],
     "headers": [
       {
         "source": "**",
