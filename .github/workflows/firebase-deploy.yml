@@ -1,0 +1,74 @@
+name: Firebase판 배포 (꺼짐)
+
+# ── 꺼진 상태다 ────────────────────────────────────────────────────────────────
+# 1) 자동으로 돌지 않는다: push·예약 트리거가 없고 손으로 누를 때(workflow_dispatch)만 돈다
+# 2) 눌러도 건너뛴다: 저장소 변수 FIREBASE_DEPLOY_ENABLED가 'true'일 때만 작업이 돈다(기본 없음)
+# 3) 켜도 승인을 받는다: production 환경에 "필수 검토자"를 두면 사람이 승인해야 진행한다
+# 켜는 법·필요한 설정은 firebase-app/docs/deploy.md. **실제 배포는 사용자 승인 뒤에만.**
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'preview = 7일짜리 미리보기 주소, live = 실제 사이트'
+        type: choice
+        options: [preview, live]
+        default: preview
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation(키 파일 없이 Google 인증)
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: firebase-app
+
+jobs:
+  deploy:
+    if: vars.FIREBASE_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.target == 'live' && 'production' || 'preview' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase-app/package-lock.json
+      - run: npm ci
+      # 배포 전 검사 — 하나라도 실패하면 배포하지 않는다
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:rules
+      # 웹 앱 설정값(비밀 아님)은 저장소 변수에서. 빌드는 firebase.json predeploy가 한다
+      - name: 운영 설정 파일
+        run: |
+          cat > .env.production.local <<EOF
+          VITE_FIREBASE_API_KEY=${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN=${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID=${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_USE_EMULATORS=false
+          EOF
+      # 미리보기 배포는 predeploy 훅을 건너뛸 수 있어 점검을 직접 한 번 더 돈다(운영 빌드 + 결과물 검사)
+      - run: npm run deploy:check
+        env:
+          GCLOUD_PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - name: 미리보기 배포(7일)
+        if: inputs.target == 'preview'
+        run: npx firebase hosting:channel:deploy "preview-${{ github.run_number }}" --expires 7d --project "${{ vars.FIREBASE_PROJECT_ID }}"
+      - name: 실제 배포(Hosting + 보안 규칙·색인)
+        if: inputs.target == 'live'
+        run: npx firebase deploy --only hosting,firestore --project "${{ vars.FIREBASE_PROJECT_ID }}" --message "${{ github.sha }}"

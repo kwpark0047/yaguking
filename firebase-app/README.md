@@ -22,6 +22,8 @@ npm run emulators:auth  # Auth 에뮬레이터만 (Java 없이 돈다)
 npm run test:e2e     # Playwright — Auth 에뮬레이터와 개발 서버를 스스로 띄운다
 npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
 npm run content:build  # 문제은행 CSV(../data) → src/content/questions.generated.json
+npm run test:ops     # 정리 작업 테스트 (Auth·Firestore 에뮬레이터)
+npm run deploy:check # 배포 전 점검만(운영 빌드 + 결과물 검사, 배포 안 함) — docs/deploy.md
 ```
 
 프로젝트 ID는 `demo-yaguking`이다. `demo-`로 시작하는 ID는 에뮬레이터 전용이라 실제 Firebase에
@@ -40,7 +42,7 @@ npm run content:build  # 문제은행 CSV(../data) → src/content/questions.gen
 | 5 | 비공식 친구 대결(실시간 구독) | 완료 |
 | 6 | 무료 할당량 최적화 | 완료 — `docs/usage-report.md` |
 | 7 | 공식 XP·RP(별도 — 설계만) | 설계 완료 — `docs/official-xp-rp.md` |
-| 8 | Hosting 배포 설정, GitHub 자동 배포(꺼진 상태) | |
+| 8 | Hosting 배포 설정, GitHub 자동 배포(꺼진 상태) | 완료 — `docs/deploy.md`(배포는 안 함) |
 | 9 | 문서 갱신, 검증 보고서 | |
 
 복사해 온 코드는 `COPIED_FROM.md`에 적었다.
@@ -172,3 +174,25 @@ E2E는 문제은행을 직접 읽어 화면의 문제를 일부러 맞히거나 
   (`docs/prototypes/official.rules`, 배포 안 함)으로 에뮬레이터에서 검증 — 규칙 테스트 7개, 검사 줄을 빼면
   실패하는 것까지. 배포 규칙에서 공식 경로가 지금 모두 막혀 있는지도 테스트로 확인(규칙 테스트 56개)
 - 정해야 할 것 6가지(저장소 공개 여부, 공식전 형태, 판정 주기, 배치 XP, 레벨 테스트 기준, RP 시점)는 문서 §10
+
+## 8단계 — Hosting 배포 설정, GitHub 자동 배포(꺼진 상태) (2026-10-26)
+
+**배포는 하지 않았다.** 실제 프로젝트·원격 저장소가 없고, 실제 배포는 사용자 승인 뒤에 한다. 사용자가 할 일은 `docs/deploy.md`.
+
+- **Hosting 설정**(`firebase.json`): 화면은 `no-cache`(새 배포가 바로 보임), 해시 이름 파일은 1년 캐시. 보안 헤더(클릭재킹 막기,
+  권한 정책, 팝업 로그인을 위한 COOP), CSP는 먼저 **보고 전용**으로(미리보기에서 위반이 없으면 강제로), 출시 전까지 `noindex`.
+  소스맵은 올리지 않는다. 같은 헤더는 뒤 규칙이 이기므로 전체(`**`)를 먼저, `/assets/**`를 뒤에(로컬 Hosting 에뮬레이터는
+  사용자 헤더를 붙이지 않아 미리보기에서 `curl -I`로 확인)
+- **배포 직전 자동 점검**(`scripts/predeploy-check.mjs`, `firebase.json` predeploy): `demo-` 프로젝트·빈 설정·다른 프로젝트 설정을
+  거절하고, 운영용으로 다시 빌드한 뒤 에뮬레이터 주소·데모 설정·개인 키·서비스 계정·소스맵·공식 정답이 섞였으면 배포를 멈춘다
+- **정리 작업**(`ops/cleanup.mjs`): 24시간 지난 대결 방과 자리, 주인 없는 자리, 30일 쓰지 않은 비회원 계정·기록(기존 처리방침
+  기준). 기본은 미리 보기, 한 번에 최대 5,000문서(무료 삭제 한도), 기록을 지운 뒤 계정을 지운다. 회원은 건드리지 않는다
+- **GitHub**(저장소 루트 `.github/workflows/`): `firebase-app-ci.yml`은 검사만(타입·단위·빌드·규칙·정리·E2E).
+  `firebase-deploy.yml`·`firebase-cleanup.yml`은 **꺼짐** — 손으로만 돌고, 저장소 변수(`FIREBASE_DEPLOY_ENABLED`·
+  `FIREBASE_CLEANUP_ENABLED`)가 없으면 건너뛰며, 실제 배포는 production 환경 승인을 거친다. 인증은 키 파일 없는 WIF
+- 의존성: `firebase-admin`(정리 작업용, 앱 묶음에 안 들어감), `cross-env`를 개발 의존성으로 고정
+
+**검증**: 단위 559(배포 점검 — 데모·빈 설정·다른 프로젝트 거절, 에뮬레이터 빌드·비밀·소스맵 거절, Hosting 헤더 순서,
+**배포·정리 워크플로가 꺼져 있는지**), 정리 작업 7(에뮬레이터에서 실제로 지움: 미리 보기는 안 지움, 24시간 방·주인 없는 자리,
+30일 비회원 계정·기록 삭제와 회원 보존, 상한에서 멈춤), 규칙 59, E2E 68, 빌드. 점검 스크립트를 실제로 돌려 데모 프로젝트는
+거절, 운영 빌드는 통과, 에뮬레이터 빌드는 거절되는 것을 확인. 정리 CLI는 에뮬레이터에서 실제 프로젝트 ID를 거절.

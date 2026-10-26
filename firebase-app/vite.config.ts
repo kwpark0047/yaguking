@@ -26,6 +26,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     // 규칙 테스트는 Firestore 에뮬레이터가 있을 때만 돈다(없으면 건너뜀) — npm run test:rules
-    include: ['tests/unit/**/*.test.ts', 'tests/rules/**/*.test.ts'],
+    include: ['tests/unit/**/*.test.ts', 'tests/rules/**/*.test.ts', 'tests/ops/**/*.test.ts'],
   },
 });

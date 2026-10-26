@@ -17,7 +17,10 @@
     "content:build": "node scripts/build-questions.mjs",
     "font:subset": "node scripts/subset-font.mjs",
     "usage:measure": "cross-env USAGE_REPORT=docs/usage-measured.json playwright test tests/e2e/usage.spec.ts --project=sm-360",
-    "usage:transfer": "npm run build && firebase emulators:exec --only auth,firestore --project demo-yaguking \"node scripts/measure-transfer.mjs\""
+    "usage:transfer": "cross-env VITE_USE_EMULATORS=true npm run build && firebase emulators:exec --only auth,firestore --project demo-yaguking \"node scripts/measure-transfer.mjs\"",
+    "test:ops": "firebase emulators:exec --only auth,firestore --project demo-yaguking \"vitest run tests/ops\"",
+    "deploy:check": "node scripts/predeploy-check.mjs",
+    "ops:cleanup": "node ops/cleanup-cli.mjs"
   },
   "dependencies": {
     "firebase": "13.1.0",
@@ -36,6 +39,8 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "cross-env": "10.1.0",
+    "firebase-admin": "14.5.0",
     "firebase-tools": "15.34.1",
     "subset-font": "2.9.0",
     "tailwindcss": "4.3.3",

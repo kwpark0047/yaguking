@@ -1,0 +1,50 @@
+name: Firebase판 정리 작업 (꺼짐)
+
+# 끝난 대결 방(24시간), 주인 없는 자리, 30일 쓰지 않은 비회원 계정·기록을 지운다
+# (firebase-app/ops/cleanup.mjs). 무료 플랜은 자동 삭제(TTL)가 유료라 직접 지운다.
+#
+# ── 꺼진 상태다 ────────────────────────────────────────────────────────────────
+# - 예약 실행(schedule)은 주석이다. 켜기 전에 손으로 "미리 보기"를 먼저 돌려 본다
+# - 저장소 변수 FIREBASE_CLEANUP_ENABLED가 'true'가 아니면 건너뛴다
+# 켜는 법은 firebase-app/docs/deploy.md §6.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: '실제로 지운다(끄면 지울 것을 세기만 한다)'
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: '30 18 * * *' # 매일 KST 03:30 — 승인 후 주석을 푼다
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firebase-cleanup
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: firebase-app
+
+jobs:
+  cleanup:
+    if: vars.FIREBASE_CLEANUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase-app/package-lock.json
+      - run: npm ci
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.CLEANUP_SERVICE_ACCOUNT }}
+      # 예약 실행은 입력이 없다 → 켜 둔 예약은 실제로 지운다. 손으로 누르면 기본이 미리 보기
+      - run: node ops/cleanup-cli.mjs --project="${{ vars.FIREBASE_PROJECT_ID }}" ${{ (github.event_name == 'schedule' || inputs.apply) && '--apply' || '' }}
