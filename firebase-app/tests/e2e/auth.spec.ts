@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { accounts, clearEmulators, passAgeCheckIfAsked, signUp, uniqueEmail } from './helpers';
 
 /**
  * 1단계 로그인 — Auth 에뮬레이터로 실제 흐름을 돈다(이메일·비밀번호 / 구글 / 익명).
@@ -8,37 +9,8 @@ import { expect, test, type Page } from '@playwright/test';
  * 계정 목록으로 "계정이 새로 생기지 않았다"를 확인한다.
  */
 
-const EMULATOR = 'http://127.0.0.1:9099/emulator/v1/projects/demo-yaguking/accounts';
-
-interface EmulatorUser {
-  localId: string;
-  email?: string;
-  providerUserInfo?: { providerId: string }[];
-}
-
-async function accounts(): Promise<EmulatorUser[]> {
-  // 에뮬레이터 관리 API. 실제 Firebase에는 닿지 않는다.
-  const response = await fetch(`http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-yaguking/accounts:query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
-    body: JSON.stringify({ returnUserInfo: true }),
-  });
-  const body = (await response.json()) as { userInfo?: EmulatorUser[] };
-  return body.userInfo ?? [];
-}
-
-const uniqueEmail = () => `fb-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.test`;
-
-async function signUp(page: Page, email: string, password = 'yaguking-123') {
-  await page.goto('/auth?mode=signup');
-  await page.getByLabel('이메일').fill(email);
-  await page.getByLabel('비밀번호', { exact: true }).fill(password);
-  await page.getByLabel(/비밀번호 확인/).fill(password);
-  await page.getByRole('button', { name: '이메일로 가입하기' }).click();
-}
-
 test.beforeAll(async () => {
-  await fetch(EMULATOR, { method: 'DELETE' });
+  await clearEmulators();
 });
 
 test('비회원으로 시작하면 머리줄에 비회원 표시가 뜬다', async ({ page }) => {
@@ -58,7 +30,7 @@ test('비회원이 가입하면 같은 계정에 연결된다 — 기록이 이�
   await expect(page.getByText(/비회원으로 쌓은 기록이 가입한 계정으로 그대로 이어져요/)).toBeVisible();
   const email = uniqueEmail();
   await signUp(page, email);
-  await expect(page.getByRole('button', { name: '로그아웃' })).toBeVisible({ timeout: 15_000 });
+  await passAgeCheckIfAsked(page);
 
   const after = await accounts();
   // 계정이 새로 생기지 않고, 그 비회원 계정에 이메일이 붙었다.
@@ -85,7 +57,7 @@ test('가입: 비밀번호가 짧거나 확인이 다르면 막는다', async ({
 test('로그인 실패는 이유를 구분하지 않는다, 성공하면 로그아웃까지 된다', async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
-  await expect(page.getByRole('button', { name: '로그아웃' })).toBeVisible({ timeout: 15_000 });
+  await passAgeCheckIfAsked(page);
   await page.getByRole('button', { name: '로그아웃' }).click();
   await expect(page.getByRole('link', { name: '로그인' })).toBeVisible();
 
@@ -109,7 +81,7 @@ test('구글로 계속하기 — 에뮬레이터의 가짜 구글 창으로', as
   await popup.getByText('Add new account').click();
   await popup.getByText('Auto-generate user information').click();
   await popup.getByText('Sign in with Google.com').click();
-  await expect(page.getByRole('button', { name: '로그아웃' })).toBeVisible({ timeout: 15_000 });
+  await passAgeCheckIfAsked(page);
 });
 
 test('비밀번호 재설정은 가입 여부와 상관없이 같은 안내를 한다', async ({ page }) => {

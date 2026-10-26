@@ -1007,9 +1007,14 @@ body {
     transform 120ms ease,
     box-shadow 120ms ease;
 }
+/*
+ * 올라가는 움직임(translateY)은 넣지 않는다. 버튼 아래 가장자리에 포인터가 있으면
+ * 올라가면서 포인터를 벗어나고 → 내려오면 다시 올라가는 떨림이 끝없이 반복됐다
+ * (Firebase판 E2E가 "element is not stable"로 잡았다). 빛만 바꾼다.
+ */
 .squishy:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 7px 0 color-mix(in oklab, var(--accent) 65%, #000);
+  filter: brightness(1.06);
+  box-shadow: 0 6px 0 color-mix(in oklab, var(--accent) 65%, #000);
 }
 .squishy:active {
   transform: translateY(4px);

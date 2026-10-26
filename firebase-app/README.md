@@ -17,7 +17,7 @@ npm install
 npm run dev          # http://localhost:5173 (기본: 로컬 에뮬레이터 모드)
 npm test             # 단위 테스트
 npm run build        # 정적 사이트 → dist/
-npm run emulators    # Auth·Firestore·Hosting 에뮬레이터 (JDK 21 필요 — 아직 이 PC에 없음)
+npm run emulators    # Auth·Firestore·Hosting 에뮬레이터 (JDK 21 필요)
 npm run emulators:auth  # Auth 에뮬레이터만 (Java 없이 돈다)
 npm run test:e2e     # Playwright — Auth 에뮬레이터와 개발 서버를 스스로 띄운다
 npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
@@ -32,7 +32,7 @@ npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | 0 | 골격, Firebase 설정, 기존 순수 코드 복사 | 완료 |
-| 1 | 로그인(이메일·비밀번호 / 구글 / 익명), 만 14세 확인 | 완료 — Firestore 부분은 JDK 설치 후 검증 |
+| 1 | 로그인(이메일·비밀번호 / 구글 / 익명), 만 14세 확인 | 완료 |
 | 2 | 데이터 구조, 보안 규칙 + 에뮬레이터 테스트 | |
 | 3 | 프로필: 닉네임, 최애 구단 TOP3, 최애 선수 | |
 | 4 | 레벨 테스트, 개인 퀴즈, 오답노트 | |
@@ -57,6 +57,9 @@ npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
 - 로그인 실패 문구는 "없는 계정"과 "틀린 비밀번호"를 구분하지 않는다
 - 제목 글꼴 Jua는 `@fontsource/jua`로 자체 호스팅(구글 글꼴 서버에 요청하지 않음)
 
-**검증**: 단위 500개(+규칙 9개는 Firestore 에뮬레이터가 없어 건너뜀), E2E 22개(Auth 에뮬레이터 —
-가입·로그인·로그아웃·구글·비회원 연결·오류 문구·접근성). **Firestore가 필요한 부분(나이 확인 저장,
-보안 규칙)은 JDK 21을 설치한 뒤 `npm run test:rules`와 E2E로 확인해야 한다.**
+**검증** (JDK 21 설치 후, 2026-10-26): 단위 500개, **보안 규칙 9개**(Firestore 에뮬레이터 — 서버 시각 조건을
+지우면 실패하는 것도 확인), **E2E 30개**(Auth + Firestore 에뮬레이터, 360·1280 — 가입·로그인·로그아웃·구글·
+비회원 연결·오류 문구·접근성, 만 14세 확인 저장·재확인 없음·비회원 가입 후 확인·미만 응답 시 계정 삭제).
+
+Java는 `C:Program FilesEclipse Adoptiumjdk-21…`에 설치돼 있다. 설치 전에 열린 터미널은 PATH를 모르므로
+새 터미널을 연다. E2E는 Java가 있으면 Firestore 에뮬레이터까지 스스로 띄운다.
