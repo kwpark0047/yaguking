@@ -23,7 +23,7 @@ describe.skipIf(!emulatorHost)('users/{uid} 보안 규칙', () => {
   beforeAll(async () => {
     const [host, port] = (emulatorHost ?? '127.0.0.1:8080').split(':');
     env = await initializeTestEnvironment({
-      projectId: 'demo-yaguking',
+      projectId: 'demo-yaguking-users',
       firestore: {
         host: host!,
         port: Number(port),

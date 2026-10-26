@@ -21,6 +21,7 @@ npm run emulators    # Auth·Firestore·Hosting 에뮬레이터 (JDK 21 필요)
 npm run emulators:auth  # Auth 에뮬레이터만 (Java 없이 돈다)
 npm run test:e2e     # Playwright — Auth 에뮬레이터와 개발 서버를 스스로 띄운다
 npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
+npm run content:build  # 문제은행 CSV(../data) → src/content/questions.generated.json
 ```
 
 프로젝트 ID는 `demo-yaguking`이다. `demo-`로 시작하는 ID는 에뮬레이터 전용이라 실제 Firebase에
@@ -33,7 +34,7 @@ npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
 |---|---|---|
 | 0 | 골격, Firebase 설정, 기존 순수 코드 복사 | 완료 |
 | 1 | 로그인(이메일·비밀번호 / 구글 / 익명), 만 14세 확인 | 완료 |
-| 2 | 데이터 구조, 보안 규칙 + 에뮬레이터 테스트 | |
+| 2 | 데이터 구조, 보안 규칙 + 에뮬레이터 테스트 | 완료 — `docs/data-model.md` |
 | 3 | 프로필: 닉네임, 최애 구단 TOP3, 최애 선수 | |
 | 4 | 레벨 테스트, 개인 퀴즈, 오답노트 | |
 | 5 | 비공식 친구 대결(실시간 구독) | |
@@ -63,3 +64,18 @@ npm run test:rules   # Firestore 보안 규칙 테스트 (JDK 21 필요)
 
 Java는 `C:Program FilesEclipse Adoptiumjdk-21…`에 설치돼 있다. 설치 전에 열린 터미널은 PATH를 모르므로
 새 터미널을 연다. E2E는 Java가 있으면 Firestore 에뮬레이터까지 스스로 띄운다.
+
+## 2단계 — 데이터 구조와 보안 규칙 (2026-10-26)
+
+`docs/data-model.md`에 정리했다. 요점:
+
+- **문항은 Firestore에 없다.** 정적 JSON(압축 42 KB)으로 앱에 들어가 문항 읽기 비용이 0이다.
+  정답이 기기로 내려가므로 경기는 비공식이다. 보기 섞기를 기존 앱과 같게 해 정답 위치 분포가 같다
+- 컬렉션: 프로필, 닉네임 예약(대소문자 무시 유일), 경기 기록(끝날 때 1번), 비회원 하루 카운터,
+  누적 기록, 오답노트, 친구 대결 방·자리
+- 규칙이 지키는 것: 주인, 서버 시각, 필드 목록, 범위, 비회원 하루 2경기(KST), 닉네임 유일,
+  레벨 테스트 1회, 방 정원·방장 권한·답 한 개씩
+- **검증**: 규칙 테스트 44개(에뮬레이터, 파일별로 프로젝트를 나눠 서로 데이터를 지우지 않게),
+  핵심 규칙 3개(비회원 제한·명단 없는 자리·닉네임 예약)를 지우면 테스트가 실패하는 것 확인.
+  단위 508개(문제은행 분포·문서 ID 계산이 규칙과 같은지 포함)
+- 고친 것: 규칙의 날짜 계산이 소수(`"20387.0"`)가 되어 비회원 카운터 문서 ID와 어긋났다 → `int()`

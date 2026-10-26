@@ -1,51 +1,321 @@
 rules_version = '2';
 
-// 야구왕 Firebase판 보안 규칙.
+// 야구왕 Firebase판 보안 규칙 (2단계 — 전체 데이터 구조, docs/data-model.md).
 //
 // 무료(Spark) 플랜에는 서버 코드가 없다. **이 규칙이 유일한 서버 쪽 방어선이다.**
 // 여기 없는 경로는 기본으로 모두 막힌다. 규칙을 바꾸면 tests/rules/의 에뮬레이터
 // 테스트를 함께 고친다.
 //
-// 1단계: users/{uid} — 회원 프로필과 만 14세 확인. 나머지 컬렉션은 2단계에서 연다.
+// 점수·기록은 기기가 계산하므로 **조작할 수 있다.** 규칙은 모양·범위·주인·시각만
+// 지킨다. 그래서 여기 저장되는 점수는 전부 "비공식"이고 공식 랭킹에 넣지 않는다.
+//
+// 비용: 규칙 안의 get()·exists()도 문서 읽기로 센다(무료 하루 5만). 꼭 필요한 곳에만 쓴다.
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── 공통 ─────────────────────────────────────────────────────────────
     function signedIn() {
       return request.auth != null;
     }
 
-    // 익명 로그인(비회원)이 아닌 회원
-    function isMember() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    function isGuest() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
-    function isOwner(uid) {
+    function isMember() {
+      return signedIn() && !isGuest();
+    }
+
+    function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
 
-    // 만 14세 확인을 마친 회원. 회원 기록을 쓰는 모든 규칙(2단계~)이 이걸 요구한다 —
-    // 확인 화면을 건너뛰어도 기록이 쌓이지 않게 한다(15 문서 §3).
-    function ageConfirmed() {
-      return isMember()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('ageConfirmedAt', null) != null;
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
     }
 
-    match /users/{uid} {
-      allow read: if isOwner(uid) && isMember();
+    // 만 14세 확인을 마친 회원(15 문서 §3). 회원 기록 쓰기는 모두 이걸 요구한다.
+    function ageConfirmed() {
+      return isMember()
+        && exists(userPath(request.auth.uid))
+        && get(userPath(request.auth.uid)).data.get('ageConfirmedAt', null) != null;
+    }
 
-      // 만 14세 확인 = 프로필 생성. 시각은 서버 시각(request.time)이어야 한다 —
-      // 기기 시계로 지어낼 수 없다. 1단계에서는 이 두 필드만 받는다.
-      allow create: if isOwner(uid) && isMember()
+    // 기록을 남길 수 있는 사람: 비회원(익명) 또는 확인을 마친 회원
+    function canRecord() {
+      return isGuest() || ageConfirmed();
+    }
+
+    function isNonNegativeInt(value, max) {
+      return value is int && value >= 0 && value <= max;
+    }
+
+    // 한국 날짜(KST)의 일련번호 — 서버 시각 기준이라 기기 시계로 바꿀 수 없다.
+    // 규칙에서 정수 나눗셈은 실수가 되어 string()이 "20387.0"이 된다. int()로 자른다
+    // (양수라 버림 = 내림). 화면 쪽 계산(kstDayKey)과 문서 ID가 같아야 한다.
+    function kstDay() {
+      return int((request.time.toMillis() + 32400000) / 86400000);
+    }
+
+    // KBO 10개 구단(src/content/teams.ts와 같아야 한다)
+    function isTeamSlug(slug) {
+      return slug in ['doosan', 'lg', 'kiwoom', 'ssg', 'kt', 'nc', 'samsung', 'lotte', 'kia', 'hanwha'];
+    }
+
+    // 닉네임: 2~16자, 앞뒤 공백 없음, '/' 없음(문서 ID로도 쓴다)
+    function isNickname(value) {
+      return value is string
+        && value.size() >= 2 && value.size() <= 16
+        && value.matches('^[^/\\s]([^/]*[^/\\s])?$');
+    }
+
+    // ── 회원 프로필 ──────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSelf(uid) && isMember();
+
+      // 만 14세 확인 = 프로필 생성(1단계). 시각은 서버 시각만.
+      allow create: if isSelf(uid) && isMember()
         && request.resource.data.keys().hasOnly(['ageConfirmedAt', 'createdAt'])
         && request.resource.data.ageConfirmedAt == request.time
         && request.resource.data.createdAt == request.time;
 
-      // 확인 시각은 고칠 수 없다. 닉네임·최애 구단 같은 필드는 3단계에서 연다.
-      allow update: if false;
+      // 온보딩·설정(3단계)과 레벨 테스트(4단계)
+      allow update: if isSelf(uid) && isMember()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['nickname', 'favoriteTeams', 'favoritePlayers', 'levelTest', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && resource.data.get('ageConfirmedAt', null) != null
+        && validNickname(uid)
+        && validFavoriteTeams()
+        && validFavoritePlayers()
+        && validLevelTest();
 
-      // 본인 탈퇴(만 14세 미만 응답 포함)
-      allow delete: if isOwner(uid);
+      allow delete: if isSelf(uid);
+
+      function changed(key) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasAny([key]);
+      }
+
+      // 닉네임을 바꾸면 같은 쓰기 묶음에서 nicknames/{소문자} 예약을 자기 것으로 잡아야 한다
+      function validNickname(uid) {
+        return !changed('nickname') || (
+          isNickname(request.resource.data.nickname)
+          && getAfter(/databases/$(database)/documents/nicknames/$(request.resource.data.nickname.lower())).data.uid == uid
+        );
+      }
+
+      // 최애 구단 TOP3 — 1위는 필수, 중복 없이
+      function validFavoriteTeams() {
+        return !changed('favoriteTeams') || (
+          request.resource.data.favoriteTeams is list
+          && request.resource.data.favoriteTeams.size() >= 1
+          && request.resource.data.favoriteTeams.size() <= 3
+          && request.resource.data.favoriteTeams.toSet().size() == request.resource.data.favoriteTeams.size()
+          && isTeamSlug(request.resource.data.favoriteTeams[0])
+          && (request.resource.data.favoriteTeams.size() < 2 || isTeamSlug(request.resource.data.favoriteTeams[1]))
+          && (request.resource.data.favoriteTeams.size() < 3 || isTeamSlug(request.resource.data.favoriteTeams[2]))
+        );
+      }
+
+      // 최애 선수 — 자유 입력 최대 3명(선수 DB를 두지 않는다: 데이터 권리)
+      function validFavoritePlayers() {
+        let players = request.resource.data.get('favoritePlayers', []);
+        return !changed('favoritePlayers') || (
+          players is list && players.size() <= 3
+          && (players.size() < 1 || (players[0] is string && players[0].size() >= 1 && players[0].size() <= 20))
+          && (players.size() < 2 || (players[1] is string && players[1].size() >= 1 && players[1].size() <= 20))
+          && (players.size() < 3 || (players[2] is string && players[2].size() >= 1 && players[2].size() <= 20))
+        );
+      }
+
+      // 최초 레벨 테스트 — **한 번만** 남긴다(이미 있으면 바꿀 수 없다). 완료 시각은 서버 시각.
+      function validLevelTest() {
+        let test = request.resource.data.get('levelTest', null);
+        return !changed('levelTest') || (
+          resource.data.get('levelTest', null) == null
+          && test is map
+          && test.keys().hasOnly(['completedAt', 'correct', 'total', 'tier', 'byCategory'])
+          && test.completedAt == request.time
+          && isNonNegativeInt(test.total, 40) && test.total >= 1
+          && isNonNegativeInt(test.correct, 40) && test.correct <= test.total
+          && isNonNegativeInt(test.tier, 7) && test.tier >= 1
+          && test.byCategory is map
+        );
+      }
+
+      // ── 개인 경기 기록(비공식) — 한 경기를 끝낼 때 한 번만 쓴다 ─────────
+      match /games/{gameId} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) && canRecord()
+          && request.resource.data.keys().hasOnly(['mode', 'createdAt', 'innings', 'runs', 'pa', 'atBats'])
+          && request.resource.data.mode in ['practice', 'levelTest']
+          && request.resource.data.createdAt == request.time
+          && isNonNegativeInt(request.resource.data.innings, 9) && request.resource.data.innings >= 1
+          && isNonNegativeInt(request.resource.data.runs, 99)
+          && isNonNegativeInt(request.resource.data.pa, 60) && request.resource.data.pa >= 1
+          && request.resource.data.atBats is list
+          && request.resource.data.atBats.size() == request.resource.data.pa
+          && guestDailyLimitHolds(uid);
+        allow update: if false;
+        allow delete: if isSelf(uid);
+      }
+
+      // 비회원은 하루 2경기 — 같은 쓰기 묶음에서 오늘(KST) 카운터를 1 올려야 한다.
+      // 익명 계정을 새로 만들면 우회되지만, 무료 쓰기 한도를 지키는 1차 방어선이다.
+      function guestDailyLimitHolds(uid) {
+        let dayPath = /databases/$(database)/documents/users/$(uid)/daily/$(string(kstDay()));
+        return !isGuest() || (
+          existsAfter(dayPath)
+          && getAfter(dayPath).data.count == (exists(dayPath) ? get(dayPath).data.count : 0) + 1
+        );
+      }
+
+      match /daily/{day} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) && isGuest()
+          && day == string(kstDay())
+          && request.resource.data.keys().hasOnly(['count'])
+          && request.resource.data.count == 1;
+        allow update: if isSelf(uid) && isGuest()
+          && day == string(kstDay())
+          && request.resource.data.keys().hasOnly(['count'])
+          && request.resource.data.count == resource.data.count + 1
+          && request.resource.data.count <= 2;
+        allow delete: if isSelf(uid);
+      }
+
+      // ── 비공식 누적 기록 — 경기마다 하나씩 늘린다 ──────────────────────
+      match /summary/{docId} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) && canRecord() && docId == 'main'
+          && validSummary() && request.resource.data.games == 1;
+        allow update: if isSelf(uid) && canRecord() && docId == 'main'
+          && validSummary() && request.resource.data.games == resource.data.games + 1;
+        allow delete: if isSelf(uid);
+
+        function validSummary() {
+          let s = request.resource.data;
+          return s.keys().hasOnly(['games', 'pa', 'ab', 'h', 'hr', 'bb', 'so', 'runs', 'xp', 'updatedAt'])
+            && s.updatedAt == request.time
+            && isNonNegativeInt(s.games, 1000000)
+            && isNonNegativeInt(s.pa, 10000000) && isNonNegativeInt(s.ab, 10000000)
+            && isNonNegativeInt(s.h, 10000000) && isNonNegativeInt(s.hr, 10000000)
+            && isNonNegativeInt(s.bb, 10000000) && isNonNegativeInt(s.so, 10000000)
+            && isNonNegativeInt(s.runs, 10000000) && isNonNegativeInt(s.xp, 100000000)
+            && s.h <= s.ab && s.ab <= s.pa && s.hr <= s.h;
+        }
+      }
+
+      // ── 오답노트 — 1·3·7·14일 복습 ───────────────────────────────────
+      match /wrongNotes/{questionId} {
+        allow read: if isSelf(uid);
+        allow create, update: if isSelf(uid) && canRecord() && validNote(questionId);
+        allow delete: if isSelf(uid);
+
+        function validNote(questionId) {
+          let n = request.resource.data;
+          return n.keys().hasOnly(['questionId', 'wrongCount', 'firstWrongAt', 'lastWrongAt', 'stage', 'nextReviewAt', 'mastered'])
+            && n.questionId == questionId
+            && questionId.matches('^q[0-9a-f]{12}$')
+            && isNonNegativeInt(n.wrongCount, 9999) && n.wrongCount >= 1
+            && n.firstWrongAt is timestamp && n.lastWrongAt is timestamp
+            && n.lastWrongAt <= request.time
+            && isNonNegativeInt(n.stage, 4)
+            && n.nextReviewAt is timestamp
+            && n.mastered is bool;
+        }
+      }
+    }
+
+    // ── 닉네임 예약 — 대소문자 구분 없이 하나만 ─────────────────────────
+    match /nicknames/{key} {
+      allow read: if signedIn();
+      allow create: if ageConfirmed()
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && getAfter(userPath(request.auth.uid)).data.get('nickname', '').lower() == key;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── 친구 대결(비공식) — 방 코드가 곧 문서 ID ────────────────────────
+    match /rooms/{code} {
+      allow read: if signedIn();
+
+      allow create: if signedIn() && canRecord()
+        && code.matches('^[A-Z2-9]{6}$')
+        && request.resource.data.keys().hasOnly(['hostUid', 'status', 'createdAt', 'maxPlayers', 'playerIds', 'questionIds', 'questionSeconds'])
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.maxPlayers is int
+        && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 10
+        && request.resource.data.playerIds == [request.auth.uid]
+        && request.resource.data.questionIds is list
+        && request.resource.data.questionIds.size() >= 3 && request.resource.data.questionIds.size() <= 15
+        && request.resource.data.questionSeconds is int
+        && request.resource.data.questionSeconds >= 5 && request.resource.data.questionSeconds <= 30;
+
+      allow update: if signedIn() && (joining() || hostStarts() || hostFinishes());
+
+      allow delete: if signedIn() && resource.data.hostUid == request.auth.uid;
+
+      function onlyChanges(keys) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+      }
+
+      // 대기 중인 방에 자기 자신만 끝에 더한다. 정원을 넘을 수 없다.
+      function joining() {
+        return canRecord()
+          && resource.data.status == 'waiting'
+          && onlyChanges(['playerIds'])
+          && !(request.auth.uid in resource.data.playerIds)
+          && request.resource.data.playerIds == resource.data.playerIds.concat([request.auth.uid])
+          && request.resource.data.playerIds.size() <= resource.data.maxPlayers;
+      }
+
+      function hostStarts() {
+        return resource.data.hostUid == request.auth.uid
+          && resource.data.status == 'waiting'
+          && request.resource.data.status == 'playing'
+          && request.resource.data.startedAt == request.time
+          && resource.data.playerIds.size() >= 2
+          && onlyChanges(['status', 'startedAt']);
+      }
+
+      function hostFinishes() {
+        return resource.data.hostUid == request.auth.uid
+          && resource.data.status == 'playing'
+          && request.resource.data.status == 'finished'
+          && request.resource.data.finishedAt == request.time
+          && onlyChanges(['status', 'finishedAt']);
+      }
+
+      // 참가자 자리 — 방의 playerIds에 들어간 사람만 자기 자리를 만든다
+      match /players/{playerUid} {
+        allow read: if signedIn();
+
+        allow create: if isSelf(playerUid)
+          && request.auth.uid in getAfter(/databases/$(database)/documents/rooms/$(code)).data.playerIds
+          && request.resource.data.keys().hasOnly(['nickname', 'joinedAt', 'score', 'answers'])
+          && request.resource.data.nickname is string
+          && request.resource.data.nickname.size() >= 1 && request.resource.data.nickname.size() <= 16
+          && request.resource.data.joinedAt == request.time
+          && request.resource.data.score == 0
+          && request.resource.data.answers == [];
+
+        // 경기 중에 답을 하나씩만 더한다(한 번에 여러 개를 몰아 쓸 수 없다)
+        allow update: if isSelf(playerUid)
+          && get(/databases/$(database)/documents/rooms/$(code)).data.status == 'playing'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers', 'score', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.answers is list
+          && request.resource.data.answers.size() == resource.data.answers.size() + 1
+          && request.resource.data.answers.size() <= get(/databases/$(database)/documents/rooms/$(code)).data.questionIds.size()
+          && isNonNegativeInt(request.resource.data.score, 10000);
+
+        allow delete: if isSelf(playerUid);
+      }
     }
   }
 }
