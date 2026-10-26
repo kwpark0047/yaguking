@@ -10,3 +10,6 @@ emulator-data/
 # 환경변수 — 웹 설정값은 비밀은 아니지만 프로젝트마다 다르다
 .env.local
 .env.*.local
+
+# 정리 작업 실행 기록(운영자 PC — 개수만, 사용자 ID 없음)
+ops/logs/

@@ -66,10 +66,19 @@ describe('처리방침 항목 = 코드가 실제로 하는 일', () => {
     expect(allText).not.toMatch(/Supabase|Vercel|카카오|yk_guest|yk_style|sb-|내보내기|랭킹|공유 링크/);
   });
 
-  it('운영 주체·보호책임자가 있고, 초안이면 시행일이 없다', () => {
+  it('운영 주체·보호책임자가 있고, 확정본이면 시행일이 날짜다(초안이면 없다)', () => {
     expect(PRIVACY_OPERATOR).toBeTruthy();
     expect(PRIVACY_OFFICER.name && PRIVACY_OFFICER.phone).toBeTruthy();
     if (PRIVACY_DRAFT) expect(PRIVACY_EFFECTIVE_DATE).toBeNull();
+    else expect(PRIVACY_EFFECTIVE_DATE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(allText).toContain(`시행일: ${PRIVACY_EFFECTIVE_DATE ?? '확정 전(공개일에 정함)'}`);
+  });
+
+  it('정리 작업은 운영자가 직접 — GitHub 위탁은 GitHub 정리 워크플로를 켤 때만 적는다', () => {
+    const workflow = readFileSync(join(__dirname, '../../../.github/workflows/firebase-cleanup.yml'), 'utf8');
+    const githubCleanupOn = /^ {2}schedule:/m.test(workflow);
+    expect(allText.includes('GitHub')).toBe(githubCleanupOn);
+    expect(allText).toContain('정리 작업은 운영자가 직접 실행합니다');
     expect(new Set(PRIVACY_SECTIONS.map((section) => section.id)).size).toBe(PRIVACY_SECTIONS.length);
   });
 });

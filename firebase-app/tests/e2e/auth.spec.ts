@@ -103,9 +103,11 @@ for (const path of ['/', '/auth?mode=signup', '/auth?mode=login', '/auth/reset',
   });
 }
 
-test('처리방침: Firebase판 초안 표시와 14개 항목, 이용약관은 확정 전', async ({ page }) => {
+test('처리방침: 시행본(2026-10-27)과 14개 항목, 이용약관은 확정 전', async ({ page }) => {
   await page.goto('/privacy');
-  await expect(page.getByRole('note')).toContainText('초안');
+  await expect(page.getByRole('note')).toHaveCount(0); // 초안 표시 없음
+  await expect(page.getByText('시행일: 2026-10-27')).toBeVisible();
+  await expect(page.getByText('GitHub')).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 2 })).toHaveCount(14);
   await expect(page.getByRole('heading', { name: '7. 국외 이전' })).toBeVisible();
   await expect(page.getByRole('rowheader', { name: '이전받는 자' })).toBeVisible();
