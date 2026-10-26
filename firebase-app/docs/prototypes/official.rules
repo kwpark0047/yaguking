@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// 공식 XP·RP 설계(docs/official-xp-rp.md §4)의 **시험용 규칙** — 배포하지 않는다.
+// 설계의 두 가정이 Firestore 규칙으로 정말 되는지 에뮬레이터에서 확인하려고 둔다
+// (tests/rules/official-prototype.test.ts):
+//   1) 답마다 서버 시각을 맵 안에 받아 `at == request.time`으로 검사할 수 있다
+//   2) 앞 문제에 답해야 다음 문제를 읽을 수 있게(하나씩 열기) 막을 수 있다
+// 실제로 만들 때 firestore.rules로 옮기고 다시 검토한다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMember() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+    function attemptPath(roundId) {
+      return /databases/$(database)/documents/officialRounds/$(roundId)/attempts/$(request.auth.uid);
+    }
+
+    match /officialRounds/{roundId} {
+      allow get: if isMember();
+      allow list, write: if false;
+
+      // 문제 하나씩 — 내 시도에서 index번 앞까지 답했을 때만
+      match /questions/{index} {
+        allow get: if isMember()
+          && request.time >= resource.data.opensAt
+          && exists(attemptPath(roundId))
+          && get(attemptPath(roundId)).data.answers.size() >= int(index);
+        allow list, write: if false;
+      }
+
+      // 기기가 쓰는 유일한 공식 문서
+      match /attempts/{uid} {
+        allow get: if signedIn() && request.auth.uid == uid;
+        allow list, delete: if false;
+
+        allow create: if isMember() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['startedAt', 'total', 'answers', 'graded'])
+          && request.resource.data.startedAt == request.time
+          && request.resource.data.total == get(/databases/$(database)/documents/officialRounds/$(roundId)).data.total
+          && request.resource.data.answers == {}
+          && request.resource.data.graded == false;
+
+        // 답 하나: 키 = 지금까지 답한 수, 시각 = 서버 시각, 기한 안, 다른 필드는 그대로.
+        // 기한(문항당 16초 + 1초)은 규칙이 시작 시각에서 계산한다 — 기기는 "서버 시각 + N초"를 보낼 수 없다.
+        allow update: if request.auth.uid == uid
+          && request.time <= resource.data.startedAt + duration.value(resource.data.total * 16 + 1, 's')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers'])
+          && resource.data.answers.size() < resource.data.total
+          && request.resource.data.answers.diff(resource.data.answers).addedKeys()
+               == [string(resource.data.answers.size())].toSet()
+          && request.resource.data.answers.diff(resource.data.answers).changedKeys().size() == 0
+          && request.resource.data.answers.diff(resource.data.answers).removedKeys().size() == 0
+          && validAnswer(request.resource.data.answers[string(resource.data.answers.size())]);
+
+        function validAnswer(answer) {
+          return answer.keys().hasOnly(['choice', 'at'])
+            && answer.at == request.time
+            && (answer.choice == null || answer.choice in ['A', 'B', 'C', 'D']);
+        }
+      }
+    }
+
+    // 일꾼(Admin SDK)만 — 기기는 읽기·쓰기 모두 막힘
+    match /officialKeys/{roundId} { allow read, write: if false; }
+    match /officialStats/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+  }
+}

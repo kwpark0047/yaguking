@@ -14,14 +14,17 @@ export const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
  * 같은 프로젝트면 한 파일의 clearFirestore()가 다른 파일이 깔아 둔 데이터를 지운다
  * (실제로 그렇게 엉뚱하게 실패했다). 에뮬레이터는 프로젝트별로 데이터를 나눈다.
  */
-export async function startRulesEnv(name: string): Promise<RulesTestEnvironment> {
+export async function startRulesEnv(
+  name: string,
+  rulesFile = '../../firestore.rules',
+): Promise<RulesTestEnvironment> {
   const [host, port] = (emulatorHost ?? '127.0.0.1:8080').split(':');
   return initializeTestEnvironment({
     projectId: `demo-yaguking-${name}`,
     firestore: {
       host: host!,
       port: Number(port),
-      rules: readFileSync(fileURLToPath(new URL('../../firestore.rules', import.meta.url)), 'utf8'),
+      rules: readFileSync(fileURLToPath(new URL(rulesFile, import.meta.url)), 'utf8'),
     },
   });
 }
