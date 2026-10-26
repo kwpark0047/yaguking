@@ -67,7 +67,7 @@ export function AuthPage() {
       <h1 className="font-cute text-3xl">{signup ? '야구왕 선수 등록' : '다시 만나서 반가워요!'}</h1>
       <p className="text-sm text-ink-2 break-keep">
         {signup
-          ? '가입하면 기록이 쌓이고 업적 카드를 모을 수 있어요. 만 14세 이상만 가입할 수 있어요.'
+          ? '가입하면 기록이 계정에 쌓이고 레벨 테스트로 처음 등급을 정할 수 있어요. 만 14세 이상만 가입할 수 있어요.'
           : '로그인하고 이어서 기록을 쌓아요.'}
       </p>
 
@@ -166,7 +166,7 @@ export function AuthPage() {
         <Link to="/privacy" className="underline" style={{ color: 'var(--ink-1)' }}>
           개인정보처리방침
         </Link>
-        에 동의하는 것으로 봅니다. 두 문서의 Firebase판은 아직 확정 전입니다.
+        에 동의하는 것으로 봅니다. 이용약관은 아직 확정 전입니다.
       </p>
     </main>
   );
