@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// 0단계: 전부 막는다. 컬렉션별 규칙은 2단계에서 에뮬레이터 테스트와 함께 연다.
+// 무료 플랜에는 서버 코드가 없으므로 이 규칙이 유일한 서버 쪽 방어선이다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

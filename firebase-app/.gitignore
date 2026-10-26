@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+# Firebase CLI 캐시·에뮬레이터 데이터
+.firebase/
+firebase-debug*.log
+firestore-debug*.log
+ui-debug*.log
+emulator-data/
+# 환경변수 — 웹 설정값은 비밀은 아니지만 프로젝트마다 다르다
+.env.local
+.env.*.local

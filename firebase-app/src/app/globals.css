@@ -1,0 +1,1045 @@
+@import 'tailwindcss';
+
+/*
+ * 디자인 토큰 — 08 문서 §2.1 / §2.2 / §2.3
+ * 다크를 기본으로 정의하고 라이트를 파생한다.
+ * 모든 상태는 색 + 아이콘 + 텍스트 3중 표기이므로, 색 토큰만으로 의미를 전달하지 않는다.
+ */
+
+:root {
+  color-scheme: dark light;
+
+  /* 배경·표면 */
+  --bg-base: #0c1117;
+  --bg-field: #10251a;
+  --bg-card: #161d26;
+
+  /* 텍스트·선 */
+  --ink-1: #f2f5f7;
+  --ink-2: #9aa6b2;
+  --line: #243040;
+
+  /* 의미 색 */
+  --accent: #ffc53d;
+  --accent-ink: #101418;
+  --on-base: #35b36b;
+  --out: #e8636f;
+  --hr: #ff8a3d;
+  --focus: #5ab0ff;
+
+  /* 간격 — 8px 그리드 */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+
+  /* 형태 */
+  --radius-card: 16px;
+  --radius-option: 12px;
+
+  /* 터치 타깃 */
+  --touch-primary: 56px;
+  --touch-secondary: 44px;
+
+  /* 모션 예산 — 08 문서 §2.4 */
+  --motion-verdict: 150ms;
+  --motion-badge: 250ms;
+  --motion-runner: 400ms;
+  --motion-hr: 900ms;
+}
+
+/* 라이트 파생 */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg-base: #f7f8fa;
+    --bg-field: #e8f2eb;
+    --bg-card: #ffffff;
+    --ink-1: #101418;
+    --ink-2: #5c6873;
+    --line: #dde3e9;
+    --accent: #856404;
+    --accent-ink: #ffffff;
+    --on-base: #1e7a46;
+    --out: #c0392b;
+    --hr: #a8490f;
+    --focus: #0b63ce;
+  }
+}
+
+:root[data-theme='light'] {
+  --bg-base: #f7f8fa;
+  --bg-field: #e8f2eb;
+  --bg-card: #ffffff;
+  --ink-1: #101418;
+  --ink-2: #5c6873;
+  --line: #dde3e9;
+  --accent: #856404;
+  --accent-ink: #ffffff;
+  --on-base: #1e7a46;
+  --out: #c0392b;
+  --hr: #a8490f;
+  --focus: #0b63ce;
+}
+
+/*
+ * ── 화면 스타일 (src/lib/theme/base.ts) ─────────────────────────────────
+ *
+ * 사용자가 설정에서 고른다(기기별 쿠키). 성별 같은 개인 정보로 정하지 않는다.
+ * 값은 base.ts의 SURFACES와 **같아야 한다** — 테스트가 대조한다.
+ *
+ * 다크 블록과 라이트 블록이 같은 토큰을 전부 정의해야 한다. 라이트 모드에서
+ * 다크 스타일 블록(명시도 0,2,0)이 기본 라이트 블록(0,2,0)을 순서로 이기므로,
+ * 바로 뒤의 스타일 라이트 블록(0,3,0)이 모든 값을 다시 덮어야 한다.
+ */
+/* 부드러운 — 따뜻한 표면, 덜 날카로운 흰 글자, 둥근 모서리. 기준은 기본과 같은 4.5:1 */
+:root[data-style='soft'] {
+  --bg-base: #12161c;
+  --bg-field: #142a1f;
+  --bg-card: #1a2029;
+  --ink-1: #e3e8ec;
+  --ink-2: #a5b0bb;
+  --line: #29333f;
+  --accent: #f7c24a;
+  --accent-ink: #14181c;
+  --on-base: #45c07a;
+  --out: #ec7a84;
+  --hr: #ff9a57;
+  --focus: #6cb8ff;
+  --radius-card: 22px;
+  --radius-option: 16px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='soft']:not([data-theme='dark']) {
+    --bg-base: #f5f3ee;
+    --bg-field: #e8f0e4;
+    --bg-card: #fffdf9;
+    --ink-1: #22272c;
+    --ink-2: #56606b;
+    --line: #e4dfd5;
+    --accent: #7c5e06;
+    --accent-ink: #ffffff;
+    --on-base: #1c7342;
+    --out: #b5372a;
+    --hr: #a1460e;
+    --focus: #0b5fc4;
+  }
+}
+
+:root[data-style='soft'][data-theme='light'] {
+  --bg-base: #f5f3ee;
+  --bg-field: #e8f0e4;
+  --bg-card: #fffdf9;
+  --ink-1: #22272c;
+  --ink-2: #56606b;
+  --line: #e4dfd5;
+  --accent: #7c5e06;
+  --accent-ink: #ffffff;
+  --on-base: #1c7342;
+  --out: #b5372a;
+  --hr: #a1460e;
+  --focus: #0b5fc4;
+}
+
+/* 고대비 — 본문 7:1(AAA), 경계선 3:1 */
+:root[data-style='contrast'] {
+  --bg-base: #000000;
+  --bg-field: #04150b;
+  --bg-card: #0b0d10;
+  --ink-1: #ffffff;
+  --ink-2: #d2d9e0;
+  --line: #8794a3;
+  --accent: #ffd25c;
+  --accent-ink: #000000;
+  --on-base: #5fe39a;
+  --out: #ff9aa3;
+  --hr: #ffb37a;
+  --focus: #8fcbff;
+  --focus-width: 4px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='contrast']:not([data-theme='dark']) {
+    --bg-base: #ffffff;
+    --bg-field: #e6f2e9;
+    --bg-card: #ffffff;
+    --ink-1: #000000;
+    --ink-2: #2c343d;
+    --line: #4b5664;
+    --accent: #5a4300;
+    --accent-ink: #ffffff;
+    --on-base: #0b5a2d;
+    --out: #8f1a11;
+    --hr: #7a3306;
+    --focus: #003f99;
+  }
+}
+
+:root[data-style='contrast'][data-theme='light'] {
+  --bg-base: #ffffff;
+  --bg-field: #e6f2e9;
+  --bg-card: #ffffff;
+  --ink-1: #000000;
+  --ink-2: #2c343d;
+  --line: #4b5664;
+  --accent: #5a4300;
+  --accent-ink: #ffffff;
+  --on-base: #0b5a2d;
+  --out: #8f1a11;
+  --hr: #7a3306;
+  --focus: #003f99;
+}
+
+/*
+ * ── 구단 테마 (src/lib/theme/teams.ts) ──────────────────────────────────
+ *
+ * 값은 TS에서 **접근성 기준에 맞춰 도출**해 인라인 변수로 넣는다
+ * (`--team-*-d` 다크, `--team-*-l` 라이트). 인라인 스타일은 미디어 쿼리를
+ * 못 쓰므로 어느 쪽을 쓸지는 여기서 고른다.
+ *
+ * `data-team`은 <html>에 붙으면 앱 전체, 카드에 붙으면 그 카드만 바꾼다.
+ * 공유 카드는 **보는 사람이 아니라 만든 사람의** 구단을 보여야 하므로 카드
+ * 단위로 다시 지정한다.
+ *
+ * 의미 색(--on-base, --out, --hr)은 여기서 절대 바꾸지 않는다.
+ */
+:root {
+  /* 구단 테마가 없을 때 띠는 야구장 잔디색이다 */
+  --team-surface: var(--bg-field);
+  --team-surface-alt: var(--bg-base);
+}
+
+/*
+ * <html>에 붙은 구단 규칙은 `:root[data-team]`으로도 걸어야 한다. 그냥
+ * `[data-team]`(0,1,0)이면 위의 스타일 블록(`:root[data-style='soft']`, 0,2,0)에
+ * 져서 **부드러운 스타일에서 구단 강조색이 브랜드 기본색으로 덮인다.**
+ * 같은 명시도에서는 뒤에 오는 규칙이 이기므로 이 블록은 스타일 블록 뒤에 둔다.
+ */
+:root[data-team],
+[data-team] {
+  --accent: var(--team-accent-d);
+  --accent-ink: var(--team-accent-ink-d);
+  --team-surface: var(--team-surface-d);
+  --team-surface-alt: var(--team-surface-alt-d);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark'])[data-team],
+  :root:not([data-theme='dark']) [data-team] {
+    --accent: var(--team-accent-l);
+    --accent-ink: var(--team-accent-ink-l);
+    --team-surface: var(--team-surface-l);
+    --team-surface-alt: var(--team-surface-alt-l);
+  }
+}
+
+:root[data-theme='light'][data-team],
+:root[data-theme='light'] [data-team] {
+  --accent: var(--team-accent-l);
+  --accent-ink: var(--team-accent-ink-l);
+  --team-surface: var(--team-surface-l);
+  --team-surface-alt: var(--team-surface-alt-l);
+}
+
+/* 고대비: 구단색도 7:1로 따로 도출한 값을 쓴다 */
+:root[data-style='contrast'][data-team],
+:root[data-style='contrast'] [data-team] {
+  --accent: var(--team-accent-dhc);
+  --accent-ink: var(--team-accent-ink-dhc);
+  --team-surface: var(--team-surface-dhc);
+  --team-surface-alt: var(--team-surface-alt-dhc);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='contrast']:not([data-theme='dark'])[data-team],
+  :root[data-style='contrast']:not([data-theme='dark']) [data-team] {
+    --accent: var(--team-accent-lhc);
+    --accent-ink: var(--team-accent-ink-lhc);
+    --team-surface: var(--team-surface-lhc);
+    --team-surface-alt: var(--team-surface-alt-lhc);
+  }
+}
+
+:root[data-style='contrast'][data-theme='light'][data-team],
+:root[data-style='contrast'][data-theme='light'] [data-team] {
+  --accent: var(--team-accent-lhc);
+  --accent-ink: var(--team-accent-ink-lhc);
+  --team-surface: var(--team-surface-lhc);
+  --team-surface-alt: var(--team-surface-alt-lhc);
+}
+
+/*
+ * ── 등급 테마 (src/lib/theme/tiers.ts) ──────────────────────────────────
+ * 구단이 색조를, 등급은 장식의 격을 바꾼다. 같은 방식으로 다크·라이트를 고른다.
+ */
+[data-tier] {
+  --tier: var(--tier-d);
+  --tier-ink: var(--tier-ink-d);
+  --tier-prism: var(--tier-prism-d);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) [data-tier] {
+    --tier: var(--tier-l);
+    --tier-ink: var(--tier-ink-l);
+    --tier-prism: var(--tier-prism-l);
+  }
+}
+
+:root[data-theme='light'] [data-tier] {
+  --tier: var(--tier-l);
+  --tier-ink: var(--tier-ink-l);
+  --tier-prism: var(--tier-prism-l);
+}
+
+:root[data-style='contrast'] [data-tier] {
+  --tier: var(--tier-dhc);
+  --tier-ink: var(--tier-ink-dhc);
+  --tier-prism: var(--tier-prism-dhc);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='contrast']:not([data-theme='dark']) [data-tier] {
+    --tier: var(--tier-lhc);
+    --tier-ink: var(--tier-ink-lhc);
+    --tier-prism: var(--tier-prism-lhc);
+  }
+}
+
+:root[data-style='contrast'][data-theme='light'] [data-tier] {
+  --tier: var(--tier-lhc);
+  --tier-ink: var(--tier-ink-lhc);
+  --tier-prism: var(--tier-prism-lhc);
+}
+
+/*
+ * 브레이크포인트를 08 문서 §6.1에 맞춘다.
+ * sm 360~599 (기본) / md 600~1023 / lg 1024~1439 / xl 1440+
+ * Tailwind 기본값(md 768)과 다르므로 여기서 덮어쓴다.
+ */
+@theme {
+  --breakpoint-md: 600px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+}
+
+@theme inline {
+  --color-bg-base: var(--bg-base);
+  --color-bg-field: var(--bg-field);
+  --color-bg-card: var(--bg-card);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-base: var(--on-base);
+  --color-out: var(--out);
+  --color-hr: var(--hr);
+  --color-focus: var(--focus);
+
+  --radius-card: var(--radius-card);
+  --radius-option: var(--radius-option);
+}
+
+/* ── 기본 ────────────────────────────────────────────────────────────── */
+
+html {
+  /* 360px에서 가로 스크롤 0 (08 문서 §6.8) */
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--ink-1);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Noto Sans KR',
+    'Malgun Gothic',
+    sans-serif;
+  /* 하단 안전영역 확보 */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow-x: hidden;
+}
+
+/* 전광판 숫자: 자릿수가 흔들리지 않도록 tabular (08 문서 §2.2) */
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 포커스 — 배경 대비 3:1 이상 */
+:focus-visible {
+  outline: var(--focus-width, 3px) solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* reduced motion — 이동·스케일·플래시 전면 제거 (08 문서 §2.4) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── 구단 띠 ──────────────────────────────────────────────────────────── */
+/*
+ * 두 색 모두 본문·보조 글자와 4.5:1을 확보하도록 도출되어 있다.
+ * oklab으로 보간해야 중간에 명도가 튀지 않는다(sRGB 보간은 중간이 탁해지거나
+ * 밝아진다). 그래서 띠 위 어느 지점에서도 글자 대비가 유지된다.
+ */
+.team-band {
+  /* 보간 방식을 모르는 브라우저는 아래 선언을 통째로 버린다. 그때 쓸 값 */
+  background: linear-gradient(
+    135deg,
+    var(--team-surface) 0%,
+    var(--team-surface) 55%,
+    var(--team-surface-alt) 100%
+  );
+  background: linear-gradient(
+    135deg in oklab,
+    var(--team-surface) 0%,
+    var(--team-surface) 55%,
+    var(--team-surface-alt) 100%
+  );
+  border-left: 4px solid var(--accent);
+}
+
+/* 구단 표시 점. 장식이며 옆에 항상 구단명이 글자로 붙는다. */
+.team-dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background-color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── 등급 배지 ────────────────────────────────────────────────────────── */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background-color: var(--tier);
+  color: var(--tier-ink);
+}
+
+/* 육성선수는 아직 등급색이 없다 — 외곽선만 */
+.tier-badge[data-ornament='none'] {
+  background-color: transparent;
+  color: var(--tier);
+  box-shadow: inset 0 0 0 1px var(--tier);
+}
+
+/* ── 등급 테두리 — 장식은 등급이 오를수록 한 겹씩 늘어난다 ───────────── */
+.tier-frame {
+  border: 1px solid var(--line);
+}
+
+.tier-frame:is([data-ornament='frame'], [data-ornament='glow']) {
+  border: 2px solid var(--tier);
+}
+
+.tier-frame[data-ornament='glow'] {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--tier) 35%, transparent),
+    0 10px 28px -12px color-mix(in oklab, var(--tier) 70%, transparent);
+}
+
+/*
+ * 명예의 전당: 여러 색이 도는 테두리.
+ * 테두리를 배경 두 겹으로 그린다(안쪽은 카드색, 바깥은 무지개). border-image는
+ * 둥근 모서리를 지원하지 않는다.
+ */
+.tier-frame[data-ornament='prismatic'] {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--tier-frame-fill, var(--bg-card)), var(--tier-frame-fill, var(--bg-card)))
+      padding-box,
+    var(--tier-prism) border-box;
+  background-size:
+    100% 100%,
+    300% 300%;
+  animation: tier-prism-shift 8s ease-in-out infinite;
+  box-shadow: 0 10px 32px -12px color-mix(in oklab, var(--tier) 70%, transparent);
+}
+
+@keyframes tier-prism-shift {
+  0%,
+  100% {
+    background-position:
+      0 0,
+      0% 50%;
+  }
+  50% {
+    background-position:
+      0 0,
+      100% 50%;
+  }
+}
+
+/* 배지에도 명예의 전당은 무지개를 입힌다 */
+.tier-badge[data-ornament='prismatic'] {
+  background: var(--tier-prism);
+  color: #101418;
+}
+
+/* ── 스타일별 장식 조정 ───────────────────────────────────────────────── */
+
+/*
+ * 고대비: 장식보다 **경계와 글자**를 앞세운다.
+ *   - 구단 띠는 그라데이션 대신 단색(양 끝 모두 7:1로 도출되어 있지만, 색이
+ *     흐르면 글자가 덜 또렷해 보인다)
+ *   - 테두리는 두껍게, 광채(반투명 그림자)는 뺀다
+ *   - 명예의 전당의 흐르는 무지개는 멈추고, 배지는 무지개 대신 7:1 단색으로.
+ *     무지개 각 색 위에서 작은 글자 7:1을 모두 맞출 수 없다
+ */
+:root[data-style='contrast'] .team-band {
+  background: var(--team-surface);
+  border-left-width: 6px;
+}
+
+:root[data-style='contrast'] .tier-frame:is([data-ornament='frame'], [data-ornament='glow']) {
+  border-width: 3px;
+  box-shadow: none;
+}
+
+:root[data-style='contrast'] .tier-frame[data-ornament='prismatic'] {
+  border-width: 3px;
+  animation: none;
+  box-shadow: none;
+}
+
+:root[data-style='contrast'] .tier-badge[data-ornament='prismatic'] {
+  background: var(--tier);
+  color: var(--tier-ink);
+}
+
+/* 부드러운: 띠 막대를 얇게, 광채를 더 넓고 옅게 */
+:root[data-style='soft'] .team-band {
+  border-left-width: 3px;
+}
+
+:root[data-style='soft'] .tier-frame[data-ornament='glow'],
+:root[data-style='soft'] .tier-frame[data-ornament='prismatic'] {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--tier) 22%, transparent),
+    0 16px 40px -18px color-mix(in oklab, var(--tier) 55%, transparent);
+}
+
+/* ── 선수 카드 (14 문서 §4.1, §5.1) ───────────────────────────────────── */
+/*
+ * 세 겹이다.
+ *   .player-card            — 등급 테두리(.tier-frame과 함께 쓴다). 5:7 비율
+ *   .player-card__material  — 테두리 여백의 소재. 등급마다 다르다
+ *   .player-card__face      — 글자가 올라가는 단색 면
+ *
+ * 소재는 여백에만 깔고 글자는 늘 단색 면 위에 둔다. 질감이 글자 대비를
+ * 흔들지 않게 하기 위해서다. 그림 자산 없이 그라데이션만 쓰며(1단계), 자산이
+ * 오면 소재 층만 바꾼다. Satori용 값은 src/lib/theme/material.ts.
+ */
+.player-card {
+  display: flex;
+  width: min(100%, 22rem);
+  aspect-ratio: 5 / 7;
+  margin-inline: auto;
+  /*
+   * hidden이 아니라 clip이다. hidden은 스크롤 컨테이너가 되어 aspect-ratio의
+   * 자동 최소 높이가 사라지고, 글자를 키우면 내용이 잘린다. clip은 모서리만
+   * 자르고 내용이 넘치면 카드가 세로로 늘어난다.
+   */
+  overflow: clip;
+}
+
+/* 업적 카드 — 같은 세 겹을 작게 (14 문서 §5.2). 그리드 칸을 채운다 */
+.player-card--mini {
+  width: 100%;
+}
+
+.player-card--mini .player-card__material {
+  padding: 0.5rem;
+}
+
+.player-card--mini .player-card__face {
+  gap: 0.375rem;
+  padding: 0.625rem;
+  border-radius: calc(var(--radius-card) - 0.5rem);
+}
+
+.player-card--mini .player-card__initial {
+  width: 3.25rem;
+  height: 3.25rem;
+  font-size: 1.125rem;
+}
+
+/* 미획득 — 실루엣. 테두리만 점선으로, 글자는 흐리게 하지 않는다 */
+.player-card--mini[data-locked] {
+  border-style: dashed;
+}
+
+.player-card--mini[data-locked] .player-card__initial {
+  border-style: dashed;
+  color: var(--ink-2);
+}
+
+.player-card__material {
+  display: flex;
+  flex: 1;
+  padding: 0.625rem;
+  border-radius: inherit;
+  background: var(--bg-card);
+}
+
+.player-card__face {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: calc(var(--radius-card) - 0.5rem);
+  background: var(--bg-card);
+}
+
+/* 닉네임 첫 글자. 구단 이니셜이 아니다(14 문서 §3) */
+.player-card__initial {
+  display: grid;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border: 2px solid var(--tier);
+  border-radius: var(--radius-option);
+  background: color-mix(in oklab, var(--bg-card) 35%, transparent);
+  color: var(--ink-1);
+  font-size: 3.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* 1 육성선수 — 무지 종이: 아주 옅은 결만 */
+.player-card__material[data-material='paper'] {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--ink-1) 4%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    color-mix(in oklab, var(--ink-1) 6%, var(--bg-card));
+}
+
+/* 2 백업 — 크라프트지 + 모서리 리벳. 둥근 모서리에 잘리지 않게 곡선이 끝난 자리에 박는다 */
+.player-card__material[data-material='kraft'] {
+  --rivet: radial-gradient(circle, var(--tier) 0 0.18rem, transparent 0.22rem);
+  background:
+    var(--rivet) left 1.25rem top 0.06rem / 0.5rem 0.5rem no-repeat,
+    var(--rivet) right 1.25rem top 0.06rem / 0.5rem 0.5rem no-repeat,
+    var(--rivet) left 1.25rem bottom 0.06rem / 0.5rem 0.5rem no-repeat,
+    var(--rivet) right 1.25rem bottom 0.06rem / 0.5rem 0.5rem no-repeat,
+    repeating-linear-gradient(
+      100deg,
+      color-mix(in oklab, var(--tier) 12%, transparent) 0 2px,
+      transparent 2px 7px
+    ),
+    color-mix(in oklab, var(--tier) 40%, var(--bg-card));
+}
+
+/* 3 주전 — 코팅지: 은빛 반사 한 줄 */
+.player-card__material[data-material='coated'] {
+  background: linear-gradient(
+    135deg in oklab,
+    color-mix(in oklab, var(--tier) 60%, var(--bg-card)),
+    color-mix(in oklab, var(--tier) 25%, var(--bg-card)) 45%,
+    color-mix(in oklab, var(--tier) 60%, var(--bg-card)) 55%,
+    color-mix(in oklab, var(--tier) 30%, var(--bg-card))
+  );
+}
+
+/* 4 올스타 — 광택지 + 별 무늬 */
+.player-card__material[data-material='gloss'] {
+  background:
+    radial-gradient(circle, color-mix(in oklab, var(--ink-1) 45%, transparent) 0 1px, transparent 1.5px)
+      0 0 / 0.875rem 0.875rem,
+    linear-gradient(
+      160deg in oklab,
+      color-mix(in oklab, var(--tier) 70%, var(--bg-card)),
+      color-mix(in oklab, var(--tier) 30%, var(--bg-card)) 50%,
+      color-mix(in oklab, var(--tier) 60%, var(--bg-card))
+    );
+}
+
+/* 5 골든글러브 — 금박 */
+.player-card__material[data-material='foil'] {
+  background: linear-gradient(
+    120deg in oklab,
+    color-mix(in oklab, var(--tier) 75%, var(--bg-card)),
+    color-mix(in oklab, var(--tier) 70%, #fff) 35%,
+    color-mix(in oklab, var(--tier) 60%, var(--bg-card)) 60%,
+    color-mix(in oklab, var(--tier) 80%, #fff) 85%,
+    color-mix(in oklab, var(--tier) 70%, var(--bg-card))
+  );
+}
+
+/* 6 MVP — 홀로그램: 등급색에 무지개가 은은히 흐른다 */
+.player-card__material[data-material='holo'] {
+  background: linear-gradient(
+      115deg in oklab,
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #3ec7ff) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #ff5c8a) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #e0a800) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #9b6bff) 70%, var(--bg-card)),
+      color-mix(in oklab, color-mix(in oklab, var(--tier) 50%, #3ec7ff) 70%, var(--bg-card))
+    )
+    0 0 / 300% 300%;
+  animation: player-card-holo 10s ease-in-out infinite;
+}
+
+@keyframes player-card-holo {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 7 명예의 전당 — 금속판: 헤어라인 결 (테두리 무지개는 .tier-frame이 그린다) */
+.player-card__material[data-material='metal'] {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, #fff 7%, transparent) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(
+      180deg in oklab,
+      color-mix(in oklab, var(--tier) 30%, #c9d0d8),
+      color-mix(in oklab, var(--tier) 30%, #5b636c) 50%,
+      color-mix(in oklab, var(--tier) 30%, #c9d0d8)
+    );
+}
+
+/* 면 둘레의 두 번째 선 — 이중선, 또는 글러브 실밥 */
+.player-card__material[data-inlay='solid'] .player-card__face {
+  outline: 1px solid color-mix(in oklab, var(--tier) 75%, transparent);
+  outline-offset: 3px;
+}
+
+/* 실밥은 금박과 같은 색이면 묻힌다. 바탕색 쪽으로 당겨 금박 위에서 드러나게 한다 */
+.player-card__material[data-inlay='dashed'] .player-card__face {
+  outline: 2px dashed color-mix(in oklab, var(--bg-base) 60%, var(--tier));
+  outline-offset: 3px;
+}
+
+/* 고대비: 질감·광채·흐름을 모두 빼고 단색 프레임만 (08 문서 §2.6) */
+:root[data-style='contrast'] .player-card__material {
+  background: var(--bg-card);
+  animation: none;
+}
+
+:root[data-style='contrast'] .player-card__material:not([data-inlay='none']) .player-card__face {
+  outline: 2px solid var(--tier);
+}
+
+/* 새 업적 카드가 결과 화면에 떠오른다. 움직임 줄이기에서는 전역 규칙이 없앤다 */
+.achievement-reveal {
+  animation: achievement-reveal 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes achievement-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── 메인 페이지 — 귀엽고 깜찍하게 (2026-10-26) ──────────────────────── */
+/*
+ * 색은 모두 기존 토큰(--accent, --bg-*, --ink-*)에서 나온다. 그래서 구단 테마·
+ * 화면 스타일(부드러운·고대비)·다크/라이트가 그대로 적용된다. 새 색을 만들지
+ * 않는 대신 모양(둥근 모서리, 스티커 그림자, 통통 튀는 움직임)으로 귀여움을 낸다.
+ */
+.font-cute {
+  font-family: var(--font-cute), system-ui, 'Malgun Gothic', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* 캐릭터 — 공은 흰색, 실밥은 빨강, 헬멧은 강조색(구단 테마). 그 밖은 고정색 장식 */
+.mascot {
+  overflow: visible;
+}
+.mascot__wave {
+  fill: #2d7dd2;
+}
+.mascot__wave-front {
+  fill: #5bb4f5;
+}
+.mascot__foam {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+.mascot__bat-barrel {
+  fill: none;
+  stroke: #c8892f;
+  stroke-width: 16;
+  stroke-linecap: round;
+}
+.mascot__bat-barrel-tip {
+  fill: none;
+  stroke: #c8892f;
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+.mascot__bat-shine {
+  fill: none;
+  stroke: #f3c66b;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.mascot__bat-grip {
+  fill: none;
+  stroke: #2a2f3a;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+.mascot__fist {
+  fill: #6b4423;
+  stroke: #3b2512;
+  stroke-width: 2;
+}
+.mascot__fist-line,
+.mascot__nose {
+  fill: none;
+  stroke: #3b2512;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.mascot__ball {
+  fill: #ffffff;
+  stroke: color-mix(in oklab, #8c97a3 60%, transparent);
+  stroke-width: 3;
+}
+.mascot__seam {
+  fill: none;
+  stroke: #e24b57;
+  stroke-width: 2;
+}
+.mascot__stitch {
+  fill: none;
+  stroke: #e24b57;
+  stroke-width: 8;
+  stroke-dasharray: 2.5 7;
+  stroke-linecap: round;
+}
+.mascot__helmet {
+  fill: var(--accent);
+  stroke: color-mix(in oklab, var(--accent) 55%, #000);
+  stroke-width: 2;
+}
+.mascot__visor {
+  fill: color-mix(in oklab, var(--accent) 62%, #000);
+}
+.mascot__helmet-shine {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.4);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+/* 왕관은 헬멧 위 글자색(accent-ink)으로 — 어느 구단색 헬멧에서도 드러난다 */
+.mascot__crown {
+  fill: var(--accent-ink);
+  stroke: none;
+}
+.mascot__brow {
+  fill: none;
+  stroke: #1b1f24;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.mascot__eye-white {
+  fill: #ffffff;
+  stroke: #1b1f24;
+  stroke-width: 2.5;
+}
+.mascot__iris {
+  fill: #6b4a2b;
+}
+.mascot__pupil {
+  fill: #1b1f24;
+}
+.mascot__glint {
+  fill: #ffffff;
+}
+.mascot__wink,
+.mascot__mouth {
+  fill: none;
+  stroke: #1b1f24;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+.mascot__cheek {
+  fill: #ff8fa3;
+  opacity: 0.5;
+}
+.mascot__glove {
+  fill: #8a5a2b;
+  stroke: #4e3117;
+  stroke-width: 2.5;
+}
+.mascot__lace {
+  fill: none;
+  stroke: #d9a46a;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.mascot__body {
+  animation: mascot-bob 3.2s ease-in-out infinite;
+  transform-origin: 125px 190px;
+}
+.mascot__bat {
+  animation: mascot-bat 3.2s ease-in-out infinite;
+  transform-origin: 84px 150px;
+}
+.mascot__eyes {
+  animation: mascot-blink 5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(2deg);
+  }
+}
+
+/* 방망이를 어깨에 걸치고 까딱까딱 */
+@keyframes mascot-bat {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* 말풍선 */
+.speech-bubble {
+  position: relative;
+  border-radius: 1.25rem;
+  background: var(--bg-card);
+  border: 2px solid var(--line);
+  padding: 0.5rem 0.875rem;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  left: 1.5rem;
+  bottom: -0.55rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  background: var(--bg-card);
+  border-right: 2px solid var(--line);
+  border-bottom: 2px solid var(--line);
+  transform: rotate(45deg);
+}
+
+/* 히어로 바탕 — 강조색이 은은하게 번진 몽글몽글한 원 */
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in oklab, var(--accent) 22%, transparent) 0 22%, transparent 23%),
+    radial-gradient(circle at 88% 12%, color-mix(in oklab, var(--accent) 14%, transparent) 0 14%, transparent 15%),
+    radial-gradient(circle at 80% 92%, color-mix(in oklab, var(--on-base) 16%, transparent) 0 18%, transparent 19%),
+    var(--bg-card);
+  border: 2px solid var(--line);
+}
+
+/* 스티커 카드 — 두툼한 테두리 + 아래로 밀린 단색 그림자 */
+.sticker {
+  border-radius: 1.5rem;
+  border: 2px solid var(--line);
+  background: var(--bg-card);
+  box-shadow: 0 5px 0 color-mix(in oklab, var(--line) 85%, var(--ink-1));
+}
+
+/* 통통 버튼 — 누르면 쏙 들어간다 */
+.squishy {
+  border-radius: 9999px;
+  box-shadow: 0 5px 0 color-mix(in oklab, var(--accent) 65%, #000);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.squishy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 color-mix(in oklab, var(--accent) 65%, #000);
+}
+.squishy:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--accent) 65%, #000);
+}
+
+/* 번호 동그라미 */
+.step-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+
+/* 고대비: 장식 바탕·그림자·움직임을 빼고 경계를 또렷하게 */
+:root[data-style='contrast'] .home-hero {
+  background: var(--bg-card);
+  border-width: 3px;
+}
+:root[data-style='contrast'] .sticker,
+:root[data-style='contrast'] .squishy {
+  box-shadow: none;
+  border-width: 3px;
+}
+:root[data-style='contrast'] .mascot__body,
+:root[data-style='contrast'] .mascot__bat,
+:root[data-style='contrast'] .mascot__eyes {
+  animation: none;
+}

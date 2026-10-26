@@ -18,6 +18,8 @@ export default tseslint.config(
       'test-results/**',
       'next-env.d.ts',
       'supabase/.temp/**',
+      // Firebase판은 별도 패키지다(자체 tsconfig·테스트). 이 설정으로 검사하지 않는다.
+      'firebase-app/**',
     ],
   },
 
