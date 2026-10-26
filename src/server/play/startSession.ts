@@ -55,14 +55,9 @@ export async function startSession(
         select primary_team_id, age_confirmed_at is not null as age_confirmed
           from public.profiles where id = ${owner.userId}
       `;
-      if (!profile) {
-        throw new ApiError(
-          'FORBIDDEN',
-          '프로필이 없습니다. 닉네임과 대표 구단을 먼저 설정해 주세요.',
-        );
-      }
       // 만 14세 확인 전에는 회원 기록을 쌓지 않는다(src/server/me/age.ts).
-      if (!profile.age_confirmed) throw new ApiError('AGE_CONFIRMATION_REQUIRED');
+      // 프로필은 확인할 때 만들어지므로, 프로필이 없는 회원도 아직 확인 전이다.
+      if (!profile?.age_confirmed) throw new ApiError('AGE_CONFIRMATION_REQUIRED');
       teamSnapshotId = profile.primary_team_id;
     }
 

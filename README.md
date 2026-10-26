@@ -3,20 +3,16 @@
 KBO 기록 퀴즈를 **1이닝 경기**로 플레이하는 웹앱. 문제는 투구, 정답 속도는 타구,
 오답은 아웃. 3아웃이면 이닝이 끝나고 **박스스코어**가 남는다.
 
-> **현재 상태: P1 단계 1~9 구현 완료.** 다만 **출시 가능 상태는 아니다.**
+> **현재 상태 (2026-10-26)**: P1과 그 위의 고도화(테마·화면 스타일, 선수 카드·업적 카드,
+> 메인 페이지, 처리방침 초안·보관 기간 파기, 만 14세 확인)가 **로컬에서 구현·검증됐다.**
+> 실제 사용자에게는 아직 공개하지 않았다. 운영 배포는 하지 않았다.
 >
-> 남은 차단 요인:
-> - 통합 테스트 34건과 E2E 78건이 **Docker 없이 실행되지 않았다**
-> - KBO 데이터 사용권 미확보 → 문항 300개는 콘텐츠 과제로 남아 있다
-> - Auth 공급자 자격증명 미확보 → 로그인 왕복이 한 번도 실행되지 않았다
-> - 스테이징 배포·백업·롤백 리허설 미수행
+> 공개를 막는 것 — 모두 사람이 정할 일이다:
+> - 개인정보처리방침 빈칸(운영 주체·보호책임자·리전 등)과 법률 검토 → 15 문서
+> - 배포 환경(호스팅·Supabase 리전·도메인) → 11 문서 §2.2
+> - KBO 데이터 이용 허락(문의서 초안 13 문서, 미발송)
 >
-> 운영 배포는 하지 않았다. 성능 목표와 실측은 [PERFORMANCE.md](PERFORMANCE.md)에
-> 구분해 적었다.
->
-> ⚠️ **통합 테스트 34건은 작성되었으나 실행되지 않았다.** Docker가 없어 로컬
-> Supabase 스택을 띄울 수 없었다. `npm run db:start` 가능한 환경에서 먼저
-> 돌려야 한다.
+> 성능 목표와 실측은 [PERFORMANCE.md](PERFORMANCE.md)에 구분해 적었다.
 
 ## 문서
 
@@ -106,11 +102,18 @@ scripts/check-sql.mjs  Docker 없이 SQL 구문 검증
 ## 테스트
 
 ```bash
-npm run test:unit            # 75건, 엔진 커버리지 100%
-npm run test:unit -- --coverage
-npm run test                 # 통합 테스트 포함 (DATABASE_URL 필요)
-npm run test:e2e             # Playwright (단계 6 이후)
+npm run test:unit            # 단위 (엔진 커버리지 100%)
+npm run test                 # 단위 + 통합 (로컬 Supabase 필요)
+npm run test:e2e             # Playwright — 공개 화면·접근성·반응형·경기·회원 시나리오
 ```
+
+테스트는 **`.env.local`을 스스로 읽는다**(`tests/support/loadLocalEnv.ts`). 셸에서
+변수를 내보낼 필요가 없다. Next의 환경 로더는 `NODE_ENV=test`에서 `.env.local`을
+건너뛰므로 따로 읽는다.
+
+회원 시나리오(`tests/e2e/member.spec.ts`)는 **실제 이메일 링크 로그인**을 한다 —
+로컬 Supabase가 보낸 메일을 Mailpit(`http://127.0.0.1:54324`)에서 꺼낸다.
+계정은 `e2e-…@example.test`로 만들고 끝나면 지운다.
 
 통합 테스트는 `DATABASE_URL`이 없으면 건너뛴다. **로컬이 아닌 DB를 가리키면
 즉시 중단한다** — 테이블을 지우기 때문이다 (`tests/integration/helpers/fixtures.ts`).

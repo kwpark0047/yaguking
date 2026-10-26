@@ -88,10 +88,11 @@ describe.skipIf(!hasDatabase())('게스트 체험 상한', () => {
     });
   });
 
-  it('프로필이 없는 회원은 경기를 시작할 수 없다', async () => {
+  it('프로필이 없는 회원은 경기를 시작할 수 없다 — 만 14세 확인 전과 같다', async () => {
+    // 프로필은 만 14세 확인 때 만들어진다(0017). 프로필이 없으면 확인 전이다.
     await expect(
       startSession({ mode: 'official_3' }, { kind: 'user', userId: randomUUID() }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    ).rejects.toMatchObject({ code: 'AGE_CONFIRMATION_REQUIRED' });
   });
 
   it('회원 공식 경기는 official=true로 시작한다', async () => {

@@ -1,5 +1,12 @@
 import { fileURLToPath } from 'node:url';
+import { loadLocalEnv } from './tests/support/loadLocalEnv';
 import { defineConfig } from 'vitest/config';
+
+/**
+ * 로컬 Supabase 주소·키가 있는 `.env.local`을 읽는다(tests/support/loadLocalEnv.ts).
+ * 테스트 워커는 설정 파일이 바꾼 process.env를 물려받지 않으므로 `test.env`로도 넘긴다.
+ */
+const fileEnv = loadLocalEnv();
 
 export default defineConfig({
   resolve: {
@@ -9,6 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    env: fileEnv,
     include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
     /**
      * 통합 테스트는 같은 DB를 공유하고 각 파일이 cleanup()으로 테이블을 비운다.

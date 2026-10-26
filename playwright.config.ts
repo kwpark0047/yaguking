@@ -1,4 +1,9 @@
+import { loadLocalEnv } from './tests/support/loadLocalEnv';
 import { defineConfig, devices } from '@playwright/test';
+
+// 앱과 같은 `.env.local`을 읽는다 — DB가 필요한 시나리오와 회원 로그인 시나리오가
+// 셸에서 변수를 따로 내보내지 않아도 돈다(tests/support/loadLocalEnv.ts).
+loadLocalEnv();
 
 /** 08 문서 §6의 3브레이크포인트 + reduced-motion 검증용 프로젝트 구성. */
 export default defineConfig({

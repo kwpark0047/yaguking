@@ -205,7 +205,7 @@ node -e "..." # admin.auth.admin.listUsers()
 
 ```bash
 npm run typecheck && npm run lint && npm run check:sql
-npm run test            # DATABASE_URL 필요
+npm run test            # .env.local의 로컬 DB를 쓴다(테스트가 직접 읽음)
 npm run build
 npm run security:check  # 빌드 후 실행
 npm run test:e2e
