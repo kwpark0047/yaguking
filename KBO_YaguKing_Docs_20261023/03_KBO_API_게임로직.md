@@ -1,5 +1,7 @@
 # 야구왕 — API 계약 및 게임 로직 명세
 
+> **Firebase 무료판 안내(2026-10-26)** — 이 문서의 플랫폼 부분(Supabase·Vercel·서버 판정 등)은 16 문서(무료 플랜 Firebase 전환) §4의 "03" 줄로 바뀌었다. 본문은 그대로 둔다.
+
 - 기준: PRD v1.0 / API prefix `/api/v1`
 - 인증: Supabase Auth JWT. 서버에서 토큰 검증 및 사용자 ID 추출. 클라이언트 제공 점수/정오/응답시간/관리자 역할은 신뢰하지 않음.
 - 응답 규격: `{ "success": true, "data": ... }` 또는 `{ "success": false, "error": { "code": "...", "message": "...", "requestId": "..." } }`

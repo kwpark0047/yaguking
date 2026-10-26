@@ -1,24 +1,24 @@
 {
-  "measuredAt": "2026-10-26T06:38:47.586Z",
-  "home": 258440,
-  "play": 211802,
-  "firstVisit": 470242,
-  "firstVisitsPerDay": 802,
+  "measuredAt": "2026-10-26T11:50:47.423Z",
+  "home": 259386,
+  "play": 211696,
+  "firstVisit": 471082,
+  "firstVisitsPerDay": 801,
   "files": [
     {
-      "path": "/assets/meter-B6D8ksZP.js",
+      "path": "/assets/keys-Bjz1Jr8s.js",
       "at": "게임 시작",
-      "bytes": 161819
+      "bytes": 161967
     },
     {
-      "path": "/assets/jua-subset-CgisSQP3.woff2",
+      "path": "/assets/jua-subset-BXEqeYYU.woff2",
       "at": "메인",
-      "bytes": 128088
+      "bytes": 128192
     },
     {
-      "path": "/assets/index-1fAF9dTt.js",
+      "path": "/assets/index-C4-nGZhv.js",
       "at": "메인",
-      "bytes": 90469
+      "bytes": 74788
     },
     {
       "path": "/assets/questions.generated-CGxcbWBv.js",
@@ -26,39 +26,44 @@
       "bytes": 41215
     },
     {
-      "path": "/assets/index.esm-D5JmbGlO.js",
+      "path": "/assets/index.esm-CJ4y_RRj.js",
       "at": "메인",
-      "bytes": 32477
+      "bytes": 32194
     },
     {
-      "path": "/assets/index-BJJYbuAg.css",
+      "path": "/assets/jsx-runtime-DShqqakv.js",
       "at": "메인",
-      "bytes": 7092
+      "bytes": 16457
     },
     {
-      "path": "/assets/PlayPage-B-ekz_3i.js",
-      "at": "게임 시작",
-      "bytes": 4559
+      "path": "/assets/index-C7x-8Ven.css",
+      "at": "메인",
+      "bytes": 7199
     },
     {
-      "path": "/assets/persist-B-jr47e2.js",
+      "path": "/assets/PlayPage-BLj4q_f9.js",
       "at": "게임 시작",
-      "bytes": 3212
+      "bytes": 4560
     },
     {
-      "path": "/assets/errors-DuvVNWBv.js",
+      "path": "/assets/persist-CAprf_Yo.js",
       "at": "게임 시작",
-      "bytes": 769
+      "bytes": 3187
+    },
+    {
+      "path": "/assets/errors-DmrnwFS7.js",
+      "at": "게임 시작",
+      "bytes": 767
     },
     {
       "path": "/",
       "at": "메인",
-      "bytes": 314
+      "bytes": 346
     },
     {
-      "path": "/assets/keys-BUa6MBxi.js",
-      "at": "게임 시작",
-      "bytes": 228
+      "path": "/assets/app-FVddwEut.js",
+      "at": "메인",
+      "bytes": 210
     }
   ]
 }

@@ -91,12 +91,13 @@ test('회원: 앱 열기 1읽기, 개인 경기 0읽기, 레벨 테스트', asyn
   test.setTimeout(150_000);
   await signUp(page, uniqueEmail());
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
-  await finishOnboarding(page);
+  const nickname = await finishOnboarding(page);
   await expect(page.getByRole('link', { name: /게임 시작/ })).toBeVisible({ timeout: 15_000 });
 
   await page.reload();
-  // 새로 연 페이지의 계량기는 0에서 시작한다 — 프로필 읽기까지 기다린다
-  await expect(page.getByText(/선수, 반가워요!/)).toBeVisible({ timeout: 15_000 });
+  // 새로 연 페이지의 계량기는 0에서 시작한다 — 프로필 읽기까지 기다린다. "회원 선수, 반가워요!"는
+  // 프로필을 읽기 전에도 보이므로 **닉네임**이 나올 때까지 기다린다(전에는 이 경쟁으로 0읽기가 잡혔다)
+  await expect(page.getByText(`${nickname} 선수, 반가워요!`)).toBeVisible({ timeout: 15_000 });
   const open = await meter(page);
   rows.push({ action: '회원 앱 열기(프로필)', ...open });
   expect(open).toEqual({ reads: 1, writes: 0 });

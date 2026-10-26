@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { accounts, becomeGuest, clearEmulators, hasFirestore, readDoc, signUp, uniqueEmail } from './helpers';
+import {
+  accounts,
+  answerQuestion,
+  becomeGuest,
+  clearEmulators,
+  hasFirestore,
+  listDocs,
+  newGuestUid,
+  readDoc,
+  signUp,
+  uniqueEmail,
+} from './helpers';
 
 /**
  * 만 14세 확인 (1단계) — Firestore 에뮬레이터에 실제로 저장되는지까지 본다.
@@ -67,4 +78,27 @@ test('만 14세 미만이라고 답하면 프로필과 계정을 지운다', asy
   expect(await uidOf(email)).toBeUndefined();
   await page.getByRole('button', { name: '메인으로' }).click();
   await expect(page.getByRole('link', { name: '가입하기' })).toBeVisible();
+});
+
+test('비회원으로 친 뒤 가입해 만 14세 미만이라고 답하면 비회원 기록까지 지운다', async ({ page }) => {
+  test.setTimeout(60_000);
+  const before = await accounts();
+  await page.goto('/play');
+  for (let out = 0; out < 3; out += 1) {
+    await expect(page.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
+    await answerQuestion(page, false);
+    await page.getByRole('button', { name: out < 2 ? '다음 타석' : '결과 보기' }).click();
+  }
+  await expect(page.getByText(/오답노트에 담았어요/)).toBeVisible({ timeout: 15_000 });
+  const uid = (await newGuestUid(before))!;
+  expect(await listDocs(`users/${uid}/games`)).toHaveLength(1);
+
+  await signUp(page, uniqueEmail());
+  await page.getByRole('button', { name: '아니요, 만 14세 미만이에요' }).click();
+  await page.getByRole('button', { name: '계정 지우기' }).click();
+  await expect(page.getByRole('heading', { name: '계정을 지웠어요' })).toBeVisible({ timeout: 15_000 });
+
+  for (const name of ['games', 'summary', 'daily', 'wrongNotes']) {
+    expect(await listDocs(`users/${uid}/${name}`), name).toEqual([]);
+  }
 });

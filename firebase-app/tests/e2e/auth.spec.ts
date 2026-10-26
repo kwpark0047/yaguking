@@ -102,3 +102,15 @@ for (const path of ['/', '/auth?mode=signup', '/auth?mode=login', '/auth/reset',
     expect(overflow).toBe(false);
   });
 }
+
+test('처리방침: Firebase판 초안 표시와 14개 항목, 이용약관은 확정 전', async ({ page }) => {
+  await page.goto('/privacy');
+  await expect(page.getByRole('note')).toContainText('초안');
+  await expect(page.getByRole('heading', { level: 2 })).toHaveCount(14);
+  await expect(page.getByRole('heading', { name: '7. 국외 이전' })).toBeVisible();
+  await expect(page.getByRole('rowheader', { name: '이전받는 자' })).toBeVisible();
+  await expect(page.getByText('Supabase')).toHaveCount(0);
+
+  await page.getByRole('link', { name: '이용약관 보기' }).click();
+  await expect(page.getByText('확정 전', { exact: true })).toBeVisible();
+});

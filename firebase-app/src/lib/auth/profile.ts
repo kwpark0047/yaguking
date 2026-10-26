@@ -1,5 +1,5 @@
 import { deleteUser, type User } from 'firebase/auth';
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase/db';
 import { countReads, countWrites } from '@/lib/firebase/meter';
 import type { ProfileState } from './gate';
@@ -50,12 +50,13 @@ export async function confirmAge(user: User): Promise<void> {
 }
 
 /**
- * 만 14세 미만이라고 답했을 때: 프로필과 계정을 지운다(되돌릴 수 없다).
+ * 만 14세 미만이라고 답했을 때: 기록과 계정을 지운다(되돌릴 수 없다). 비회원으로 쌓은 기록도
+ * 같은 uid라 함께 지운다. 프로필은 아직 없을 수 있다(확인 전 — 없는 문서 삭제는 그냥 지나간다).
  * 계정 삭제는 최근 로그인이 필요하다 — 가입 직후라 보통 문제없다.
  */
 export async function deleteOwnAccount(user: User): Promise<void> {
-  await deleteDoc(doc(firestore(), 'users', user.uid)).catch(() => {
-    // 프로필이 아직 없을 수 있다(확인 전). 계정 삭제는 그대로 진행한다.
-  });
+  // 이 파일은 회원이 앱을 열 때마다 불러온다. 지우기 코드는 드물게 쓰므로 그때 불러온다
+  const { deleteUserRecords } = await import('@/lib/profile/save');
+  await deleteUserRecords(user.uid, null);
   await deleteUser(user);
 }

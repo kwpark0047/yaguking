@@ -6,7 +6,7 @@ import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
 import { AuthPage } from '@/pages/AuthPage';
 import { HomePage } from '@/pages/HomePage';
-import { LegalPage } from '@/pages/LegalPage';
+
 import { ResetPage } from '@/pages/ResetPage';
 
 // Firestore를 쓰는 화면은 들어갈 때 불러온다(첫 화면 묶음에 SDK를 넣지 않는다).
@@ -23,6 +23,7 @@ const PlayPage = lazy(() => import('@/pages/PlayPage').then((module) => ({ defau
 const LevelTestPage = lazy(() =>
   import('@/pages/LevelTestPage').then((module) => ({ default: module.LevelTestPage })),
 );
+const LegalPage = lazy(() => import('@/pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 const NotesPage = lazy(() => import('@/pages/NotesPage').then((module) => ({ default: module.NotesPage })));
 const RoomLobbyPage = lazy(() =>
   import('@/pages/RoomLobbyPage').then((module) => ({ default: module.RoomLobbyPage })),
@@ -83,8 +84,8 @@ export function App() {
           <Route path="/auth/reset" element={<ResetPage />} />
           <Route path="/welcome/age" element={<Lazy><AgeCheckPage /></Lazy>} />
           <Route path="/welcome/profile" element={<Lazy><ProfileSetupPage /></Lazy>} />
-          <Route path="/terms" element={<LegalPage kind="terms" />} />
-          <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+          <Route path="/terms" element={<Lazy><LegalPage kind="terms" /></Lazy>} />
+          <Route path="/privacy" element={<Lazy><LegalPage kind="privacy" /></Lazy>} />
           <Route element={<MemberGate requireProfile={false} />}>
             <Route path="/settings" element={<Lazy><SettingsPage /></Lazy>} />
           </Route>

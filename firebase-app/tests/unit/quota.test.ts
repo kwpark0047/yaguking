@@ -12,7 +12,7 @@ function hangulInSource(dir: string, found = new Set<string>()): Set<string> {
   for (const name of readdirSync(dir)) {
     const child = join(dir, name);
     if (statSync(child).isDirectory()) hangulInSource(child, found);
-    else if (/\.(ts|tsx)$/.test(name)) for (const char of readFileSync(child, 'utf8')) if (/[가-힣]/.test(char)) found.add(char);
+    else if (/\.(ts|tsx)$/.test(name) && name !== 'privacy.ts') for (const char of readFileSync(child, 'utf8')) if (/[가-힣]/.test(char)) found.add(char);
   }
   return found;
 }

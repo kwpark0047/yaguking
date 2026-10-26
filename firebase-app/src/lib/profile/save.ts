@@ -104,14 +104,25 @@ export async function deleteAccountAndData(user: User, nickname: string | null):
   if (!Number.isFinite(lastSignIn) || Date.now() - lastSignIn > RECENT_LOGIN_MS) {
     throw new RecentLoginRequiredError();
   }
+  await deleteUserRecords(user.uid, nickname);
+  await deleteUser(user);
+}
+
+/**
+ * 한 사람의 Firestore 기록을 모두 지운다 — 경기·오답노트·누적·비회원 카운터·닉네임 예약·프로필.
+ * 계정 삭제(설정)와 만 14세 미만 응답이 함께 쓴다. 비회원으로 쌓은 기록도 같은 uid 아래에 있어
+ * 함께 지워진다(가입은 계정 연결이라 uid가 그대로다). 하위 문서를 읽는 만큼 읽기·삭제가 든다.
+ */
+export async function deleteUserRecords(uid: string, nickname: string | null): Promise<void> {
   const db = firestore();
   const refs: DocumentReference[] = [];
   for (const name of ['games', 'wrongNotes', 'summary', 'daily']) {
-    const snapshot = await getDocs(collection(db, 'users', user.uid, name));
+    const snapshot = await getDocs(collection(db, 'users', uid, name));
+    countReads('deleteUserRecords', Math.max(1, snapshot.size));
     refs.push(...snapshot.docs.map((item) => item.ref));
   }
   if (nickname) refs.push(doc(db, 'nicknames', nicknameKey(nickname)));
-  refs.push(doc(db, 'users', user.uid));
+  refs.push(doc(db, 'users', uid));
 
   // 한 묶음은 최대 500개
   for (let start = 0; start < refs.length; start += 450) {
@@ -119,5 +130,4 @@ export async function deleteAccountAndData(user: User, nickname: string | null):
     for (const ref of refs.slice(start, start + 450)) batch.delete(ref);
     await batch.commit();
   }
-  await deleteUser(user);
 }
