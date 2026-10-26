@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-yaguking"
+    "default": "demo-yaguking",
+    "prod": "yaguking-bc25c"
   }
 }
