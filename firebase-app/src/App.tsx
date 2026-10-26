@@ -24,6 +24,10 @@ const LevelTestPage = lazy(() =>
   import('@/pages/LevelTestPage').then((module) => ({ default: module.LevelTestPage })),
 );
 const NotesPage = lazy(() => import('@/pages/NotesPage').then((module) => ({ default: module.NotesPage })));
+const RoomLobbyPage = lazy(() =>
+  import('@/pages/RoomLobbyPage').then((module) => ({ default: module.RoomLobbyPage })),
+);
+const RoomPage = lazy(() => import('@/pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 
 function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -89,6 +93,8 @@ export function App() {
             <Route path="/play" element={<Lazy><PlayPage /></Lazy>} />
             <Route path="/level-test" element={<Lazy><LevelTestPage /></Lazy>} />
             <Route path="/notes" element={<Lazy><NotesPage /></Lazy>} />
+            <Route path="/room" element={<Lazy><RoomLobbyPage /></Lazy>} />
+            <Route path="/room/:code" element={<Lazy><RoomPage /></Lazy>} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { arrayUnion, doc, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, doc, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { emulatorHost, guest, member, now, seedConfirmedMember, startRulesEnv } from './setup';
 
@@ -79,6 +79,27 @@ describe.skipIf(!emulatorHost)('친구 대결 방 규칙', () => {
     await assertSucceeds(createRoom(member(env, 'host')));
     await assertFails(updateDoc(doc(member(env, 'p2'), `rooms/${CODE}`), { playerIds: ['host', 'someone'] }));
     await assertFails(setDoc(doc(member(env, 'p2'), `rooms/${CODE}/players/p2`), seat('p2')));
+  });
+
+  it('대기 중에는 자기만 명단에서 빠질 수 있다(방장은 못 빠지고 방을 닫는다)', async () => {
+    const hostDb = member(env, 'host');
+    await assertSucceeds(createRoom(hostDb));
+    await assertSucceeds(join(member(env, 'p2'), 'p2'));
+    await assertSucceeds(join(guest(env, 'g1'), 'g1'));
+
+    await assertFails(updateDoc(doc(member(env, 'p2'), `rooms/${CODE}`), { playerIds: arrayRemove('g1') })); // 남을 빼기
+    await assertFails(updateDoc(doc(hostDb, `rooms/${CODE}`), { playerIds: arrayRemove('host') })); // 방장
+    const p2 = member(env, 'p2');
+    const leave = writeBatch(p2);
+    leave.update(doc(p2, `rooms/${CODE}`), { playerIds: arrayRemove('p2') });
+    leave.delete(doc(p2, `rooms/${CODE}/players/p2`));
+    await assertSucceeds(leave.commit());
+
+    // 빠진 자리만큼 다시 들어올 수 있다
+    await assertSucceeds(join(member(env, 'p2'), 'p2'));
+
+    await assertSucceeds(updateDoc(doc(hostDb, `rooms/${CODE}`), { status: 'playing', startedAt: now() }));
+    await assertFails(updateDoc(doc(guest(env, 'g1'), `rooms/${CODE}`), { playerIds: arrayRemove('g1') })); // 시작 후
   });
 
   it('방장만 시작·종료하고, 2명 이상이어야 시작한다', async () => {

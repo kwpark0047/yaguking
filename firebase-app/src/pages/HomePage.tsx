@@ -38,6 +38,9 @@ export function HomePage() {
               <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
                 게임 시작 <span aria-hidden="true">▶</span>
               </Link>
+              <Link to="/room" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                친구 대결
+              </Link>
               {levelTestPending && (
                 <Link to="/level-test" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
                   레벨 테스트로 처음 등급 정하기

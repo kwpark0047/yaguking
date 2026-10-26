@@ -256,7 +256,7 @@ service cloud.firestore {
         && request.resource.data.questionSeconds is int
         && request.resource.data.questionSeconds >= 5 && request.resource.data.questionSeconds <= 30;
 
-      allow update: if signedIn() && (joining() || hostStarts() || hostFinishes());
+      allow update: if signedIn() && (joining() || leaving() || hostStarts() || hostFinishes());
 
       allow delete: if signedIn() && resource.data.hostUid == request.auth.uid;
 
@@ -272,6 +272,15 @@ service cloud.firestore {
           && !(request.auth.uid in resource.data.playerIds)
           && request.resource.data.playerIds == resource.data.playerIds.concat([request.auth.uid])
           && request.resource.data.playerIds.size() <= resource.data.maxPlayers;
+      }
+
+      // 대기 중에 자기 자신만 명단에서 뺀다. 방장은 나가지 않고 방을 닫는다(삭제).
+      function leaving() {
+        return resource.data.status == 'waiting'
+          && onlyChanges(['playerIds'])
+          && request.auth.uid in resource.data.playerIds
+          && request.auth.uid != resource.data.hostUid
+          && request.resource.data.playerIds == resource.data.playerIds.removeAll([request.auth.uid]);
       }
 
       function hostStarts() {

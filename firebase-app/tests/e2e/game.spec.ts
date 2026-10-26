@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import questions from '../../src/content/questions.generated.json' with { type: 'json' };
 import {
+  answerQuestion as answer,
   accounts,
   clearEmulators,
   finishOnboarding,
@@ -21,25 +21,9 @@ import {
 test.skip(!hasFirestore, 'Firestore 에뮬레이터(JDK 21)가 필요합니다.');
 test.describe.configure({ mode: 'serial' });
 
-const byStem = new Map(
-  (questions as { stem: string; correct: string }[]).map((question) => [question.stem, question.correct]),
-);
-
 test.beforeAll(async () => {
   await clearEmulators();
 });
-
-/** 지금 떠 있는 문제를 맞히거나 틀린다 */
-async function answer(page: Page, correct: boolean) {
-  const stem = (await page.locator('#question-stem').textContent())?.trim() ?? '';
-  const right = byStem.get(stem);
-  expect(right, `문제은행에 없는 문제: ${stem}`).toBeDefined();
-  const label = correct ? right! : (['A', 'B', 'C', 'D'].find((option) => option !== right) as string);
-  await page
-    .getByRole('group', { name: '보기' })
-    .locator('button', { has: page.locator('span', { hasText: new RegExp(`^${label}$`) }) })
-    .click();
-}
 
 /** 틀리기만 해서 3아웃으로 한 판을 끝낸다 */
 async function strikeOutInning(page: Page) {

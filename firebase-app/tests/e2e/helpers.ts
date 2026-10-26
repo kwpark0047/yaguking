@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import questions from '../../src/content/questions.generated.json' with { type: 'json' };
 
 /**
  * Firebase판 E2E 도우미. 모두 **로컬 에뮬레이터**에만 닿는다(demo-yaguking).
@@ -106,6 +107,22 @@ export async function becomeGuest(page: Page): Promise<void> {
   await page.goto('/play');
   await page.getByRole('link', { name: '◀ 나가기' }).click();
   await expect(page.getByText('비회원으로 플레이 중', { exact: true })).toBeVisible({ timeout: 15_000 });
+}
+
+const correctByStem = new Map(
+  (questions as { stem: string; correct: string }[]).map((question) => [question.stem, question.correct]),
+);
+
+/** 지금 떠 있는 문제를 일부러 맞히거나 틀린다(테스트도 정적 문제은행을 읽는다) */
+export async function answerQuestion(page: Page, correct: boolean): Promise<void> {
+  const stem = (await page.locator('#question-stem').textContent())?.trim() ?? '';
+  const right = correctByStem.get(stem);
+  expect(right, `문제은행에 없는 문제: ${stem}`).toBeDefined();
+  const label = correct ? right! : (['A', 'B', 'C', 'D'].find((option) => option !== right) as string);
+  await page
+    .getByRole('group', { name: '보기' })
+    .locator('button', { has: page.locator('span', { hasText: new RegExp(`^${label}$`) }) })
+    .click();
 }
 
 export const uniqueEmail = () =>
