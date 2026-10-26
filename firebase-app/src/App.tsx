@@ -1,30 +1,56 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
-import { needsAgeCheck } from '@/lib/auth/gate';
+import { needsAgeCheck, needsProfileSetup } from '@/lib/auth/gate';
+import { applyDocumentTeam } from '@/lib/theme/documentTeam';
+import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
 import { AuthPage } from '@/pages/AuthPage';
 import { HomePage } from '@/pages/HomePage';
 import { LegalPage } from '@/pages/LegalPage';
 import { ResetPage } from '@/pages/ResetPage';
 
+// Firestore를 쓰는 화면은 들어갈 때 불러온다(첫 화면 묶음에 SDK를 넣지 않는다).
+const AgeCheckPage = lazy(() =>
+  import('@/pages/AgeCheckPage').then((module) => ({ default: module.AgeCheckPage })),
+);
+const ProfileSetupPage = lazy(() =>
+  import('@/pages/ProfileSetupPage').then((module) => ({ default: module.ProfileSetupPage })),
+);
+const SettingsPage = lazy(() =>
+  import('@/pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+);
+
+function Lazy({ children }: { children: ReactNode }) {
+  return <Suspense fallback={null}>{children}</Suspense>;
+}
+
 /**
- * 만 14세 확인이 필요한 회원을 확인 화면으로 보낸다(어느 화면에 있든).
+ * 회원이 가야 할 곳으로 보낸다: 만 14세 확인 → 프로필 설정(닉네임·최애 구단).
  * 화면 안내일 뿐이고, 실제로 막는 것은 Firestore 보안 규칙이다.
  */
-function AgeGate() {
+function MemberGate({ requireProfile }: { requireProfile: boolean }) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
   if (user && needsAgeCheck(user, profile)) {
-    const returnTo = `${location.pathname}${location.search}`;
-    return <Navigate to={`/welcome/age?returnTo=${encodeURIComponent(returnTo)}`} replace />;
+    return <Navigate to={`/welcome/age?returnTo=${returnTo}`} replace />;
+  }
+  if (requireProfile && user && needsProfileSetup(user, profile)) {
+    return <Navigate to={`/welcome/profile?returnTo=${returnTo}`} replace />;
   }
   return <Outlet />;
 }
 
-// 만 14세 확인 화면은 Firestore를 쓰므로 들어갈 때 불러온다.
-const AgeCheckPage = lazy(() =>
-  import('@/pages/AgeCheckPage').then((module) => ({ default: module.AgeCheckPage })),
-);
+/** 최애 구단 1위의 테마를 화면 전체에 입힌다(구단 테마 스위치가 켜져 있을 때). */
+function TeamThemeSync() {
+  const { user, isGuest, profile } = useAuth();
+  const slug =
+    user && !isGuest && profile.status === 'ready' ? (profile.data.favoriteTeams[0] ?? null) : null;
+  useEffect(() => {
+    applyDocumentTeam(teamThemesEnabled() ? slug : null);
+  }, [slug]);
+  return null;
+}
 
 function NotFound() {
   return (
@@ -40,22 +66,20 @@ function NotFound() {
 export function App() {
   return (
     <AuthProvider>
+      <TeamThemeSync />
       <BrowserRouter>
         <Routes>
-          {/* 로그인·확인·약관 화면은 확인 게이트 밖에 둔다(돌아올 길이 막히지 않게) */}
+          {/* 로그인·확인·약관 화면은 게이트 밖에 둔다(돌아올 길이 막히지 않게) */}
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/reset" element={<ResetPage />} />
-          <Route
-            path="/welcome/age"
-            element={
-              <Suspense fallback={null}>
-                <AgeCheckPage />
-              </Suspense>
-            }
-          />
+          <Route path="/welcome/age" element={<Lazy><AgeCheckPage /></Lazy>} />
+          <Route path="/welcome/profile" element={<Lazy><ProfileSetupPage /></Lazy>} />
           <Route path="/terms" element={<LegalPage kind="terms" />} />
           <Route path="/privacy" element={<LegalPage kind="privacy" />} />
-          <Route element={<AgeGate />}>
+          <Route element={<MemberGate requireProfile={false} />}>
+            <Route path="/settings" element={<Lazy><SettingsPage /></Lazy>} />
+          </Route>
+          <Route element={<MemberGate requireProfile />}>
             <Route path="/" element={<HomePage />} />
           </Route>
           <Route path="*" element={<NotFound />} />

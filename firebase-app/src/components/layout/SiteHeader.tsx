@@ -4,7 +4,8 @@ import { signOutUser } from '@/lib/auth/actions';
 
 /** 머리줄 — 로고, 그리고 로그인 상태에 따라 로그인/가입 또는 비회원 표시·로그아웃. */
 export function SiteHeader() {
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, profile } = useAuth();
+  const nickname = profile.status === 'ready' ? profile.data.nickname : null;
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-2">
@@ -15,13 +16,23 @@ export function SiteHeader() {
 
       <div className="flex items-center gap-2">
         {user === undefined ? null : user && !isGuest ? (
-          <button
-            type="button"
-            onClick={() => void signOutUser()}
-            className="flex min-h-11 items-center px-2 text-sm text-ink-2 underline"
-          >
-            로그아웃
-          </button>
+          <>
+            <Link
+              to="/settings"
+              className="flex min-h-11 items-center rounded-full border-2 px-4 text-sm font-semibold"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              {nickname ?? '설정'}
+              <span className="sr-only"> 설정</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => void signOutUser()}
+              className="flex min-h-11 items-center px-2 text-sm text-ink-2 underline"
+            >
+              로그아웃
+            </button>
+          </>
         ) : (
           <>
             {isGuest && <span className="text-xs text-ink-2">비회원으로 플레이 중</span>}

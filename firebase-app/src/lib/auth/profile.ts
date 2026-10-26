@@ -4,8 +4,7 @@ import { firestore } from '@/lib/firebase/db';
 import type { ProfileState } from './gate';
 
 /**
- * `users/{uid}` — 회원 프로필. 1단계에서는 만 14세 확인 시각만 담는다.
- * 닉네임·최애 구단·선수는 3단계에서 더한다.
+ * `users/{uid}` — 회원 프로필(만 14세 확인 시각, 닉네임, 최애 구단·선수, 레벨 테스트).
  *
  * 읽기는 한 번(getDoc)만 한다. 실시간 구독(onSnapshot)은 무료 읽기 한도를
  * 계속 쓰므로 프로필처럼 거의 안 바뀌는 문서에는 쓰지 않는다.
@@ -14,7 +13,19 @@ export async function loadProfile(uid: string): Promise<ProfileState> {
   try {
     const snapshot = await getDoc(doc(firestore(), 'users', uid));
     if (!snapshot.exists()) return { status: 'missing' };
-    return { status: 'ready', ageConfirmed: snapshot.get('ageConfirmedAt') != null };
+    const strings = (value: unknown) =>
+      Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+    const nickname = snapshot.get('nickname');
+    return {
+      status: 'ready',
+      ageConfirmed: snapshot.get('ageConfirmedAt') != null,
+      data: {
+        nickname: typeof nickname === 'string' ? nickname : null,
+        favoriteTeams: strings(snapshot.get('favoriteTeams')),
+        favoritePlayers: strings(snapshot.get('favoritePlayers')),
+        levelTestDone: snapshot.get('levelTest') != null,
+      },
+    };
   } catch {
     return { status: 'error' };
   }

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { needsAgeCheck } from '@/lib/auth/gate';
+import { needsAgeCheck, needsProfileSetup, type ProfileData } from '@/lib/auth/gate';
 import { authErrorMessage, passwordProblem } from '@/lib/auth/messages';
+
+const data = (overrides: Partial<ProfileData> = {}): ProfileData => ({
+  nickname: null,
+  favoriteTeams: [],
+  favoritePlayers: [],
+  levelTestDone: false,
+  ...overrides,
+});
 
 /** 로그인 도우미 (Firebase판 1단계). */
 
@@ -15,16 +23,38 @@ describe('만 14세 확인이 필요한가', () => {
 
   it('회원인데 프로필이 없거나 확인 전이면 묻는다', () => {
     expect(needsAgeCheck(member, { status: 'missing' })).toBe(true);
-    expect(needsAgeCheck(member, { status: 'ready', ageConfirmed: false })).toBe(true);
+    expect(needsAgeCheck(member, { status: 'ready', ageConfirmed: false, data: data() })).toBe(true);
   });
 
   it('확인을 마쳤으면 묻지 않는다', () => {
-    expect(needsAgeCheck(member, { status: 'ready', ageConfirmed: true })).toBe(false);
+    expect(needsAgeCheck(member, { status: 'ready', ageConfirmed: true, data: data() })).toBe(false);
   });
 
   it('프로필을 불러오는 중이거나 실패했으면 판단을 미룬다 — 엉뚱하게 보내지 않는다', () => {
     expect(needsAgeCheck(member, { status: 'loading' })).toBe(false);
     expect(needsAgeCheck(member, { status: 'error' })).toBe(false);
+  });
+});
+
+describe('프로필 설정이 필요한가', () => {
+  const member = { isAnonymous: false };
+
+  it('닉네임이나 최애 구단 1위가 없으면 설정으로 보낸다', () => {
+    expect(needsProfileSetup(member, { status: 'ready', ageConfirmed: true, data: data() })).toBe(true);
+    expect(
+      needsProfileSetup(member, { status: 'ready', ageConfirmed: true, data: data({ nickname: '야구왕' }) }),
+    ).toBe(true);
+  });
+
+  it('둘 다 있으면 보내지 않는다(선수는 선택)', () => {
+    const ready = data({ nickname: '야구왕', favoriteTeams: ['lg'] });
+    expect(needsProfileSetup(member, { status: 'ready', ageConfirmed: true, data: ready })).toBe(false);
+  });
+
+  it('만 14세 확인 전·비회원·불러오는 중에는 묻지 않는다(확인이 먼저)', () => {
+    expect(needsProfileSetup(member, { status: 'ready', ageConfirmed: false, data: data() })).toBe(false);
+    expect(needsProfileSetup({ isAnonymous: true }, { status: 'missing' })).toBe(false);
+    expect(needsProfileSetup(member, { status: 'loading' })).toBe(false);
   });
 });
 

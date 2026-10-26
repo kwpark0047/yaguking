@@ -9,7 +9,8 @@ import { authErrorMessage } from '@/lib/auth/messages';
  * 1단계 메인 — 로그인 상태가 보이는지만 확인하는 자리다. 게임 화면은 4단계.
  */
 export function HomePage() {
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, profile } = useAuth();
+  const nickname = profile.status === 'ready' ? profile.data.nickname : null;
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -36,7 +37,7 @@ export function HomePage() {
           <p className="text-sm text-ink-2">불러오는 중…</p>
         ) : user && !isGuest ? (
           <p className="text-sm text-ink-2" role="status">
-            {user.email ?? '회원'} 계정으로 로그인했어요. 게임은 곧 열려요.
+            {nickname ? `${nickname} 선수, 반가워요!` : `${user.email ?? '회원'} 계정으로 로그인했어요.`} 게임은 곧 열려요.
           </p>
         ) : isGuest ? (
           <p className="text-sm text-ink-2" role="status">

@@ -24,8 +24,8 @@ test('새 회원은 확인 화면으로 가고, 확인하면 서버 시각이 �
   expect(await readDoc(`users/${uid}`)).toBeNull();
 
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText(/계정으로 로그인했어요/)).toBeVisible();
+  // 확인 다음은 프로필 설정(3단계) — 닉네임과 최애 구단이 아직 없다
+  await expect(page).toHaveURL(/\/welcome\/profile/);
 
   const profile = await readDoc(`users/${uid}`);
   expect(profile).not.toBeNull();
@@ -36,14 +36,14 @@ test('확인한 회원에게는 다시 묻지 않는다', async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/welcome\/profile/);
 
   await page.goto('/welcome/age?returnTo=%2Fprivacy');
   await expect(page).toHaveURL(/\/privacy$/);
 
-  // 새로고침해도(프로필을 다시 읽어도) 확인 화면으로 가지 않는다
+  // 새로고침해도(프로필을 다시 읽어도) 확인 화면으로 가지 않는다 — 다음 단계(프로필)로 간다
   await page.goto('/');
-  await expect(page.getByText(/계정으로 로그인했어요/)).toBeVisible();
+  await expect(page).toHaveURL(/\/welcome\/profile/);
 });
 
 test('비회원에서 가입한 회원도 확인을 거친다', async ({ page }) => {
