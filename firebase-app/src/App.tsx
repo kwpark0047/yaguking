@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { LoadingBall } from '@/components/effects/Effects';
 import { needsAgeCheck, needsProfileSetup } from '@/lib/auth/gate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
@@ -32,7 +33,7 @@ const RoomLobbyPage = lazy(() =>
 const RoomPage = lazy(() => import('@/pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 
 function Lazy({ children }: { children: ReactNode }) {
-  return <Suspense fallback={null}>{children}</Suspense>;
+  return <Suspense fallback={<LoadingBall />}>{children}</Suspense>;
 }
 
 /**

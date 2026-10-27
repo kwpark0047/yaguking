@@ -1070,3 +1070,165 @@ body {
 :root[data-style='contrast'] .mascot__eyes {
   animation: none;
 }
+
+/* ── 축하·연출 효과 (docs/effects-plan.md) ─────────────────────────────── */
+/*
+ * <html data-effects>: full(모두) · calm(작은 효과만) · none(효과 없음 — 결과는 글자·색으로만).
+ * 기기의 동작 줄이기는 위 전역 규칙이 한 번 더 막는다. 효과는 누를 수 없고 화면 읽기에서 숨긴다.
+ */
+.effects-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+}
+
+/* 늦게 뜨는 화면: 0.3초가 지나야 보인다(빨리 뜨면 깜빡이지 않게) */
+.fx-loading {
+  opacity: 0;
+  animation: fx-appear 200ms ease-out 300ms forwards;
+}
+.fx-ball {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 9999px;
+  background: var(--ink-1);
+  box-shadow: inset -2px -2px 0 color-mix(in oklab, var(--out) 70%, transparent);
+  animation: fx-bounce 700ms ease-in-out infinite alternate;
+}
+@keyframes fx-appear {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fx-bounce {
+  from {
+    transform: translateY(-0.35rem);
+  }
+  to {
+    transform: translateY(0.2rem);
+  }
+}
+
+/* 플레이 볼! — 위에서 내려와 머물다 올라간다. 문제는 그동안에도 보이고 눌린다 */
+.play-ball-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 55;
+  translate: -50% 0;
+  padding: 0.6rem 1.6rem;
+  border-radius: 0 0 1.25rem 1.25rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.5rem;
+  pointer-events: none;
+  animation: fx-banner 1200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes fx-banner {
+  0% {
+    transform: translateY(-110%);
+  }
+  22%,
+  75% {
+    transform: none;
+  }
+  100% {
+    transform: translateY(-110%);
+  }
+}
+:root[data-effects='calm'] .play-ball-banner {
+  animation-name: fx-banner-fade;
+}
+@keyframes fx-banner-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  15%,
+  80% {
+    opacity: 1;
+  }
+}
+
+/* 홈런 글자가 통통 */
+.fx-pop {
+  display: inline-block;
+  animation: fx-pop 520ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes fx-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* 승급 보너스 리본 — 아래에서 튀어 오른다 */
+.fx-ribbon {
+  align-self: flex-start;
+  padding: 0.2rem 0.8rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--accent) 18%, var(--bg-card));
+  border: 1.5px solid var(--accent);
+  animation: fx-rise 450ms cubic-bezier(0.2, 1.4, 0.4, 1) 80ms both;
+}
+@keyframes fx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 등급 카드 뒤집기 — 뒷면(엠블럼)에서 앞면(등급)으로 */
+.tier-flip {
+  perspective: 1000px;
+}
+.tier-flip__inner {
+  position: relative;
+  transform-style: preserve-3d;
+  animation: fx-flip 700ms cubic-bezier(0.3, 0.7, 0.2, 1) 250ms both;
+}
+.tier-flip__front,
+.tier-flip__back {
+  backface-visibility: hidden;
+}
+.tier-flip__back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transform: rotateY(180deg);
+  border-radius: 1.5rem;
+  border: 2px solid var(--line);
+  background: #0b1730;
+  color: #d3dbe5;
+}
+@keyframes fx-flip {
+  from {
+    transform: rotateY(180deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+:root[data-effects='none'] :is(.fx-pop, .fx-ribbon, .tier-flip__inner, .fx-ball) {
+  animation: none;
+}
+:root[data-effects='none'] .tier-flip__back {
+  display: none;
+}

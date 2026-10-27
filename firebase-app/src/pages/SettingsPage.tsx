@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
+import { EffectsSetting } from '@/components/effects/Effects';
 import { PlayerInputs } from '@/components/profile/PlayerInputs';
 import { TeamRankPicker } from '@/components/profile/TeamRankPicker';
 import { signOutUser } from '@/lib/auth/actions';
@@ -157,6 +158,13 @@ export function SettingsPage() {
         >
           저장하기
         </button>
+      </section>
+
+      <section aria-labelledby="display-title" className="flex flex-col gap-3">
+        <h2 id="display-title" className="font-cute text-xl">
+          화면
+        </h2>
+        <EffectsSetting />
       </section>
 
       <section aria-labelledby="account-title" className="flex flex-col gap-3">

@@ -25,7 +25,7 @@ export const PRIVACY_OPERATOR = '위마켓';
 export const PRIVACY_OFFICER = { name: '박강원', phone: '010-3890-0047' } as const;
 
 /** 이 앱이 기기 저장소(localStorage)에 쓰는 키 — 단위 테스트가 코드와 대조한다 */
-export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname'] as const;
+export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects'] as const;
 
 export interface PolicyTable {
   head: readonly string[];
@@ -172,6 +172,7 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
       rows: [
         ['yk_seen_questions', `최근 본 문항 ${SEEN_QUESTIONS_KEPT}개 — 다음 경기에서 같은 문항을 뒤로 미룸`, '브라우저 저장소를 지울 때까지'],
         ['yk_room_nickname', '비회원이 친구 대결에서 쓴 이름 — 다음에 미리 채움', '브라우저 저장소를 지울 때까지'],
+        ['yk_effects', '화면 효과 설정(줄이기·끄기를 고른 경우만) — 다음에도 같은 설정', '브라우저 저장소를 지울 때까지'],
         ['firebase로 시작하는 저장소', '로그인 상태 유지(인증 서비스)', '로그아웃할 때까지'],
         ['firestore로 시작하는 저장소', '받은 기록을 기기에 남겨 다시 읽지 않기(데이터 서비스의 오프라인 저장)', '브라우저 저장소를 지울 때까지 — 로그아웃해도 남습니다. 여러 사람이 쓰는 기기라면 사이트 데이터를 지워 주세요'],
       ],
