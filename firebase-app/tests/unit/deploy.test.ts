@@ -95,6 +95,7 @@ interface HostingSite {
   predeploy: string[];
   ignore: string[];
   rewrites: { source?: string; destination: string }[];
+  redirects?: { regex?: string; source?: string; destination: string; type: number }[];
   headers: { source: string; headers: { key: string; value: string }[] }[];
 }
 
@@ -104,15 +105,31 @@ describe('Hosting 설정(firebase.json) — 이용자 앱과 관리자 사이트
   const header = (target: string, source: string, key: string) =>
     site(target).headers.find((rule) => rule.source === source)?.headers.find((item) => item.key === key)?.value;
 
-  it('두 사이트, 각자 결과물 폴더와 배포 직전 점검', () => {
-    expect(config.hosting.map((item) => item.target)).toEqual(['app', 'admin']);
+  it('두 사이트(+ 옛 주소 넘기기), 각자 결과물 폴더와 배포 직전 점검', () => {
+    expect(config.hosting.map((item) => item.target)).toEqual(['app', 'admin', 'legacy']);
     expect(site('app')).toMatchObject({ public: 'dist', predeploy: ['node scripts/predeploy-check.mjs'] });
     expect(site('admin')).toMatchObject({ public: 'dist-admin', predeploy: ['node scripts/predeploy-check.mjs --admin'] });
     // Firebase CLI는 '='이 든 predeploy 명령을 실행하지 않고 넘어간다(경고만) — 점검 없이 옛 빌드가 올라간다
     for (const target of ['app', 'admin']) for (const command of site(target).predeploy) expect(command).not.toContain('=');
     for (const target of ['app', 'admin']) expect(site(target).ignore).toContain('**/*.map');
     const rc = JSON.parse(readFileSync(join(__dirname, '../../.firebaserc'), 'utf8'));
-    expect(rc.targets['yaguking-bc25c'].hosting).toEqual({ app: ['yaguking-bc25c'], admin: ['yaguking-bc25c-admin'] });
+    expect(rc.targets['yaguking-bc25c'].hosting).toEqual({
+      app: ['yaguking'],
+      admin: ['yaguking-bc25c-admin'],
+      legacy: ['yaguking-bc25c'],
+    });
+  });
+
+  it('옛 주소(yaguking-bc25c.web.app)는 경로·검색어 그대로 yaguking.web.app으로 — /__/(구글 로그인 도우미)는 빼고', () => {
+    // 프로젝트 기본 사이트의 firebaseapp.com이 구글 로그인 팝업(/__/auth/handler)을 맡는다. 이것까지 넘기면 로그인이 깨진다.
+    // 확인: 미리보기 채널에서 /, /play, /room/ABC234?x=1 → 301, /__/auth/handler·/__/firebase/init.json → 200
+    const [rule] = site('legacy').redirects!;
+    expect(site('legacy').redirects).toHaveLength(1);
+    expect(rule).toMatchObject({ destination: 'https://yaguking.web.app/:path', type: 301 });
+    const pattern = new RegExp(rule!.regex!.replace('?P<', '?<'));
+    for (const path of ['/', '/play', '/room/ABC234', '/privacy']) expect(path).toMatch(pattern);
+    for (const path of ['/__/auth/handler', '/__/firebase/init.json']) expect(path).not.toMatch(pattern);
+    expect(header('legacy', '**', 'X-Robots-Tag')).toBe('noindex');
   });
 
   it('화면 주소만 index.html로 — 점이 든 주소(없는 묶음 파일 등)는 404', () => {

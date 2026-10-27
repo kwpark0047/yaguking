@@ -7,10 +7,13 @@
     "yaguking-bc25c": {
       "hosting": {
         "app": [
-          "yaguking-bc25c"
+          "yaguking"
         ],
         "admin": [
           "yaguking-bc25c-admin"
+        ],
+        "legacy": [
+          "yaguking-bc25c"
         ]
       }
     },
@@ -21,6 +24,9 @@
         ],
         "admin": [
           "demo-yaguking-admin"
+        ],
+        "legacy": [
+          "demo-yaguking-legacy"
         ]
       }
     }

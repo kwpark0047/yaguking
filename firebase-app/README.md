@@ -43,7 +43,7 @@ npm run deploy:check # 배포 전 점검만(운영 빌드 + 결과물 검사, �
 | 5 | 비공식 친구 대결(실시간 구독) | 완료 |
 | 6 | 무료 할당량 최적화 | 완료 — `docs/usage-report.md` |
 | 7 | 공식 XP·RP(별도 — 설계만) | 설계 완료 — `docs/official-xp-rp.md` |
-| 8 | Hosting 배포 설정, GitHub 자동 배포(꺼진 상태) | 완료 — `docs/deploy.md`. **첫 배포 2026-10-26**: https://yaguking-bc25c.web.app (`docs/deploy-log.md`) |
+| 8 | Hosting 배포 설정, GitHub 자동 배포(꺼진 상태) | 완료 — `docs/deploy.md`. **첫 배포 2026-10-26**. 지금 주소 https://yaguking.web.app (2026-10-27부터, 예전 `yaguking-bc25c.web.app`은 넘김 — `docs/deploy-log.md`) |
 | 9 | 문서 갱신, 검증 보고서 | 완료 — `docs/verification-report.md` |
 
 복사해 온 코드는 `COPIED_FROM.md`에 적었다.
