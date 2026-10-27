@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminDenial, maskEmail } from '@/lib/admin/access';
+import { ADMIN_SITE_URL, adminDenial, maskEmail, signInProblem } from '@/lib/admin/access';
 import { buildPublicNotices, noticeProblem, visibleNotices, type Notice } from '@/lib/admin/notices';
 import { signupCheck, summarize } from '@/lib/admin/signupCheck';
 
@@ -11,6 +11,16 @@ describe('관리자 판별 = 규칙의 isAdmin()과 같은 조건', () => {
     expect(adminDenial({ admin: 'true', email_verified: true, ...google })).toBe('no-claim');
     expect(adminDenial({ admin: true, email_verified: false, ...google })).toBe('unverified');
     expect(adminDenial({ admin: true, email_verified: true, firebase: { sign_in_provider: 'password' } })).toBe('not-google');
+  });
+
+  it('구글 로그인 실패: 막힘·닫힘·도메인·연결은 이유와 할 일, 모르는 코드는 코드를 보여 준다', () => {
+    expect(signInProblem('auth/popup-blocked')).toMatch(/막았어요.*허용.*다시 눌러/);
+    expect(signInProblem('auth/popup-closed-by-user')).toMatch(/닫혔어요.*다시 누르고/);
+    expect(signInProblem('auth/unauthorized-domain')).toContain(ADMIN_SITE_URL);
+    expect(signInProblem('auth/network-request-failed')).toContain('연결');
+    expect(signInProblem('auth/cancelled-popup-request')).toBeNull();
+    expect(signInProblem('auth/internal-error')).toBe('로그인하지 못했어요(auth/internal-error). 잠시 뒤 다시 시도해 주세요.');
+    expect(signInProblem(undefined)).toBe('로그인하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
   });
 
   it('이메일은 앞 두 글자와 도메인만', () => {

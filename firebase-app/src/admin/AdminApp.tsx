@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router';
-import { DENIAL_MESSAGE, maskEmail } from '@/lib/admin/access';
+import { DENIAL_MESSAGE, maskEmail, signInProblem } from '@/lib/admin/access';
 import { DashboardPage } from './pages/DashboardPage';
 import { LogsPage } from './pages/LogsPage';
 import { MemberDetailPage, MembersPage } from './pages/MembersPage';
@@ -34,8 +34,7 @@ function Gate() {
     try {
       await action();
     } catch (caught) {
-      const code = (caught as { code?: string }).code ?? '';
-      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setError('로그인하지 못했어요. 다시 시도해 주세요.');
+      setError(signInProblem((caught as { code?: string }).code));
     } finally {
       setBusy(false);
     }
@@ -61,6 +60,7 @@ function Gate() {
             <p className="text-sm text-ink-2 break-keep">
               로그인한 계정: {maskEmail(session.user.email)} · uid <code className="num-tabular">{session.user.uid}</code>
             </p>
+            {error && <ErrorText>{error}</ErrorText>}
             <button type="button" disabled={busy} onClick={() => void act(recheck)} className="min-h-12 rounded-option font-semibold disabled:opacity-60" style={primary}>
               다시 확인
             </button>

@@ -78,6 +78,30 @@ test.beforeAll(async () => {
   await syncAccounts({ auth: adminAuth, db: adminDb });
 });
 
+test('로그인 창이 막히거나 닫히면 이유와 할 일을 알린다', async ({ page, browser }) => {
+  // 막힘: 브라우저가 팝업을 막은 것처럼 window.open이 null을 돌려준다
+  const blockedContext = await browser.newContext();
+  const blocked = await blockedContext.newPage();
+  await blocked.addInitScript(() => {
+    window.open = () => null;
+  });
+  await blocked.goto(ADMIN);
+  await blocked.getByRole('button', { name: '구글로 로그인' }).click();
+  await expect(blocked.getByRole('alert')).toContainText('팝업을 "항상 허용"으로');
+  await axe(blocked, 'popup-blocked');
+  await blockedContext.close();
+
+  // 닫힘: 로그인을 마치기 전에 창을 닫는다(Firebase가 닫힌 것을 알아채기까지 몇 초 걸린다)
+  await page.goto(ADMIN);
+  const popupPromise = page.context().waitForEvent('page');
+  await page.getByRole('button', { name: '구글로 로그인' }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  await popup.close();
+  await expect(page.getByRole('alert')).toContainText('로그인을 마치기 전에 구글 로그인 창이 닫혔어요', { timeout: 20_000 });
+  await expect(page.getByRole('button', { name: '구글로 로그인' })).toBeEnabled();
+});
+
 test('관리자 1차: 표시 없으면 거절 → 표시 후 대시보드·가입자·가입 확인·기록', async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto(ADMIN);
