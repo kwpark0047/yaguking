@@ -58,3 +58,22 @@
   실행 못 한 날은 다음 실행 때 함께 삭제. 실제 사이트에서 확인
 - 남은 일: 이메일 가입·구글 로그인은 운영자가 직접 확인. PC가 오래 꺼져 있으면 삭제가 늦어진다 — 그동안은 처리방침의
   "다음 실행 때 함께 삭제" 범위 안이지만, 길어지면 GitHub Actions로 옮기는 것을 검토(그때 처리방침에 GitHub 추가)
+
+## 2026-10-27 — 4차 배포: 관리자 사이트(1차), 공지·처리방침 개정 예고
+
+`docs/deploy.md` §8 순서. 코드는 커밋 72f20fe.
+
+- 관리자 사이트 `yaguking-bc25c-admin` 만듦 → https://yaguking-bc25c-admin.web.app
+- 승인된 도메인에 `yaguking-bc25c-admin.web.app`(과 미리보기 주소) 추가 — Identity Toolkit API로, 운영자 ADC
+- 보안 규칙·색인 배포(관리자 규칙, `games` 묶음 색인)
+- 관리자 미리보기에서 확인: 화면 200·`Cache-Control: no-store`·강제 CSP·`/assets` 1년 캐시·없는 파일 404,
+  강제 CSP 아래 로그인 화면 콘솔 오류 0. 미리보기 주소는 Hosting이 `X-Robots-Tag: noindex`로 덮어쓴다 —
+  실제 주소에서는 설정대로 `noindex, nofollow`(확인함)
+- 관리자 실제 배포(메시지 "72f20fe admin phase1")
+- 이용자 앱 미리보기 → 실제 배포(메시지 "72f20fe notices+privacy versioning+signup UX"):
+  - `/privacy` — "지금 시행 중인 방침 · 시행일 2026-10-27" + 개정 예고 "2026-11-03 시행 방침 전문 보기"
+  - 홈 "공지사항" 링크, `/notices` "지금은 공지가 없어요."
+  - 가입 화면 칸 안내·비회원 카드 강조
+  - 공지 문서(`public/home`)가 아직 없어 홈을 열 때 REST 읽기 1번이 404(콘솔에 "Failed to load resource" 한 줄).
+    첫 공지를 올리면 문서가 생겨 없어진다
+- **회원 정보 열람·계정 사본 동기화는 2026-11-03부터**(관리 화면·운영 CLI가 그 전에는 막음)
