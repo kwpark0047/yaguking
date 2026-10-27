@@ -36,6 +36,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run admin:build
       # 글꼴 줄인 판이 화면 문구와 어긋나면 build가 새로 만든다 — 커밋에 빠졌는지 본다
       - run: git diff --exit-code -- src/assets/fonts
 
