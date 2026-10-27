@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
-import { Mascot } from '@/components/brand/Mascot';
+import emblem from '@/assets/brand/yaguking-emblem.webp';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { NoticeBanner } from '@/components/NoticeBanner';
 
@@ -22,7 +22,7 @@ export function HomePage() {
       <SiteHeader />
       <NoticeBanner />
       <main className="home-hero flex flex-col items-center gap-4 px-5 py-10 text-center">
-        <Mascot className="h-36 w-36" />
+        <img src={emblem} alt="야구왕" width={349} height={440} className="h-44 w-auto" />
         <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
 
         {user === undefined ? (

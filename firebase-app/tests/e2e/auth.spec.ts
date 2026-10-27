@@ -13,6 +13,13 @@ test.beforeAll(async () => {
   await clearEmulators();
 });
 
+test('홈: 야구왕 엠블럼이 뜬다(이름으로 읽힘)', async ({ page }) => {
+  await page.goto('/');
+  const emblem = page.getByRole('img', { name: '야구왕' });
+  await expect(emblem).toBeVisible();
+  expect(await emblem.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+});
+
 test('게임 시작으로 들어온 비회원은 머리줄에 비회원 표시가 뜬다', async ({ page }) => {
   await becomeGuest(page);
   await expect(page.getByRole('link', { name: '가입하기' })).toBeVisible();
