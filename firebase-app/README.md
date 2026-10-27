@@ -1,6 +1,10 @@
 # 야구왕 — Firebase 무료(Spark) 판
 
 기존 Next.js + Supabase 앱(`..`)을 **Firebase Spark 무료 플랜만으로** 다시 만드는 폴더다.
+
+> **지금 상태와 전체 정리는 [`docs/development-summary.md`](docs/development-summary.md)** — 기능·구조·운영·이력·남은 일.
+> 이용자 앱 https://yaguking.web.app · 관리자 https://yaguking-bc25c-admin.web.app · 소스 https://github.com/kwpark0047/yaguking
+
 Supabase·Vercel·Cloud Functions·유료 API를 쓰지 않는다. 전환의 배경과 기존 문서별로 바뀐 점은 16 문서
 (`../KBO_YaguKing_Docs_20261023/16_야구왕_무료플랜_Firebase_전환.md`), 검증 결과는 `docs/verification-report.md`.
 
@@ -45,6 +49,7 @@ npm run deploy:check # 배포 전 점검만(운영 빌드 + 결과물 검사, �
 | 7 | 공식 XP·RP(별도 — 설계만) | 설계 완료 — `docs/official-xp-rp.md` |
 | 8 | Hosting 배포 설정, GitHub 자동 배포(꺼진 상태) | 완료 — `docs/deploy.md`. **첫 배포 2026-10-26**. 지금 주소 https://yaguking.web.app (2026-10-27부터, 예전 `yaguking-bc25c.web.app`은 넘김 — `docs/deploy-log.md`) |
 | 9 | 문서 갱신, 검증 보고서 | 완료 — `docs/verification-report.md` |
+| 이후 | 실제 배포(1~9차), 관리자 1차, 처리방침 판 관리·개정 예고, 비회원 하루 3판, 엠블럼·야간 야구장 배경, 짧은 주소, 축하 효과 1차, 대결 화면 오류 고침 | 완료 — `docs/development-summary.md` §8, `docs/deploy-log.md` |
 
 복사해 온 코드는 `COPIED_FROM.md`에 적었다.
 
