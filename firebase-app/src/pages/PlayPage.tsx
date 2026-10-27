@@ -19,7 +19,7 @@ import {
   type Match,
   type PlayedAtBat,
 } from '@/lib/game/match';
-import { guestGamesLeft, recentlySeen, rememberSeen, saveMatch } from '@/lib/game/persist';
+import { GUEST_DAILY_GAMES, guestGamesLeft, recentlySeen, rememberSeen, saveMatch } from '@/lib/game/persist';
 import { dataErrorMessage } from '@/lib/firebase/errors';
 
 type Phase =
@@ -35,7 +35,7 @@ type Phase =
  * 개인 퀴즈 — 1이닝(3아웃). **비공식**: 정답과 시계가 기기에 있다.
  *
  * - 로그인하지 않았으면 비회원(익명)으로 바로 시작한다 — 첫 투구까지 0탭(08 문서 §3)
- * - 비회원은 하루 2판(보안 규칙이 막고, 화면이 미리 알린다)
+ * - 비회원은 하루 GUEST_DAILY_GAMES판(보안 규칙이 막고, 화면이 미리 알린다)
  * - 경기는 끝날 때 한 번만 저장한다(무료 쓰기 한도). 틀린 문항은 오답노트로
  */
 export function PlayPage() {
@@ -176,7 +176,7 @@ export function PlayPage() {
               오늘 비회원 경기를 다 했어요
             </h1>
             <p className="text-sm text-ink-2 break-keep">
-              비회원은 하루 2판까지예요. 가입하면 지금까지의 기록이 그대로 이어지고 제한 없이 할 수 있어요.
+              비회원은 하루 {GUEST_DAILY_GAMES}판까지예요. 가입하면 지금까지의 기록이 그대로 이어지고 제한 없이 할 수 있어요.
             </p>
             <Link
               to="/auth?mode=signup&returnTo=%2Fplay"

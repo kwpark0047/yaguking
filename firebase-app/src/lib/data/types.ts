@@ -54,7 +54,7 @@ export interface GameDoc {
   atBats: AtBatRecord[];
 }
 
-/** users/{uid}/daily/{kstDayKey} — 비회원 하루 경기 수(최대 2) */
+/** users/{uid}/daily/{kstDayKey} — 비회원 하루 경기 수(최대 GUEST_DAILY_GAMES) */
 export interface DailyDoc {
   count: number;
 }

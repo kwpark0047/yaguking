@@ -3,6 +3,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import emblem from '@/assets/brand/yaguking-emblem.webp';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { NoticeBanner } from '@/components/NoticeBanner';
+import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 const secondary = { borderColor: 'var(--line)' };
@@ -54,7 +55,7 @@ export function HomePage() {
                 </Link>
               )}
             </div>
-            {!user && <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 비회원은 하루 2판이에요.</p>}
+            {!user && <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 비회원은 하루 {GUEST_DAILY_GAMES}판이에요.</p>}
             <p className="text-xs text-ink-2">점수는 기기에서 채점하는 비공식 기록이에요.</p>
             <Link to="/notices" className="flex min-h-11 items-center text-xs text-ink-2 underline">
               공지사항

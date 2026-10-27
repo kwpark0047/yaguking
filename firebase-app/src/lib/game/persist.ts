@@ -20,6 +20,7 @@ import type { AtBatRecord } from '@/lib/data/types';
 import { buildBoxScore } from '@/lib/engine';
 import { firestore } from '@/lib/firebase/db';
 import { countReads, countWrites, queryReads } from '@/lib/firebase/meter';
+import { GUEST_DAILY_GAMES } from './guestLimit';
 import type { PlayedAtBat } from './match';
 import { noteAfterReviewCorrect, noteAfterWrong, REVIEW_DAYS, type NoteState } from './review';
 
@@ -34,7 +35,7 @@ import { noteAfterReviewCorrect, noteAfterWrong, REVIEW_DAYS, type NoteState } f
  * 거절한다(오답노트의 lastWrongAt ≤ request.time).
  */
 
-export const GUEST_DAILY_GAMES = 2;
+export { GUEST_DAILY_GAMES };
 /** 오답노트 한 번에 읽는 수 — 복습 시각 순이라 복습할 문항이 앞에 온다 */
 export const NOTES_PAGE_SIZE = 30;
 const DAY_MS = 86_400_000;

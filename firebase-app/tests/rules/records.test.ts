@@ -11,6 +11,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 import { emulatorHost, guest, kstDayKey, member, now, seedConfirmedMember, startRulesEnv } from './setup';
 
 /** 경기 기록·비회원 하루 제한·누적 기록·오답노트 (4단계가 쓴다). */
@@ -83,12 +84,11 @@ describe.skipIf(!emulatorHost)('기록 규칙', () => {
     });
   });
 
-  describe('비회원 하루 2경기', () => {
-    it('카운터와 함께 2경기까지 남기고 3번째는 막는다', async () => {
+  describe(`비회원 하루 ${GUEST_DAILY_GAMES}경기`, () => {
+    it(`카운터와 함께 ${GUEST_DAILY_GAMES}경기까지 남기고 그다음은 막는다`, async () => {
       const db = guest(env, 'anon');
-      await assertSucceeds(guestGame(db, 'anon', 'g1'));
-      await assertSucceeds(guestGame(db, 'anon', 'g2'));
-      await assertFails(guestGame(db, 'anon', 'g3'));
+      for (let game = 1; game <= GUEST_DAILY_GAMES; game++) await assertSucceeds(guestGame(db, 'anon', `g${game}`));
+      await assertFails(guestGame(db, 'anon', 'over'));
     });
 
     it('카운터를 올리지 않고 경기만 남기면 거절한다', async () => {
@@ -198,11 +198,10 @@ describe.skipIf(!emulatorHost)('기록 규칙', () => {
       return batch.commit();
     }
 
-    it('비회원: 증가 연산으로도 하루 2경기까지, 3번째는 막힌다', async () => {
+    it(`비회원: 증가 연산으로도 하루 ${GUEST_DAILY_GAMES}경기까지, 그다음은 막힌다`, async () => {
       const db = guest(env, 'anon');
-      await assertSucceeds(savedGame(db, 'anon', 'g1'));
-      await assertSucceeds(savedGame(db, 'anon', 'g2'));
-      await assertFails(savedGame(db, 'anon', 'g3'));
+      for (let game = 1; game <= GUEST_DAILY_GAMES; game++) await assertSucceeds(savedGame(db, 'anon', `g${game}`));
+      await assertFails(savedGame(db, 'anon', 'over'));
     });
 
     it('회원: 누적·오답 횟수가 서버에서 올라간다', async () => {

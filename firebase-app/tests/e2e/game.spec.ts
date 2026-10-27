@@ -17,7 +17,7 @@ import {
 } from './helpers';
 
 /**
- * 4단계 — 개인 퀴즈(1이닝), 비회원 하루 2판, 오답노트 복습, 레벨 테스트.
+ * 4단계 — 개인 퀴즈(1이닝), 비회원 하루 3판, 오답노트 복습, 레벨 테스트.
  * 문제은행을 테스트도 읽어 화면의 문제를 일부러 맞히거나 틀린다.
  */
 test.skip(!hasFirestore, 'Firestore 에뮬레이터(JDK 21)가 필요합니다.');
@@ -43,7 +43,7 @@ test('비회원: 게임 시작만 누르면 바로 첫 문제, 3아웃이면 끝
   await page.goto('/');
   await page.getByRole('link', { name: /게임 시작/ }).click();
   await expect(page.getByRole('group', { name: '보기' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/비공식 1이닝 · 오늘 2판 남음/)).toBeVisible();
+  await expect(page.getByText(/비공식 1이닝 · 오늘 3판 남음/)).toBeVisible();
 
   await strikeOutInning(page);
   await expect(page.getByText(/틀린 3문항을 오답노트에 담았어요/)).toBeVisible();
@@ -55,9 +55,11 @@ test('비회원: 게임 시작만 누르면 바로 첫 문제, 3아웃이면 끝
   expect((await listDocs(`users/${uid}/daily`))[0]?.fields).toHaveProperty('count.integerValue', '1');
 });
 
-test('비회원은 하루 2판 — 3번째는 가입 안내', async ({ page }) => {
-  test.setTimeout(90_000);
+test('비회원은 하루 3판 — 4번째는 가입 안내', async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto('/play');
+  await strikeOutInning(page);
+  await page.getByRole('button', { name: '한 판 더' }).click();
   await strikeOutInning(page);
   await page.getByRole('button', { name: '한 판 더' }).click();
   await strikeOutInning(page);
@@ -65,6 +67,7 @@ test('비회원은 하루 2판 — 3번째는 가입 안내', async ({ page }) =
 
   await page.goto('/play');
   await expect(page.getByRole('heading', { name: '오늘 비회원 경기를 다 했어요' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('비회원은 하루 3판까지예요.', { exact: false })).toBeVisible();
 });
 
 test('빨리 맞히면 안타 이상, 판정·정답·출처를 보여 준다', async ({ page }) => {

@@ -175,7 +175,7 @@ service cloud.firestore {
         allow delete: if isSelf(uid);
       }
 
-      // 비회원은 하루 2경기 — 같은 쓰기 묶음에서 오늘(KST) 카운터를 1 올려야 한다.
+      // 비회원은 하루 3경기(src/lib/game/guestLimit.ts와 같은 수) — 같은 쓰기 묶음에서 오늘(KST) 카운터를 1 올려야 한다.
       // 익명 계정을 새로 만들면 우회되지만, 무료 쓰기 한도를 지키는 1차 방어선이다.
       function guestDailyLimitHolds(uid) {
         let dayPath = /databases/$(database)/documents/users/$(uid)/daily/$(string(kstDay()));
@@ -195,7 +195,7 @@ service cloud.firestore {
           && day == string(kstDay())
           && request.resource.data.keys().hasOnly(['count'])
           && request.resource.data.count == resource.data.count + 1
-          && request.resource.data.count <= 2;
+          && request.resource.data.count <= 3;
         allow delete: if isSelf(uid);
       }
 

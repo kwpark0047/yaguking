@@ -1,3 +1,4 @@
+import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 import { GUEST_RETENTION_DAYS, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
 
 /**
@@ -50,7 +51,7 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
       '회원 식별과 로그인',
       '경기 진행과 기록 저장 — 개인 퀴즈 기록, 누적 성적(비공식), 레벨 테스트 결과, 오답노트',
       '친구 대결 진행 — 같은 방 참가자에게 이름과 점수 보여 주기',
-      '비회원 경기 횟수 제한(하루 2판)',
+      `비회원 경기 횟수 제한(하루 ${GUEST_DAILY_GAMES}판)`,
       '비회원으로 쌓은 기록을 가입한 계정으로 이어 가기',
     ],
   },
