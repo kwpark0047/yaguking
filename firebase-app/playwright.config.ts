@@ -38,5 +38,12 @@ export default defineConfig({
       reuseExistingServer: true,
       timeout: 60_000,
     },
+    {
+      // 관리자 사이트(별도 빌드) — tests/e2e/admin.spec.ts
+      command: 'npx vite --config vite.admin.config.ts --port 5175 --strictPort',
+      url: 'http://localhost:5175',
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
   ],
 });

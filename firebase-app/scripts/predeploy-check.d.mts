@@ -2,5 +2,6 @@
 export const REQUIRED_ENV: readonly string[];
 export const FORBIDDEN: readonly (readonly [string, RegExp])[];
 export function checkTarget(project: string | undefined, env: Record<string, string | undefined>): string[];
-export function checkDist(files: readonly { path: string; text: string | null }[]): string[];
+export const FORBIDDEN_IN_APP: readonly (readonly [string, RegExp])[];
+export function checkDist(files: readonly { path: string; text: string | null }[], site?: 'app' | 'admin'): string[];
 export function loadEnv(dir: string, processEnv?: Record<string, string | undefined>): Record<string, string>;

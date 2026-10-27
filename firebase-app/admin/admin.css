@@ -1,0 +1,9 @@
+/* 관리자 사이트 — 이용자 앱의 화면 토큰(색·간격)을 그대로 쓴다. Tailwind가 src/ 아래 관리자 화면도 읽게 한다. */
+@import '../src/app/globals.css';
+@source '../src';
+
+body {
+  background-color: var(--bg-base);
+  color: var(--ink-1);
+  font-family: system-ui, 'Malgun Gothic', sans-serif;
+}

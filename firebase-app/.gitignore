@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-admin/
 coverage/
 # Firebase CLI 캐시·에뮬레이터 데이터
 .firebase/

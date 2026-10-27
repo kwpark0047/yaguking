@@ -183,3 +183,40 @@ GitHub 결제 예산은 **$0** 그대로 두면 넘쳐도 청구되지 않고 �
 - 결제 계정이 연결되지 않았는지(프로젝트 설정 › 사용량 및 결제 = Spark)
 - GitHub › Settings › Billing: Actions 사용 분, 예산 $0
 - 정리 작업 결과(`stoppedAtLimit`가 true면 지울 것이 한도보다 많다 — 횟수를 늘리거나 상한 조정)
+
+## 8. 관리자 사이트(1차) 배포 — 승인 뒤, 순서대로
+
+관리자 1차(골격·공지·가입자·가입 확인, `docs/admin-plan.md`)는 **로컬 검증까지** 했다. 올리는 순서:
+
+1. **처리방침 개정 공지**(시행 7일 전): 관리자 열람·접속기록(1년 이상 보관)·운영 관리 목적을 처리방침에 넣는다. 공지 기능이
+   관리자 사이트 안에 있으므로, 처음 한 번은 관리자 사이트를 올린 뒤 바로 공지를 올리고 7일 뒤부터 회원 열람을 쓴다
+2. 관리자 사이트 만들기(한 번): 
+
+   ```bash
+   npx.cmd firebase hosting:sites:create yaguking-bc25c-admin --project prod
+   ```
+
+3. 콘솔 › Authentication › 설정 › 승인된 도메인에 `yaguking-bc25c-admin.web.app` 추가(구글 로그인 팝업용)
+4. 보안 규칙·색인(관리자 규칙, 경기 묶음 색인): `npx.cmd firebase deploy --only firestore --project prod`
+5. 관리자 사이트 미리보기 → 확인(구글 로그인, **강제 CSP**에서 콘솔 오류 없는지) → 실제:
+
+   ```bash
+   npx.cmd firebase hosting:channel:deploy preview --only admin --expires 7d --project prod
+   ```
+
+   ```bash
+   npx.cmd firebase deploy --only hosting:admin --project prod
+   ```
+
+6. 관리자 표시 붙이기 — kwpark0047@gmail.com이 **관리자 사이트에서 구글로 한 번 로그인한 뒤**(계정이 있어야 함):
+
+   ```bash
+   npm run ops:admin -- set-admin --project=yaguking-bc25c --email=kwpark0047@gmail.com
+   ```
+
+   관리자 사이트에서 "다시 확인"
+7. 계정 사본 첫 동기화: `npm run ops:admin -- sync --project=yaguking-bc25c`. 매일 하려면 `ops/run-cleanup.cmd`에
+   `node ops\admin-cli.mjs tasks --project=yaguking-bc25c`(대기 작업)과 `sync`를 덧붙인다(예약 작업은 그대로)
+8. 이용자 앱 다시 배포(공지 띠·공지 목록): `npx.cmd firebase deploy --only hosting:app --project prod`
+
+이제 `--only hosting`은 두 사이트를 모두 올린다. 한쪽만 올리려면 `hosting:app` 또는 `hosting:admin`.

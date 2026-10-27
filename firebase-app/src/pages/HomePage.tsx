@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { Mascot } from '@/components/brand/Mascot';
 import { SiteHeader } from '@/components/layout/SiteHeader';
+import { NoticeBanner } from '@/components/NoticeBanner';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 const secondary = { borderColor: 'var(--line)' };
@@ -19,6 +20,7 @@ export function HomePage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-4">
       <SiteHeader />
+      <NoticeBanner />
       <main className="home-hero flex flex-col items-center gap-4 px-5 py-10 text-center">
         <Mascot className="h-36 w-36" />
         <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
@@ -54,6 +56,9 @@ export function HomePage() {
             </div>
             {!user && <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 비회원은 하루 2판이에요.</p>}
             <p className="text-xs text-ink-2">점수는 기기에서 채점하는 비공식 기록이에요.</p>
+            <Link to="/notices" className="flex min-h-11 items-center text-xs text-ink-2 underline">
+              공지사항
+            </Link>
           </>
         )}
       </main>

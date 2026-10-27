@@ -53,6 +53,13 @@ async function measure(page: Page, action: string, run: () => Promise<void>): Pr
   return used;
 }
 
+/** 메인이 공지 묶음(public/home)을 다 읽을 때까지 — 계량기를 재기 전에(읽기가 측정 구간에 섞이지 않게) */
+async function waitForPublicHome(page: Page) {
+  await expect
+    .poll(() => page.evaluate(() => window.__ykUsage?.byLabel.publicHome?.reads ?? 0), { timeout: 15_000 })
+    .toBe(1);
+}
+
 async function strikeOut(page: Page) {
   for (let out = 0; out < 3; out += 1) {
     await expect(page.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
@@ -66,6 +73,7 @@ async function strikeOut(page: Page) {
 test('비회원: 1이닝 한 판 = 읽기 1(남은 판), 쓰기 6 · 오답노트 열기 = 노트 수', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('/');
+  await waitForPublicHome(page);
   const game = await measure(page, '비회원 개인 경기 1판(3문항 틀림)', async () => {
     await page.getByRole('link', { name: /게임 시작/ }).click();
     await strikeOut(page);
@@ -98,9 +106,10 @@ test('회원: 앱 열기 1읽기, 개인 경기 0읽기, 레벨 테스트', asyn
   // 새로 연 페이지의 계량기는 0에서 시작한다 — 프로필 읽기까지 기다린다. "회원 선수, 반가워요!"는
   // 프로필을 읽기 전에도 보이므로 **닉네임**이 나올 때까지 기다린다(전에는 이 경쟁으로 0읽기가 잡혔다)
   await expect(page.getByText(`${nickname} 선수, 반가워요!`)).toBeVisible({ timeout: 15_000 });
+  await waitForPublicHome(page);
   const open = await meter(page);
-  rows.push({ action: '회원 앱 열기(프로필)', ...open });
-  expect(open).toEqual({ reads: 1, writes: 0 });
+  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음)', ...open });
+  expect(open).toEqual({ reads: 2, writes: 0 }); // 프로필 1 + 공지 묶음 1(관리자 1차, 앱 열기당 한 번)
 
   const game = await measure(page, '회원 개인 경기 1판(3문항 틀림)', async () => {
     await page.getByRole('link', { name: /게임 시작/ }).click();

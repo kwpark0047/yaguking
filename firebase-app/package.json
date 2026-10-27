@@ -18,9 +18,12 @@
     "font:subset": "node scripts/subset-font.mjs",
     "usage:measure": "cross-env USAGE_REPORT=docs/usage-measured.json playwright test tests/e2e/usage.spec.ts --project=sm-360",
     "usage:transfer": "cross-env VITE_USE_EMULATORS=true npm run build && firebase emulators:exec --only auth,firestore --project demo-yaguking \"node scripts/measure-transfer.mjs\"",
-    "test:ops": "firebase emulators:exec --only auth,firestore --project demo-yaguking \"vitest run tests/ops\"",
+    "test:ops": "firebase emulators:exec --only auth,firestore --project demo-yaguking \"vitest run tests/ops --no-file-parallelism\"",
     "deploy:check": "node scripts/predeploy-check.mjs",
-    "ops:cleanup": "node ops/cleanup-cli.mjs"
+    "ops:cleanup": "node ops/cleanup-cli.mjs",
+    "admin:dev": "vite --config vite.admin.config.ts",
+    "admin:build": "tsc --noEmit && vite build --config vite.admin.config.ts",
+    "ops:admin": "node ops/admin-cli.mjs"
   },
   "dependencies": {
     "firebase": "13.1.0",

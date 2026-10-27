@@ -41,6 +41,12 @@ describe('결과물 검사', () => {
     expect(checkDist(ok)).toEqual([]);
   });
 
+  it('이용자 앱 결과물에 관리자 사이트 코드가 섞이면 거절(관리자 사이트 결과물은 괜찮음)', () => {
+    const leaked = [...ok, { path: 'assets/a.js', text: "collection(db,'accountMirror')" }];
+    expect(checkDist(leaked).join()).toMatch(/관리자 사이트 코드/);
+    expect(checkDist(leaked, 'admin')).toEqual([]);
+  });
+
   it('에뮬레이터 빌드·비밀 키·서비스 계정·소스맵·공식 정답은 거절', () => {
     const bad = (path: string, text: string | null) => checkDist([...ok, { path, text }]);
     expect(bad('assets/a.js', 'connectAuthEmulator("http://127.0.0.1:9099")').join()).toMatch(/에뮬레이터/);
@@ -83,35 +89,59 @@ describe('GitHub 자동 배포·정리는 꺼져 있다', () => {
   });
 });
 
-describe('Hosting 설정(firebase.json)', () => {
-  const config = JSON.parse(readFileSync(join(__dirname, '../../firebase.json'), 'utf8')) as {
-    hosting: { predeploy: string[]; headers: { source: string; headers: { key: string; value: string }[] }[]; ignore: string[] };
-  };
+interface HostingSite {
+  target: string;
+  public: string;
+  predeploy: string[];
+  ignore: string[];
+  rewrites: { source?: string; destination: string }[];
+  headers: { source: string; headers: { key: string; value: string }[] }[];
+}
+
+describe('Hosting 설정(firebase.json) — 이용자 앱과 관리자 사이트 두 개', () => {
+  const config = JSON.parse(readFileSync(join(__dirname, '../../firebase.json'), 'utf8')) as { hosting: HostingSite[] };
+  const site = (target: string) => config.hosting.find((item) => item.target === target)!;
+  const header = (target: string, source: string, key: string) =>
+    site(target).headers.find((rule) => rule.source === source)?.headers.find((item) => item.key === key)?.value;
+
+  it('두 사이트, 각자 결과물 폴더와 배포 직전 점검', () => {
+    expect(config.hosting.map((item) => item.target)).toEqual(['app', 'admin']);
+    expect(site('app')).toMatchObject({ public: 'dist', predeploy: ['node scripts/predeploy-check.mjs'] });
+    expect(site('admin')).toMatchObject({ public: 'dist-admin', predeploy: ['node scripts/predeploy-check.mjs --site=admin'] });
+    for (const target of ['app', 'admin']) expect(site(target).ignore).toContain('**/*.map');
+    const rc = JSON.parse(readFileSync(join(__dirname, '../../.firebaserc'), 'utf8'));
+    expect(rc.targets['yaguking-bc25c'].hosting).toEqual({ app: ['yaguking-bc25c'], admin: ['yaguking-bc25c-admin'] });
+  });
 
   it('화면 주소만 index.html로 — 점이 든 주소(없는 묶음 파일 등)는 404', () => {
     // "**" 하나로 다 받으면 없는 /assets/x.js에도 index.html을 1년 캐시로 돌려줬다(첫 배포 뒤 발견).
     // 확인: Hosting 에뮬레이터·미리보기에서 /play 200, /assets/없는파일.js 404
-    const rewrites = (config.hosting as unknown as { rewrites: { source?: string; destination: string }[] }).rewrites;
-    expect(rewrites).toEqual([{ source: '**/!(*.*)', destination: '/index.html' }]);
-    const app = readFileSync(join(__dirname, '../../src/App.tsx'), 'utf8');
-    const routes = [...app.matchAll(/path="([^"]+)"/g)].map((match) => match[1]!);
-    expect(routes.length).toBeGreaterThan(5);
-    for (const route of routes) expect(route, `화면 주소에 점이 있으면 404가 난다: ${route}`).not.toContain('.');
+    for (const target of ['app', 'admin']) {
+      expect(site(target).rewrites).toEqual([{ source: '**/!(*.*)', destination: '/index.html' }]);
+    }
+    for (const file of ['../../src/App.tsx', '../../src/admin/AdminApp.tsx']) {
+      const routes = [...readFileSync(join(__dirname, file), 'utf8').matchAll(/path="([^"]+)"/g)].map((match) => match[1]!);
+      expect(routes.length).toBeGreaterThan(5);
+      for (const route of routes) expect(route, `화면 주소에 점이 있으면 404가 난다: ${route}`).not.toContain('.');
+    }
   });
 
-  it('배포 직전에 점검이 자동으로 돈다', () => {
-    expect(config.hosting.predeploy).toEqual(['node scripts/predeploy-check.mjs']);
-    expect(config.hosting.ignore).toContain('**/*.map');
-  });
-
-  it('같은 헤더는 뒤 규칙이 이긴다 — 전체(**)를 먼저, 묶음 파일(/assets/**)을 뒤에', () => {
-    const sources = config.hosting.headers.map((rule) => rule.source);
+  it('이용자 앱: 같은 헤더는 뒤 규칙이 이긴다 — 전체(**)를 먼저, 묶음 파일(/assets/**)을 뒤에', () => {
+    const sources = site('app').headers.map((rule) => rule.source);
     expect(sources.indexOf('**')).toBeLessThan(sources.indexOf('/assets/**'));
-    const header = (source: string, key: string) =>
-      config.hosting.headers.find((rule) => rule.source === source)?.headers.find((item) => item.key === key)?.value;
-    expect(header('**', 'Cache-Control')).toBe('no-cache'); // 새 배포가 바로 보이게
-    expect(header('/assets/**', 'Cache-Control')).toMatch(/immutable/); // 이름에 해시가 있는 파일
-    expect(header('**', 'X-Frame-Options')).toBe('DENY');
-    expect(header('**', 'X-Robots-Tag')).toBe('noindex'); // 출시 전까지 검색 노출 막기
+    expect(header('app', '**', 'Cache-Control')).toBe('no-cache'); // 새 배포가 바로 보이게
+    expect(header('app', '/assets/**', 'Cache-Control')).toMatch(/immutable/); // 이름에 해시가 있는 파일
+    expect(header('app', '**', 'X-Frame-Options')).toBe('DENY');
+    expect(header('app', '**', 'X-Robots-Tag')).toBe('noindex'); // 출시 전까지 검색 노출 막기
+  });
+
+  it('관리자 사이트: CSP는 강제, 화면은 저장하지 않음, 검색·링크 따라가기 금지, 다른 사이트가 못 띄움', () => {
+    expect(header('admin', '**', 'Content-Security-Policy')).toMatch(/frame-ancestors 'none'/);
+    expect(header('admin', '**', 'Content-Security-Policy-Report-Only')).toBeUndefined();
+    expect(header('admin', '**', 'Cache-Control')).toBe('no-store');
+    expect(header('admin', '**', 'X-Robots-Tag')).toBe('noindex, nofollow');
+    expect(header('admin', '**', 'Referrer-Policy')).toBe('no-referrer');
+    const sources = site('admin').headers.map((rule) => rule.source);
+    expect(sources.indexOf('**')).toBeLessThan(sources.indexOf('/assets/**'));
   });
 });

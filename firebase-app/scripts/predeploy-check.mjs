@@ -25,6 +25,9 @@ export const FORBIDDEN = [
   ['공식 정답 문서', /officialKeys/],
 ];
 
+/** 이용자 앱(dist)에만 — 관리자 사이트 코드가 섞이면 안 된다(관리자 전용 컬렉션 이름으로 알아본다) */
+export const FORBIDDEN_IN_APP = [['관리자 사이트 코드', /accountMirror|adminTasks|adminLogs/]];
+
 /** 프로젝트·설정 값 점검. 문제 목록을 돌려준다(비어 있으면 통과) */
 export function checkTarget(project, env) {
   const problems = [];
@@ -37,15 +40,16 @@ export function checkTarget(project, env) {
   return problems;
 }
 
-/** 결과물 파일 점검. files = [{ path, text }] */
-export function checkDist(files) {
+/** 결과물 파일 점검. files = [{ path, text }], site = app(이용자 앱) | admin(관리자 사이트) */
+export function checkDist(files, site = 'app') {
+  const forbidden = site === 'app' ? [...FORBIDDEN, ...FORBIDDEN_IN_APP] : FORBIDDEN;
   const problems = [];
   if (!files.some((file) => file.path === 'index.html')) problems.push('dist/index.html이 없습니다.');
   for (const file of files) {
     if (file.path.endsWith('.map')) problems.push(`소스맵이 들어 있습니다: ${file.path}`);
     if (/\.(env|pem|key)$|service-?account/i.test(file.path)) problems.push(`올리면 안 되는 파일: ${file.path}`);
     if (file.text === null) continue;
-    for (const [reason, pattern] of FORBIDDEN) {
+    for (const [reason, pattern] of forbidden) {
       if (pattern.test(file.text)) problems.push(`${reason}이(가) 들어 있습니다: ${file.path}`);
     }
   }
@@ -100,10 +104,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const targetProblems = checkTarget(project, env);
   if (targetProblems.length > 0) fail(targetProblems);
 
-  console.log(`운영용 빌드(${project})…`);
-  execSync('npm run build', { cwd: root, stdio: 'inherit', env: { ...process.env, VITE_USE_EMULATORS: 'false' } });
+  const site = process.argv.includes('--site=admin') ? 'admin' : 'app';
+  console.log(`운영용 빌드(${project}, ${site === 'admin' ? '관리자 사이트' : '이용자 앱'})…`);
+  const build = site === 'admin' ? 'npx tsc --noEmit && npx vite build --config vite.admin.config.ts' : 'npm run build';
+  execSync(build, { cwd: root, stdio: 'inherit', env: { ...process.env, VITE_USE_EMULATORS: 'false' } });
 
-  const distProblems = checkDist(readDist(join(root, 'dist')));
+  const distProblems = checkDist(readDist(join(root, site === 'admin' ? 'dist-admin' : 'dist')), site);
   if (distProblems.length > 0) fail(distProblems);
   console.log('배포 전 점검 통과.');
 }

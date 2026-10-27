@@ -2,5 +2,27 @@
   "projects": {
     "default": "demo-yaguking",
     "prod": "yaguking-bc25c"
+  },
+  "targets": {
+    "yaguking-bc25c": {
+      "hosting": {
+        "app": [
+          "yaguking-bc25c"
+        ],
+        "admin": [
+          "yaguking-bc25c-admin"
+        ]
+      }
+    },
+    "demo-yaguking": {
+      "hosting": {
+        "app": [
+          "demo-yaguking"
+        ],
+        "admin": [
+          "demo-yaguking-admin"
+        ]
+      }
+    }
   }
 }

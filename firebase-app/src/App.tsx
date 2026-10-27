@@ -24,6 +24,7 @@ const LevelTestPage = lazy(() =>
   import('@/pages/LevelTestPage').then((module) => ({ default: module.LevelTestPage })),
 );
 const LegalPage = lazy(() => import('@/pages/LegalPage').then((module) => ({ default: module.LegalPage })));
+const NoticesPage = lazy(() => import('@/pages/NoticesPage').then((module) => ({ default: module.NoticesPage })));
 const NotesPage = lazy(() => import('@/pages/NotesPage').then((module) => ({ default: module.NotesPage })));
 const RoomLobbyPage = lazy(() =>
   import('@/pages/RoomLobbyPage').then((module) => ({ default: module.RoomLobbyPage })),
@@ -86,6 +87,7 @@ export function App() {
           <Route path="/welcome/profile" element={<Lazy><ProfileSetupPage /></Lazy>} />
           <Route path="/terms" element={<Lazy><LegalPage kind="terms" /></Lazy>} />
           <Route path="/privacy" element={<Lazy><LegalPage kind="privacy" /></Lazy>} />
+          <Route path="/notices" element={<Lazy><NoticesPage /></Lazy>} />
           <Route element={<MemberGate requireProfile={false} />}>
             <Route path="/settings" element={<Lazy><SettingsPage /></Lazy>} />
           </Route>

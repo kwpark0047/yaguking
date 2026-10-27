@@ -1,6 +1,9 @@
-# 관리자 페이지·대시보드 기획 (2026-10-26, 기획만)
+# 관리자 페이지·대시보드 기획 (2026-10-26) — 1차 구현(2026-10-27)
 
-> **기획 문서다. 앱 코드·배포 규칙·배포는 아직 없다.** 만들기 전에 §11의 결정이 필요하다.
+> **1차(A 골격·B 공지·C 가입자·가입 확인)를 만들었다 — 로컬 검증까지, 배포 전.** 결정(§11): 별도 관리자 사이트, 가입 확인은 점검 목록,
+> 자체 광고만, 무료 꾸미기 아이템(사용자 2026-10-27). D~G(계정 삭제·통계 스냅샷·이벤트·아이템·광고)는 다음.
+> 구현 위치: `admin/`·`src/admin/`(관리자 사이트), `src/lib/admin/`, `src/lib/public/home.ts`·`src/components/NoticeBanner.tsx`·`src/pages/NoticesPage.tsx`(이용자 앱),
+> `ops/admin.mjs`·`ops/admin-cli.mjs`(운영자 PC), `firestore.rules`(isAdmin 등), `firebase.json`(두 사이트). 배포 순서는 `docs/deploy.md` §8.
 > 규칙 쪽 핵심 가정은 **시험용 규칙**(`docs/prototypes/admin.rules`, 배포 안 함)으로 에뮬레이터에서 확인했다 —
 > `tests/rules/admin-prototype.test.ts` 6개: 관리자 표시로만 권한(같은 이메일·미인증 거절), 관리자만 경기 묶음 `count()`,
 > 기록은 만들기만·작성자·서버 시각 강제, 대기열 완료 처리는 서버 권한만, 공개 문서는 관리자만 쓰기, 관리자 기록 삭제.
