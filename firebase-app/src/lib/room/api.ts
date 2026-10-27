@@ -14,6 +14,9 @@ import type { RoomDoc } from '@/lib/data/types';
 import { firestore } from '@/lib/firebase/db';
 import { countReads, countWrites } from '@/lib/firebase/meter';
 import { ROOM_QUESTION_SECONDS, scoreOf, type BattleAnswer } from './battle';
+import { toRoomView, type RoomView } from './view';
+
+export type { RoomView };
 
 /**
  * 친구 대결 방 — Firestore 읽기·쓰기와 실시간 구독(docs/data-model.md §1).
@@ -21,15 +24,6 @@ import { ROOM_QUESTION_SECONDS, scoreOf, type BattleAnswer } from './battle';
  * 비용: 누가 답할 때마다 방 안 N명에게 읽기 1번씩 → 10문항이면 약 10·N². 그래서
  * 정원 기본 4명, 끝난 방은 구독을 끊는다(화면 쪽). 방 문서는 시작·종료 때만 바뀐다.
  */
-
-export interface RoomView {
-  code: string;
-  hostUid: string;
-  status: RoomDoc['status'];
-  maxPlayers: number;
-  playerIds: string[];
-  questionIds: string[];
-}
 
 export interface SeatView {
   uid: string;
@@ -144,15 +138,11 @@ export function watchRoom(code: string, onChange: (room: RoomView | null) => voi
     (snapshot) => {
       if (!snapshot.metadata.fromCache) countReads('watchRoom', 1);
       if (!snapshot.exists()) return onChange(null);
-      const data = snapshot.data() as RoomDoc;
-      onChange({
-        code,
-        hostUid: data.hostUid,
-        status: data.status,
-        maxPlayers: data.maxPlayers,
-        playerIds: data.playerIds,
-        questionIds: data.questionIds,
-      });
+      const room = toRoomView(code, snapshot.data());
+      // 덜 갖춰진 방(view.ts): 내 변경이 아직 서버에 안 갔으면 서버 답을 기다리고(곧 방 또는 "없음"이 온다),
+      // 서버에서 온 것이면 없는 방으로 본다
+      if (!room && snapshot.metadata.hasPendingWrites) return;
+      onChange(room);
     },
     onError,
   );

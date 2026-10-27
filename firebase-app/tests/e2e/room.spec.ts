@@ -13,9 +13,18 @@ test.beforeAll(async () => {
   await clearEmulators();
 });
 
+/** 화면이 죽으면(잡히지 않은 오류) 테스트가 실패하게 — 방장이 닫는 순간 참가하던 사람 화면이 죽던 것(2026-10-27) */
+const pageErrors: string[] = [];
+test.afterEach(() => {
+  const errors = pageErrors.splice(0);
+  expect(errors, '브라우저에서 잡히지 않은 오류').toEqual([]);
+});
+
 async function newPlayer(browser: Browser): Promise<Page> {
   const context = await browser.newContext();
-  return context.newPage();
+  const page = await context.newPage();
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  return page;
 }
 
 /** 비회원으로 방을 만든다. 방 코드를 돌려준다 */
