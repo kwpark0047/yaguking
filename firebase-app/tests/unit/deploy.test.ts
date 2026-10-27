@@ -107,7 +107,9 @@ describe('Hosting 설정(firebase.json) — 이용자 앱과 관리자 사이트
   it('두 사이트, 각자 결과물 폴더와 배포 직전 점검', () => {
     expect(config.hosting.map((item) => item.target)).toEqual(['app', 'admin']);
     expect(site('app')).toMatchObject({ public: 'dist', predeploy: ['node scripts/predeploy-check.mjs'] });
-    expect(site('admin')).toMatchObject({ public: 'dist-admin', predeploy: ['node scripts/predeploy-check.mjs --site=admin'] });
+    expect(site('admin')).toMatchObject({ public: 'dist-admin', predeploy: ['node scripts/predeploy-check.mjs --admin'] });
+    // Firebase CLI는 '='이 든 predeploy 명령을 실행하지 않고 넘어간다(경고만) — 점검 없이 옛 빌드가 올라간다
+    for (const target of ['app', 'admin']) for (const command of site(target).predeploy) expect(command).not.toContain('=');
     for (const target of ['app', 'admin']) expect(site(target).ignore).toContain('**/*.map');
     const rc = JSON.parse(readFileSync(join(__dirname, '../../.firebaserc'), 'utf8'));
     expect(rc.targets['yaguking-bc25c'].hosting).toEqual({ app: ['yaguking-bc25c'], admin: ['yaguking-bc25c-admin'] });

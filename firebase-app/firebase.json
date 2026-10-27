@@ -33,7 +33,7 @@
     {
       "target": "admin",
       "public": "dist-admin",
-      "predeploy": ["node scripts/predeploy-check.mjs --site=admin"],
+      "predeploy": ["node scripts/predeploy-check.mjs --admin"],
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/*.map"],
       "trailingSlash": false,
       "rewrites": [{ "source": "**/!(*.*)", "destination": "/index.html" }],

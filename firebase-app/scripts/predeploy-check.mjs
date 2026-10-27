@@ -104,7 +104,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const targetProblems = checkTarget(project, env);
   if (targetProblems.length > 0) fail(targetProblems);
 
-  const site = process.argv.includes('--site=admin') ? 'admin' : 'app';
+  const site = process.argv.includes('--admin') ? 'admin' : 'app';
   console.log(`운영용 빌드(${project}, ${site === 'admin' ? '관리자 사이트' : '이용자 앱'})…`);
   const build = site === 'admin' ? 'npx tsc --noEmit && npx vite build --config vite.admin.config.ts' : 'npm run build';
   execSync(build, { cwd: root, stdio: 'inherit', env: { ...process.env, VITE_USE_EMULATORS: 'false' } });
