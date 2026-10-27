@@ -6,7 +6,7 @@ import { NoticeBanner } from '@/components/NoticeBanner';
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
-const secondary = { borderColor: 'var(--line)' };
+const secondary = { borderColor: 'var(--line)', backgroundColor: 'var(--hero-button-bg)' };
 
 /**
  * 메인 — 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트.
