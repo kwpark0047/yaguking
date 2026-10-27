@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { Timestamp, getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { GUEST_RETENTION_DAYS, cleanup, isAnonymous, lastActiveMs } from '../../ops/cleanup.mjs';
+import { ADMIN_LOG_RETENTION_DAYS, GUEST_RETENTION_DAYS, cleanup, isAnonymous, lastActiveMs } from '../../ops/cleanup.mjs';
 
 /**
  * 8단계 정리 작업 — Auth·Firestore 에뮬레이터에서 관리자 권한으로 실제로 지워 본다.
@@ -124,5 +124,31 @@ describe.skipIf(!emulated)('정리 작업(에뮬레이터)', () => {
     expect(report.deletedDocs).toBeLessThan(10);
     // 상한 때문에 비회원까지 가지 못했다 → 계정이 남는다(기록만 지우고 계정을 지우는 일이 없다)
     expect(await userExists(guestUid)).toBe(true);
+  });
+});
+
+describe.skipIf(!emulated)('관리자 기록 보관 기간(에뮬레이터)', () => {
+  let app: App;
+  let db: Firestore;
+  let auth: Auth;
+
+  beforeAll(() => {
+    app = initializeApp({ projectId: PROJECT }, 'cleanup-logs-test');
+    db = getFirestore(app);
+    auth = getAuth(app);
+  });
+  afterAll(async () => {
+    await deleteApp(app);
+  });
+
+  it(`${ADMIN_LOG_RETENTION_DAYS}일(2년) 지난 관리자 기록만 지운다`, async () => {
+    await fetch(`http://${process.env.FIRESTORE_EMULATOR_HOST}/emulator/v1/projects/${PROJECT}/databases/(default)/documents`, { method: 'DELETE' });
+    await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/emulator/v1/projects/${PROJECT}/accounts`, { method: 'DELETE' });
+    await db.doc('adminLogs/old').set({ action: 'view-member', at: Timestamp.fromMillis(Date.now() - (ADMIN_LOG_RETENTION_DAYS + 1) * DAY) });
+    await db.doc('adminLogs/recent').set({ action: 'view-member', at: Timestamp.fromMillis(Date.now() - (ADMIN_LOG_RETENTION_DAYS - 1) * DAY) });
+    const report = await cleanup({ db, auth, dryRun: false });
+    expect(report.adminLogs).toBe(1);
+    expect((await db.doc('adminLogs/old').get()).exists).toBe(false);
+    expect((await db.doc('adminLogs/recent').get()).exists).toBe(true);
   });
 });

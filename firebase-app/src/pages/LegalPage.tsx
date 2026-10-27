@@ -1,9 +1,11 @@
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import {
   PRIVACY_DRAFT,
   PRIVACY_EFFECTIVE_DATE,
   PRIVACY_INTRO,
-  PRIVACY_SECTIONS,
+  PRIVACY_VERSIONS,
+  upcomingVersion,
+  versionInForce,
   type PolicySection,
 } from '@/content/privacy';
 
@@ -12,7 +14,8 @@ const badge = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 /**
  * 이용약관·개인정보처리방침.
  *
- * - 처리방침: Firebase판 **초안**(src/content/privacy.ts). 확정 전이라는 표시를 맨 위에 둔다
+ * - 처리방침: 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 **개정 예고**(바뀌는 점·시행일)를 맨 위에 둔다.
+ *   `?version=시행일`로 다른 판(예고된 판·이전 판)을 볼 수 있다. 판은 src/content/privacy.ts
  * - 이용약관: 문안이 정해진 적이 없다(기존 앱도 자리 페이지) — 내용을 지어 넣지 않고 확정 전이라고만 밝힌다
  */
 export function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
@@ -40,26 +43,70 @@ export function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
           <p className="text-sm text-ink-2 break-keep">확정되면 이 자리에 전문과 시행일을 게시합니다.</p>
         </section>
       ) : (
-        <>
-          {PRIVACY_DRAFT && (
-            <p role="note" className="sticker flex flex-wrap items-center gap-2 p-4 text-sm break-keep">
-              <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={badge}>
-                초안
-              </span>
-              배포 전에 확정할 Firebase판 초안이에요. 시행일: {PRIVACY_EFFECTIVE_DATE ?? '확정 전'}
-            </p>
-          )}
-          <p className="text-sm leading-relaxed break-keep">{PRIVACY_INTRO}</p>
-          {PRIVACY_SECTIONS.map((section) => (
-            <Section key={section.id} section={section} />
-          ))}
-        </>
+        <PrivacyBody />
       )}
 
       <Link to={other.to} className="flex min-h-11 items-center self-start text-sm underline">
         {other.label} 보기
       </Link>
     </main>
+  );
+}
+
+function PrivacyBody() {
+  const [params] = useSearchParams();
+  const current = versionInForce();
+  const upcoming = upcomingVersion();
+  const requested = PRIVACY_VERSIONS.find((version) => version.effective === params.get('version'));
+  const shown = requested ?? current;
+  const others = PRIVACY_VERSIONS.filter((version) => version.effective !== shown.effective);
+
+  return (
+    <>
+      {PRIVACY_DRAFT && (
+        <p role="note" className="sticker flex flex-wrap items-center gap-2 p-4 text-sm break-keep">
+          <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={badge}>
+            초안
+          </span>
+          배포 전에 확정할 Firebase판 초안이에요. 시행일: {PRIVACY_EFFECTIVE_DATE ?? '확정 전'}
+        </p>
+      )}
+      {upcoming && shown.effective !== upcoming.effective && (
+        <section aria-labelledby="privacy-upcoming" className="sticker flex flex-col gap-2 p-4 text-sm break-keep">
+          <h2 id="privacy-upcoming" className="flex flex-wrap items-center gap-2 font-semibold">
+            <span className="rounded-full px-2 py-0.5 text-xs" style={badge}>
+              개정 예고
+            </span>
+            {upcoming.effective}부터 바뀌는 점
+          </h2>
+          <ul className="flex list-disc flex-col gap-1 pl-5">
+            {upcoming.changes.map((change) => (
+              <li key={change}>{change}</li>
+            ))}
+          </ul>
+          <Link to={`/privacy?version=${upcoming.effective}`} className="flex min-h-11 items-center self-start underline">
+            {upcoming.effective} 시행 방침 전문 보기
+          </Link>
+        </section>
+      )}
+      <p className="text-sm text-ink-2">
+        {shown.effective === current.effective ? '지금 시행 중인 방침' : shown.effective > current.effective ? '시행 예정 방침' : '이전 방침'} ·
+        시행일 {shown.effective}
+      </p>
+      <p className="text-sm leading-relaxed break-keep">{PRIVACY_INTRO}</p>
+      {shown.sections.map((section) => (
+        <Section key={section.id} section={section} />
+      ))}
+      {others.length > 0 && (
+        <nav aria-label="다른 판" className="flex flex-wrap gap-3 text-sm">
+          {others.map((version) => (
+            <Link key={version.effective} to={version.effective === current.effective ? '/privacy' : `/privacy?version=${version.effective}`} className="flex min-h-11 items-center underline">
+              {version.effective} 시행 방침
+            </Link>
+          ))}
+        </nav>
+      )}
+    </>
   );
 }
 

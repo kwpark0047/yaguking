@@ -11,7 +11,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { processAdminTasks, setAdmin, syncAccounts } from './admin.mjs';
+import { MEMBER_DATA_FROM, memberDataOpenFor, processAdminTasks, setAdmin, syncAccounts } from './admin.mjs';
 
 const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -24,6 +24,11 @@ if (!['set-admin', 'sync', 'tasks'].includes(command) || !projectId) {
 const onEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST);
 if (projectId.startsWith('demo-') !== onEmulator) {
   console.error('demo- 프로젝트는 에뮬레이터에서만, 실제 프로젝트는 에뮬레이터 밖에서만 돌립니다.');
+  process.exit(1);
+}
+
+if ((command === 'sync' || command === 'tasks') && !memberDataOpenFor(projectId)) {
+  console.error(`계정 사본은 처리방침 개정 시행일(${MEMBER_DATA_FROM})부터 만듭니다. 그 전에는 sync·tasks를 돌리지 않습니다.`);
   process.exit(1);
 }
 

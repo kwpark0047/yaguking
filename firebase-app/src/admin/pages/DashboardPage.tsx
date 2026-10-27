@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { MEMBER_DATA_CLOSED_MESSAGE, memberDataOpen } from '@/lib/admin/policyGate';
 import { loadDashboard, requestAccountSync, type DashboardNumbers } from '../data';
 import { ErrorText, PageTitle, StatCard, fmtTime, line } from '../ui';
 
@@ -56,10 +57,17 @@ export function DashboardPage() {
         <button type="button" onClick={refresh} className="min-h-11 rounded-option border-2 px-4 text-sm font-semibold" style={line}>
           다시 세기
         </button>
-        <button type="button" onClick={() => void sync()} className="min-h-11 rounded-option border-2 px-4 text-sm font-semibold" style={line}>
+        <button
+          type="button"
+          disabled={!memberDataOpen()}
+          onClick={() => void sync()}
+          className="min-h-11 rounded-option border-2 px-4 text-sm font-semibold disabled:opacity-60"
+          style={line}
+        >
           계정 동기화 요청
         </button>
       </div>
+      {!memberDataOpen() && <p className="text-xs text-ink-2 break-keep">{MEMBER_DATA_CLOSED_MESSAGE}</p>}
       {notice && (
         <p role="status" className="text-sm break-keep">
           {notice}

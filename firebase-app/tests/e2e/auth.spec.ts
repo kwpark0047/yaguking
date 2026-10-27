@@ -103,12 +103,22 @@ for (const path of ['/', '/auth?mode=signup', '/auth?mode=login', '/auth/reset',
   });
 }
 
-test('처리방침: 시행본(2026-10-27)과 14개 항목, 이용약관은 확정 전', async ({ page }) => {
+test('처리방침: 시행 중인 판과 14개 항목, 개정 예고(시행일 전), 이용약관은 확정 전', async ({ page }) => {
+  // 판은 날짜로 바뀐다 — 2026-11-03(관리자 열람 개정) 전에는 10-27 판 + 개정 예고, 그 뒤에는 11-03 판
+  const today = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+  const amended = today >= '2026-11-03';
   await page.goto('/privacy');
   await expect(page.getByRole('note')).toHaveCount(0); // 초안 표시 없음
-  await expect(page.getByText('시행일: 2026-10-27')).toBeVisible();
+  await expect(page.getByText(`시행일: ${amended ? '2026-11-03' : '2026-10-27'}`)).toBeVisible();
   await expect(page.getByText('GitHub')).toHaveCount(0);
-  await expect(page.getByRole('heading', { level: 2 })).toHaveCount(14);
+  await expect(page.getByRole('heading', { level: 2, name: /^\d+\. / })).toHaveCount(14);
+  if (!amended) {
+    await expect(page.getByRole('heading', { name: /2026-11-03부터 바뀌는 점/ })).toBeVisible();
+    await page.getByRole('link', { name: '2026-11-03 시행 방침 전문 보기' }).click();
+    await expect(page.getByText('시행 예정 방침 · 시행일 2026-11-03')).toBeVisible();
+    await expect(page.getByText('운영자의 열람·처리 기록(접속기록)')).toBeVisible();
+    await page.goto('/privacy');
+  }
   await expect(page.getByRole('heading', { name: '7. 국외 이전' })).toBeVisible();
   await expect(page.getByRole('rowheader', { name: '이전받는 자' })).toBeVisible();
   await expect(page.getByText('Supabase')).toHaveCount(0);

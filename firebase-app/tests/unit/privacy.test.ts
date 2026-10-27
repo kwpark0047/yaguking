@@ -1,15 +1,23 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import * as adminOps from '../../ops/admin.mjs';
 import * as cleanupJob from '../../ops/cleanup.mjs';
 import {
+  ADMIN_LOG_RETENTION_YEARS,
+  ADMIN_PRIVACY_EFFECTIVE,
   DEVICE_STORAGE_KEYS,
+  PRIVACY_VERSIONS,
+  kstDateKey,
+  upcomingVersion,
+  versionInForce,
   PRIVACY_DRAFT,
   PRIVACY_EFFECTIVE_DATE,
   PRIVACY_OFFICER,
   PRIVACY_OPERATOR,
   PRIVACY_SECTIONS,
 } from '@/content/privacy';
+import { memberDataOpen } from '@/lib/admin/policyGate';
 import { GUEST_RETENTION_DAYS, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
 
 /** 9단계 — 처리방침 Firebase판 초안이 코드의 사실과 맞는지 */
@@ -80,5 +88,42 @@ describe('처리방침 항목 = 코드가 실제로 하는 일', () => {
     expect(allText.includes('GitHub')).toBe(githubCleanupOn);
     expect(allText).toContain('정리 작업은 운영자가 직접 실행합니다');
     expect(new Set(PRIVACY_SECTIONS.map((section) => section.id)).size).toBe(PRIVACY_SECTIONS.length);
+  });
+});
+
+describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
+  it('오늘 날짜로 시행 중인 판과 예고된 판을 고른다', () => {
+    expect(versionInForce('2026-10-27').effective).toBe('2026-10-27');
+    expect(versionInForce('2026-11-02').effective).toBe('2026-10-27');
+    expect(versionInForce('2026-11-03').effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
+    expect(upcomingVersion('2026-10-27')?.effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
+    expect(upcomingVersion('2026-11-03')).toBeNull();
+    expect(kstDateKey(Date.UTC(2026, 10, 2, 15))).toBe('2026-11-03'); // 한국 시간 11월 3일 0시
+  });
+
+  it('개정판: 운영 관리 목적·접속기록 2년·관리 화면 보호를 더하고, 위탁·국외 이전·수집 항목 외 나머지는 그대로', () => {
+    const next = PRIVACY_VERSIONS.find((version) => version.effective === ADMIN_PRIVACY_EFFECTIVE)!;
+    const text = JSON.stringify(next.sections);
+    expect(text).toContain('서비스 운영 관리');
+    expect(text).toContain(`${ADMIN_LOG_RETENTION_YEARS}년`);
+    expect(text).toContain(`시행일: ${ADMIN_PRIVACY_EFFECTIVE}`);
+    const same = (id: string) => JSON.stringify(next.sections.find((s) => s.id === id));
+    const before = (id: string) => JSON.stringify(PRIVACY_SECTIONS.find((s) => s.id === id));
+    for (const id of ['outsourcing', 'overseas', 'third-party', 'device', 'rights', 'children']) expect(same(id)).toBe(before(id));
+    expect(next.changes.length).toBeGreaterThan(0);
+  });
+
+  it('날짜·기간이 실제로 지키는 코드와 같다: 운영자 PC(ops/admin.mjs)·정리 작업(ops/cleanup.mjs)', () => {
+    expect(adminOps.MEMBER_DATA_FROM).toBe(ADMIN_PRIVACY_EFFECTIVE);
+    expect(cleanupJob.ADMIN_LOG_RETENTION_DAYS).toBe(ADMIN_LOG_RETENTION_YEARS * 365);
+    expect(adminOps.memberDataOpenFor('yaguking-bc25c', Date.UTC(2026, 10, 2, 14, 59))).toBe(false);
+    expect(adminOps.memberDataOpenFor('yaguking-bc25c', Date.UTC(2026, 10, 2, 15))).toBe(true);
+    expect(adminOps.memberDataOpenFor('demo-yaguking', 0)).toBe(true);
+  });
+
+  it('관리 화면: 운영 빌드는 시행일 전 회원 정보를 열지 않는다(에뮬레이터는 검증을 위해 연다)', () => {
+    expect(memberDataOpen('2026-11-02', true)).toBe(false);
+    expect(memberDataOpen('2026-11-03', true)).toBe(true);
+    expect(memberDataOpen('2026-10-27', false)).toBe(true);
   });
 });

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { maskEmail } from '@/lib/admin/access';
+import { memberDataOpen } from '@/lib/admin/policyGate';
 import { SIGNUP_STATUS_LABEL, signupCheck, summarize, type SignupStatus } from '@/lib/admin/signupCheck';
 import { loadMembers, type MemberRow } from '../data';
 import { ErrorText, PageTitle, StatCard, fmtTime, line } from '../ui';
+import { ClosedNotice } from './MembersPage';
 
 type Filter = 'all' | SignupStatus | 'email-unverified';
 
@@ -12,6 +14,11 @@ type Filter = 'all' | SignupStatus | 'email-unverified';
  * 최근 가입 100명. 가입 시도가 실패해 계정이 안 생긴 경우는 여기 보이지 않는다(가입 화면 문제는 E2E·콘솔로).
  */
 export function SignupsPage() {
+  if (!memberDataOpen()) return <ClosedNotice title="가입 확인" />;
+  return <SignupChecks />;
+}
+
+function SignupChecks() {
   const [rows, setRows] = useState<MemberRow[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [error, setError] = useState<string | null>(null);

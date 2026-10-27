@@ -213,3 +213,99 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
     ],
   },
 ];
+
+// ── 개정(2026-11-03 시행) — 관리자 1차(docs/admin-plan.md §8) ─────────────────────────────
+// 2026-10-27에 공지(시행 7일 전). 운영자가 회원 정보를 보는 관리 화면과 그 접속기록을 알린다.
+// 이용자에게 불리한 변경(수집 항목·제3자 제공·국외 이전 확대)이 아니라 운영 관리 목적·안전조치의 고지로 보고 7일 전 공지로 했다
+// — 운영자 확인 사항(docs/deploy-log.md).
+
+export interface PrivacyVersion {
+  effective: string;
+  sections: readonly PolicySection[];
+  /** 이전 판에서 바뀐 점(개정 예고·안내에 보여 준다) */
+  changes: readonly string[];
+}
+
+/** 운영자 열람·처리 기록(관리자 접속기록) 보관 기간 — 정리 작업(ops/cleanup.mjs)이 지난 것을 지운다 */
+export const ADMIN_LOG_RETENTION_YEARS = 2;
+
+/** 이 판부터 운영자가 회원 정보를 볼 수 있다(관리 화면·계정 사본) — 관리자 사이트와 ops/admin.mjs가 이 날짜를 지킨다 */
+export const ADMIN_PRIVACY_EFFECTIVE = '2026-11-03';
+const AMENDMENT_EFFECTIVE = ADMIN_PRIVACY_EFFECTIVE;
+
+function amend(sections: readonly PolicySection[]): PolicySection[] {
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return { ...section, items: [...(section.items ?? []), '서비스 운영 관리 — 가입 상태 점검, 이용자 문의·요청 처리, 공지사항 게시'] };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              ['운영 관리', '운영자가 회원 정보를 열람·처리한 기록(대상 계정 식별자, 한 일, 일시)', '운영자가 관리 화면을 쓸 때 자동 생성'],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              ['운영자의 열람·처리 기록(접속기록)', `${ADMIN_LOG_RETENTION_YEARS}년. 그 뒤 정리 작업으로 삭제`],
+            ],
+          },
+          paragraphs: [
+            ...(section.paragraphs ?? []),
+            '운영 관리를 위해 로그인 계정 정보(이메일·로그인 수단·가입 일시)의 사본을 관리 화면에 두며, 계정이 삭제되면 다음 날 정리 작업 때 함께 삭제합니다.',
+          ],
+        };
+      case 'security':
+        return {
+          ...section,
+          items: [
+            ...(section.items ?? []),
+            '회원 정보를 볼 수 있는 관리 화면은 별도 주소에 두고, 지정된 운영자의 구글 계정으로만 들어갈 수 있으며, 30분 동안 쓰지 않으면 로그아웃됩니다.',
+            `운영자가 회원 정보를 열람·처리한 기록을 남기고 ${ADMIN_LOG_RETENTION_YEARS}년간 보관하며, 이 기록은 고치거나 지울 수 없게 합니다.`,
+            '관리 화면에서 이메일은 가려서 보여 주고, 필요할 때만 열람하며 그 열람도 기록합니다.',
+          ],
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${AMENDMENT_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
+/** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
+export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
+  { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
+  {
+    effective: AMENDMENT_EFFECTIVE,
+    sections: amend(PRIVACY_SECTIONS),
+    changes: [
+      '처리 목적에 "서비스 운영 관리(가입 상태 점검, 문의·요청 처리, 공지사항 게시)"를 더했습니다.',
+      `운영자가 회원 정보를 열람·처리한 기록(접속기록)을 남기고 ${ADMIN_LOG_RETENTION_YEARS}년간 보관합니다.`,
+      '관리 화면의 보호 조치(별도 주소, 지정 운영자의 구글 계정만, 30분 자동 로그아웃, 이메일 가림)를 안전성 확보 조치에 적었습니다.',
+      '수집하는 항목, 제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+];
+
+/** 한국 날짜 "YYYY-MM-DD" */
+export function kstDateKey(now: number = Date.now()): string {
+  return new Date(now + 9 * 3_600_000).toISOString().slice(0, 10);
+}
+
+export function versionInForce(today: string = kstDateKey()): PrivacyVersion {
+  return [...PRIVACY_VERSIONS].reverse().find((version) => version.effective <= today) ?? PRIVACY_VERSIONS[0]!;
+}
+
+export function upcomingVersion(today: string = kstDateKey()): PrivacyVersion | null {
+  return PRIVACY_VERSIONS.find((version) => version.effective > today) ?? null;
+}

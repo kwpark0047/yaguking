@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { maskEmail } from '@/lib/admin/access';
+import { MEMBER_DATA_CLOSED_MESSAGE, memberDataOpen } from '@/lib/admin/policyGate';
 import { SIGNUP_STATUS_LABEL, signupCheck } from '@/lib/admin/signupCheck';
 import { TEAMS } from '@/content/teams';
 import { tierTheme } from '@/lib/theme/tiers';
@@ -20,6 +21,23 @@ const providerName = (id: string) => ({ 'google.com': '구글', password: '이�
 
 /** 가입자 목록 — 계정 사본(운영자 PC 동기화) 기준 최근 가입 순 30명씩, 닉네임 앞글자 검색. 이메일은 가려서 */
 export function MembersPage() {
+  if (!memberDataOpen()) return <ClosedNotice title="가입자" />;
+  return <MembersList />;
+}
+
+/** 처리방침 개정 시행 전에는 회원 정보를 열지 않는다(운영 빌드) */
+export function ClosedNotice({ title }: { title: string }) {
+  return (
+    <>
+      <PageTitle>{title}</PageTitle>
+      <p role="note" className="sticker p-4 text-sm break-keep">
+        {MEMBER_DATA_CLOSED_MESSAGE}
+      </p>
+    </>
+  );
+}
+
+function MembersList() {
   const [page, setPage] = useState<MemberPage | null>(null);
   const [rows, setRows] = useState<MemberRow[]>([]);
   const [search, setSearch] = useState('');
@@ -114,6 +132,11 @@ export function MembersPage() {
 
 /** 회원 한 명 — 연 순간 관리자 기록. 이메일 보기도 기록. 1차는 읽기만(삭제는 다음 단계) */
 export function MemberDetailPage() {
+  if (!memberDataOpen()) return <ClosedNotice title="회원" />;
+  return <MemberDetail />;
+}
+
+function MemberDetail() {
   const { uid = '' } = useParams();
   const [detail, setDetail] = useState<MemberDetail | null | undefined>(undefined);
   const [email, setEmail] = useState<string | null>(null);

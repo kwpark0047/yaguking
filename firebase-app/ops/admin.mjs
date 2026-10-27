@@ -9,6 +9,18 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const DAY = 86_400_000;
 
+/**
+ * 처리방침 개정(운영자 열람·접속기록) 시행일 — 이 날 전에는 실제 프로젝트에서 계정 사본을 만들지 않는다.
+ * src/content/privacy.ts의 ADMIN_PRIVACY_EFFECTIVE와 같아야 한다(단위 테스트가 대조).
+ */
+export const MEMBER_DATA_FROM = '2026-11-03';
+
+/** 한국 날짜로 시행일이 지났나. demo- 프로젝트(에뮬레이터)는 날짜와 상관없이 연다 */
+export function memberDataOpenFor(projectId, now = Date.now()) {
+  const today = new Date(now + 9 * 3_600_000).toISOString().slice(0, 10);
+  return projectId.startsWith('demo-') || today >= MEMBER_DATA_FROM;
+}
+
 /** 회원(이메일·구글) — 로그인 수단이 하나라도 있다. 비회원(익명)은 수단이 없다 */
 export const isMemberAccount = (user) => (user.providerData ?? []).length > 0 || Boolean(user.email);
 

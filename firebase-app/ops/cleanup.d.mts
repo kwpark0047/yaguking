@@ -4,6 +4,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 /** cleanup.mjs의 형(테스트가 TypeScript에서 불러온다) */
 export const ROOM_RETENTION_HOURS: number;
 export const GUEST_RETENTION_DAYS: number;
+export const ADMIN_LOG_RETENTION_DAYS: number;
 export const DEFAULT_MAX_DELETES: number;
 
 export interface UserLike {
@@ -20,6 +21,7 @@ export interface CleanupReport {
   rooms: number;
   orphanSeats: number;
   guests: number;
+  adminLogs: number;
   deletedDocs: number;
   stoppedAtLimit: boolean;
 }

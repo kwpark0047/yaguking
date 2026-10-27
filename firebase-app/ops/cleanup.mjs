@@ -6,6 +6,7 @@
  * 1. 친구 대결 방: 만든 지 ROOM_RETENTION_HOURS가 지난 방(끝났든, 버려졌든)과 그 자리 전부
  * 2. 주인 없는 자리: 방장이 방을 닫아 방 문서가 없는데 남은 다른 사람의 자리(규칙상 남이 못 지운다)
  * 3. 비회원: 마지막 이용 뒤 GUEST_RETENTION_DAYS가 지난 익명 계정과 그 기록 전부(경기·누적·카운터·오답)
+ * 4. 관리자 기록(adminLogs): ADMIN_LOG_RETENTION_DAYS(2년)가 지난 것
  *    — 기존 앱의 처리방침 기준(비회원 체험 기록 30일)을 그대로 따른다
  *
  * 안전장치: 기본은 **미리 보기**(dryRun) — 지울 것을 세기만 한다. 한 번에 지우는 문서 수에 상한을 둔다
@@ -13,6 +14,8 @@
  */
 export const ROOM_RETENTION_HOURS = 24;
 export const GUEST_RETENTION_DAYS = 30;
+/** 운영자 열람·처리 기록(관리자 접속기록) — 처리방침(2026-11-03 시행)의 2년 */
+export const ADMIN_LOG_RETENTION_DAYS = 730;
 export const DEFAULT_MAX_DELETES = 5000;
 
 const HOUR = 3_600_000;
@@ -40,7 +43,7 @@ export function lastActiveMs(user) {
  * @param {number} [options.maxDeletes] 이번 실행에서 지울 Firestore 문서 상한
  */
 export async function cleanup({ db, auth, now = Date.now(), dryRun = true, maxDeletes = DEFAULT_MAX_DELETES, log = () => {} }) {
-  const report = { dryRun, rooms: 0, orphanSeats: 0, guests: 0, deletedDocs: 0, stoppedAtLimit: false };
+  const report = { dryRun, rooms: 0, orphanSeats: 0, guests: 0, adminLogs: 0, deletedDocs: 0, stoppedAtLimit: false };
   let budget = maxDeletes;
 
   /** 문서와 하위 문서를 지운다. 지운 수를 센다. 미리 보기면 세기만 */
@@ -112,6 +115,18 @@ export async function cleanup({ db, auth, now = Date.now(), dryRun = true, maxDe
     pageToken = page.pageToken;
   } while (pageToken);
   log(`비회원 ${report.guests}명`);
+
+  // 4. 보관 기간이 지난 관리자 기록(2년). 기기·관리자 화면은 지울 수 없고(규칙) 여기서만 지운다
+  if (!outOfBudget()) {
+    const logCutoff = new Date(now - ADMIN_LOG_RETENTION_DAYS * DAY);
+    const oldLogs = await db.collection('adminLogs').where('at', '<', logCutoff).limit(Math.max(1, budget)).get();
+    for (const entry of oldLogs.docs) {
+      if (outOfBudget()) break;
+      await remove(entry.ref);
+      report.adminLogs += 1;
+    }
+  }
+  log(`관리자 기록 ${report.adminLogs}건`);
 
   return report;
 }
