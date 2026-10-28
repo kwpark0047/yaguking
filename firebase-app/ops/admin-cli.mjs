@@ -47,7 +47,7 @@ if (command === 'set-admin') {
   console.log('표시는 다음 로그인(또는 토큰 새로 받기)부터 적용됩니다.');
 } else if (command === 'daily') {
   const day = arg('date');
-  if (day && !/^d{4}-d{2}-d{2}$/.test(day)) {
+  if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     console.error('--date=YYYY-MM-DD');
     process.exit(1);
   }
