@@ -212,5 +212,6 @@ npm run dev
 | 소리(구현) | `docs/sound-plan.md` |
 | 애니메이션 2차(구현) | `docs/motion-plan.md` |
 | App Check 판단 근거(보류) | `docs/app-check-decision.md` |
+| 재미 포인트(찬스 이벤트) 기획(승인 대기) | `docs/fun-plan.md` |
 | 기존 앱에서 가져온 코드 | `COPIED_FROM.md` |
 | 전환 배경(기존 문서와 바뀐 점) | `../KBO_YaguKing_Docs_20261023/16_야구왕_무료플랜_Firebase_전환.md` |
