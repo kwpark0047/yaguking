@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
+import { InstallActions } from '@/components/pwa/InstallGuide';
 import { PlayerInputs } from '@/components/profile/PlayerInputs';
 import { TeamRankPicker } from '@/components/profile/TeamRankPicker';
 import { signOutUser } from '@/lib/auth/actions';
@@ -20,7 +21,7 @@ import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
 const inputStyle = { borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' };
 
 /**
- * 설정 — 닉네임·최애 구단·최애 선수 바꾸기, 월간 등수 닉네임 숨기기, 로그아웃, 계정 삭제.
+ * 설정 — 닉네임·최애 구단·최애 선수 바꾸기, 월간 등수 닉네임 숨기기, 앱 설치(홈 화면에 추가), 로그아웃, 계정 삭제.
  * 계정 삭제는 닉네임을 정확히 입력해야 열린다(되돌릴 수 없다).
  */
 export function SettingsPage() {
@@ -205,6 +206,14 @@ export function SettingsPage() {
         </h2>
         <EffectsSetting />
         <SoundSetting />
+      </section>
+
+      <section aria-labelledby="install-title" className="flex flex-col gap-3">
+        <h2 id="install-title" className="font-cute text-xl">
+          앱 설치
+        </h2>
+        <p className="text-sm text-ink-2 break-keep">홈 화면에 야구왕을 두면 앱처럼 바로 열려요. 설치하지 않아도 모든 기능을 쓸 수 있어요.</p>
+        <InstallActions />
       </section>
 
       <section aria-labelledby="account-title" className="flex flex-col gap-3">

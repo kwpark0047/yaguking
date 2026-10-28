@@ -1,8 +1,9 @@
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
+import { BookmarkButton } from '@/components/pwa/BookmarkButton';
 import { signOutUser } from '@/lib/auth/actions';
 
-/** 머리줄 — 로고, 그리고 로그인 상태에 따라 로그인/가입 또는 비회원 표시·로그아웃. */
+/** 머리줄 — 로고, 즐겨찾기 방법(별표), 그리고 로그인 상태에 따라 로그인/가입 또는 비회원 표시·로그아웃. */
 export function SiteHeader() {
   const { user, isGuest, profile } = useAuth();
   const nickname = profile.status === 'ready' ? profile.data.nickname : null;
@@ -14,7 +15,8 @@ export function SiteHeader() {
         야구왕
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <BookmarkButton />
         {user === undefined ? null : user && !isGuest ? (
           <>
             <Link

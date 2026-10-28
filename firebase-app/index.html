@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>야구왕</title>
+    <!-- 홈 화면에 추가(PWA) — public/manifest.webmanifest, 서비스 워커는 public/sw.js(src/lib/pwa/install.ts가 등록) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0b1730" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="야구왕" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <!--
       첫 열기 스플래시(docs/effects-plan.md §2-1): 0.4초 안에 앱이 뜨면 보이지 않는다. 조명 4개가 차례로 서서히 켜진다
       (번쩍임 아님). #root 안에 있어서 앱이 그려지면 React가 통째로 바꾼다. 동작 줄이기면 조명은 처음부터 켜진 채.

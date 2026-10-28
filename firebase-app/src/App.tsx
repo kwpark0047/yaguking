@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { LoadingBall } from '@/components/effects/Effects';
+import { InstallOffer } from '@/components/pwa/InstallOffer';
 import { celebrate } from '@/lib/effects/celebrate';
 import { currentMode } from '@/lib/effects/preference';
 import { playSound } from '@/lib/sound/sound';
@@ -82,12 +83,16 @@ function AnimatedRoutes({ children }: { children: ReactNode }) {
   );
 }
 
-/** 가입이 끝난 첫 화면에서 한 번 — 프로필 저장이 넘긴 표시(state.welcome)를 받아 띠·꽃가루·소리 */
+/**
+ * 가입이 끝난 첫 화면에서 한 번 — 프로필 저장이 넘긴 표시(state.welcome)를 받아 띠·꽃가루·소리.
+ * 띠가 닫히면 홈 화면에 추가 권유(InstallOffer)를 메인에서만 띄운다 — 가입 완료·게임을 막지 않게
+ */
 function WelcomeBanner() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [shown, setShown] = useState<{ nickname: string; carried: boolean } | null>(null);
+  const [offer, setOffer] = useState(false);
   const welcome = (location.state as { welcome?: boolean } | null)?.welcome === true;
 
   useEffect(() => {
@@ -105,11 +110,14 @@ function WelcomeBanner() {
   // 띠는 2.6초 뒤 닫는다(움직임이 없는 설정에서도 글자를 읽을 시간이 있게 — 애니메이션 끝에 기대지 않는다)
   useEffect(() => {
     if (!shown) return;
-    const timer = window.setTimeout(() => setShown(null), 2600);
+    const timer = window.setTimeout(() => {
+      setShown(null);
+      setOffer(true);
+    }, 2600);
     return () => window.clearTimeout(timer);
   }, [shown]);
 
-  if (!shown) return null;
+  if (!shown) return offer && location.pathname === '/' ? <InstallOffer onClose={() => setOffer(false)} /> : null;
   return (
     <div role="status" className="welcome-banner font-cute" style={currentMode() === 'none' ? { animation: 'none' } : undefined}>
       환영해요, {shown.nickname ? `${shown.nickname} 선수` : '선수'}!

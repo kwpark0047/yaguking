@@ -1223,3 +1223,16 @@ body {
 :root[data-effects='none'] .countdown-number {
   animation: none;
 }
+
+/* 홈 화면에 추가(PWA) — 창 뒤 어둡게, 가입 직후 권유는 화면 아래 카드(가운데, 폰 폭 맞춤) */
+.yk-dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+.install-offer {
+  position: fixed;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  width: min(28rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+}
