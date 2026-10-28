@@ -5,6 +5,8 @@ import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { PlayerInputs } from '@/components/profile/PlayerInputs';
 import { TeamRankPicker } from '@/components/profile/TeamRankPicker';
 import { signOutUser } from '@/lib/auth/actions';
+import { HIDDEN_NAME } from '@/lib/game/attendance';
+import { saveRankingHidden } from '@/lib/game/engagement';
 import {
   NicknameTakenError,
   RecentLoginRequiredError,
@@ -18,7 +20,7 @@ import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
 const inputStyle = { borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' };
 
 /**
- * 설정 — 닉네임·최애 구단·최애 선수 바꾸기, 로그아웃, 계정 삭제.
+ * 설정 — 닉네임·최애 구단·최애 선수 바꾸기, 월간 등수 닉네임 숨기기, 로그아웃, 계정 삭제.
  * 계정 삭제는 닉네임을 정확히 입력해야 열린다(되돌릴 수 없다).
  */
 export function SettingsPage() {
@@ -30,12 +32,14 @@ export function SettingsPage() {
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmName, setConfirmName] = useState('');
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     if (profile.status !== 'ready') return;
     setNickname(profile.data.nickname ?? '');
     setTeams(profile.data.favoriteTeams);
     setPlayers(profile.data.favoritePlayers);
+    setHidden(profile.data.rankingHidden);
   }, [profile]);
 
   if (user === undefined || profile.status === 'loading') return null;
@@ -82,6 +86,22 @@ export function SettingsPage() {
         kind: 'error',
         text: caught instanceof NicknameTakenError ? caught.message : '저장하지 못했어요. 다시 시도해 주세요.',
       });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function toggleHidden(next: boolean) {
+    setHidden(next); // 바로 바꿔 보이고, 저장에 실패하면 되돌린다
+    setPending(true);
+    setMessage(null);
+    try {
+      await saveRankingHidden(user!.uid, next);
+      await refreshProfile();
+      setMessage({ kind: 'ok', text: next ? '숨겼어요. 내일 새벽 등수부터 반영돼요.' : '다시 보여요. 내일 새벽 등수부터 반영돼요.' });
+    } catch {
+      setHidden(!next);
+      setMessage({ kind: 'error', text: '저장하지 못했어요. 다시 시도해 주세요.' });
     } finally {
       setPending(false);
     }
@@ -160,6 +180,25 @@ export function SettingsPage() {
         </button>
       </section>
 
+      <section aria-labelledby="ranking-title" className="flex flex-col gap-3">
+        <h2 id="ranking-title" className="font-cute text-xl">
+          월간 등수
+        </h2>
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="h-5 w-5"
+            checked={hidden}
+            disabled={pending || !current}
+            onChange={(event) => void toggleHidden(event.target.checked)}
+          />
+          등수에 내 닉네임 숨기기
+        </label>
+        <p className="text-xs text-ink-2 break-keep">
+          숨기면 등수에 &quot;{HIDDEN_NAME}&quot;로 보이고 최애 구단도 보이지 않아요. 순위와 포인트는 그대로예요.
+        </p>
+      </section>
+
       <section aria-labelledby="display-title" className="flex flex-col gap-3">
         <h2 id="display-title" className="font-cute text-xl">
           화면
@@ -188,7 +227,7 @@ export function SettingsPage() {
           계정 삭제
         </h2>
         <p className="text-sm text-ink-2 break-keep">
-          계정과 경기 기록·오답노트·누적 기록이 모두 지워지고 되돌릴 수 없어요. 확인하려면
+          계정과 경기 기록·오답노트·누적 기록·출석 기록이 모두 지워지고 되돌릴 수 없어요. 확인하려면
           닉네임을 그대로 입력해 주세요.
         </p>
         <label className="flex flex-col gap-1 text-sm">

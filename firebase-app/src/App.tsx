@@ -34,6 +34,7 @@ const RoomLobbyPage = lazy(() =>
   import('@/pages/RoomLobbyPage').then((module) => ({ default: module.RoomLobbyPage })),
 );
 const RoomPage = lazy(() => import('@/pages/RoomPage').then((module) => ({ default: module.RoomPage })));
+const RankingPage = lazy(() => import('@/pages/RankingPage').then((module) => ({ default: module.RankingPage })));
 
 function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<LoadingBall />}>{children}</Suspense>;
@@ -150,6 +151,7 @@ export function App() {
             <Route path="/play" element={<Lazy><PlayPage /></Lazy>} />
             <Route path="/level-test" element={<Lazy><LevelTestPage /></Lazy>} />
             <Route path="/notes" element={<Lazy><NotesPage /></Lazy>} />
+            <Route path="/ranking" element={<Lazy><RankingPage /></Lazy>} />
             <Route path="/room" element={<Lazy><RoomLobbyPage /></Lazy>} />
             <Route path="/room/:code" element={<Lazy><RoomPage /></Lazy>} />
           </Route>

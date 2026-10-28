@@ -1,5 +1,6 @@
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
-import { GUEST_RETENTION_DAYS, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
+import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP } from '@/lib/game/attendance';
+import { GUEST_RETENTION_DAYS, LEADERBOARD_MONTHS_KEPT, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
 
 /**
  * 개인정보처리방침 — **Firebase판 시행본**(2026-10-27 시행, 16 문서 §4 "15" 줄).
@@ -285,6 +286,60 @@ function amend(sections: readonly PolicySection[]): PolicySection[] {
   });
 }
 
+/**
+ * 매일 출석·월간 등수(docs/engagement-plan.md) — 출석 기록과 등수 공개(닉네임·최애 구단). 이날부터 화면을 연다
+ * (src/lib/game/attendance.ts ENGAGEMENT_START). 운영자 승인 2026-10-29, 시행 7일 전 공지.
+ */
+export const ENGAGEMENT_PRIVACY_EFFECTIVE = ENGAGEMENT_START;
+
+function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return { ...section, items: [...(section.items ?? []), '매일 출석과 월간 등수 운영 — 출석 포인트 계산, 등수·칭호 표시'] };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              [
+                '회원 활동(출석·등수)',
+                '출석한 날짜, 이번 달 연습 점수·경기 수, 월간 출석 포인트·순위·칭호, 등수에서 닉네임 숨기기 설정',
+                '출석 도장을 찍거나 경기를 하면 자동 생성, 순위·칭호는 운영자가 매일 계산',
+              ],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [...section.table!.rows, ['월간 등수(닉네임·최애 구단·포인트·칭호)', `그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월. 그 뒤 정리 작업으로 삭제`]],
+          },
+          paragraphs: [
+            ...(section.paragraphs ?? []),
+            '회원 탈퇴 시 출석 기록·이번 달 연습 점수·칭호도 함께 삭제되며, 등수에 남은 닉네임은 다음 날 정리 작업 때 "탈퇴한 선수"로 바꿉니다.',
+          ],
+        };
+      case 'public':
+        return {
+          ...section,
+          items: [
+            ...(section.items ?? []),
+            `월간 등수: 로그인한 이용자에게 이번 달과 지난 달 상위 ${RANKING_TOP}명의 닉네임, 최애 구단(1위), 출석 일수, 포인트, 칭호가 보입니다. 설정에서 닉네임을 숨기면 "${HIDDEN_NAME}"로 표시되고 최애 구단은 보이지 않습니다(순위와 포인트는 그대로).`,
+          ],
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${ENGAGEMENT_PRIVACY_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
 /** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
 export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
   { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
@@ -296,6 +351,16 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       `운영자가 회원 정보를 열람·처리한 기록(접속기록)을 남기고 ${ADMIN_LOG_RETENTION_YEARS}년간 보관합니다.`,
       '관리 화면의 보호 조치(별도 주소, 지정 운영자의 구글 계정만, 30분 자동 로그아웃, 이메일 가림)를 안전성 확보 조치에 적었습니다.',
       '수집하는 항목, 제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+  {
+    effective: ENGAGEMENT_PRIVACY_EFFECTIVE,
+    sections: amendEngagement(amend(PRIVACY_SECTIONS)),
+    changes: [
+      '매일 출석과 월간 등수를 시작합니다. 회원이 출석 도장을 찍은 날짜와 이번 달 연습 점수를 기록합니다.',
+      `로그인한 이용자에게 월간 등수 상위 ${RANKING_TOP}명의 닉네임·최애 구단(1위)·출석 일수·포인트·칭호가 보입니다. 설정에서 닉네임을 숨길 수 있습니다.`,
+      `월간 등수는 그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월 보관하고, 탈퇴하면 다음 날 등수에서 닉네임을 지웁니다.`,
+      '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },
 ];
@@ -311,4 +376,9 @@ export function versionInForce(today: string = kstDateKey()): PrivacyVersion {
 
 export function upcomingVersion(today: string = kstDateKey()): PrivacyVersion | null {
   return PRIVACY_VERSIONS.find((version) => version.effective > today) ?? null;
+}
+
+/** 시행 예정인 판 모두(가까운 순) — 개정 예고를 판마다 띄운다 */
+export function upcomingVersions(today: string = kstDateKey()): PrivacyVersion[] {
+  return PRIVACY_VERSIONS.filter((version) => version.effective > today);
 }

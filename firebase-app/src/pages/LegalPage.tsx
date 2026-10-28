@@ -4,7 +4,7 @@ import {
   PRIVACY_EFFECTIVE_DATE,
   PRIVACY_INTRO,
   PRIVACY_VERSIONS,
-  upcomingVersion,
+  upcomingVersions,
   versionInForce,
   type PolicySection,
 } from '@/content/privacy';
@@ -56,7 +56,7 @@ export function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
 function PrivacyBody() {
   const [params] = useSearchParams();
   const current = versionInForce();
-  const upcoming = upcomingVersion();
+  const upcoming = upcomingVersions();
   const requested = PRIVACY_VERSIONS.find((version) => version.effective === params.get('version'));
   const shown = requested ?? current;
   const others = PRIVACY_VERSIONS.filter((version) => version.effective !== shown.effective);
@@ -71,24 +71,26 @@ function PrivacyBody() {
           배포 전에 확정할 Firebase판 초안이에요. 시행일: {PRIVACY_EFFECTIVE_DATE ?? '확정 전'}
         </p>
       )}
-      {upcoming && shown.effective !== upcoming.effective && (
-        <section aria-labelledby="privacy-upcoming" className="sticker flex flex-col gap-2 p-4 text-sm break-keep">
-          <h2 id="privacy-upcoming" className="flex flex-wrap items-center gap-2 font-semibold">
+      {upcoming
+        .filter((version) => version.effective !== shown.effective)
+        .map((version) => (
+        <section key={version.effective} aria-labelledby={`privacy-upcoming-${version.effective}`} className="sticker flex flex-col gap-2 p-4 text-sm break-keep">
+          <h2 id={`privacy-upcoming-${version.effective}`} className="flex flex-wrap items-center gap-2 font-semibold">
             <span className="rounded-full px-2 py-0.5 text-xs" style={badge}>
               개정 예고
             </span>
-            {upcoming.effective}부터 바뀌는 점
+            {version.effective}부터 바뀌는 점
           </h2>
           <ul className="flex list-disc flex-col gap-1 pl-5">
-            {upcoming.changes.map((change) => (
+            {version.changes.map((change) => (
               <li key={change}>{change}</li>
             ))}
           </ul>
-          <Link to={`/privacy?version=${upcoming.effective}`} className="flex min-h-11 items-center self-start underline">
-            {upcoming.effective} 시행 방침 전문 보기
+          <Link to={`/privacy?version=${version.effective}`} className="flex min-h-11 items-center self-start underline">
+            {version.effective} 시행 방침 전문 보기
           </Link>
         </section>
-      )}
+        ))}
       <p className="text-sm text-ink-2">
         {shown.effective === current.effective ? '지금 시행 중인 방침' : shown.effective > current.effective ? '시행 예정 방침' : '이전 방침'} ·
         시행일 {shown.effective}

@@ -7,6 +7,7 @@ const data = (overrides: Partial<ProfileData> = {}): ProfileData => ({
   favoriteTeams: [],
   favoritePlayers: [],
   levelTestDone: false,
+  rankingHidden: false,
   ...overrides,
 });
 

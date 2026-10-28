@@ -1,16 +1,21 @@
+import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import emblem from '@/assets/brand/yaguking-emblem.webp';
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { NoticeBanner } from '@/components/NoticeBanner';
+import { engagementOpen, engagementStart, kstDate } from '@/lib/game/attendance';
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
+
+// 출석 카드는 Firestore를 쓰므로 회원에게만, 들어갈 때 불러온다(첫 화면 묶음에 SDK를 넣지 않는다)
+const AttendanceCard = lazy(() => import('@/components/engagement/AttendanceCard'));
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 const secondary = { borderColor: 'var(--line)', backgroundColor: 'var(--hero-button-bg)' };
 
 /**
- * 메인 — 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트.
+ * 메인 — 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트, 오늘 출석(회원 — docs/engagement-plan.md).
  * 로그인하지 않았어도 "게임 시작"이면 비회원으로 바로 들어간다(첫 투구까지 한 번).
  */
 export function HomePage() {
@@ -18,6 +23,9 @@ export function HomePage() {
   const member = !!user && !isGuest;
   const nickname = profile.status === 'ready' ? profile.data.nickname : null;
   const levelTestPending = member && profile.status === 'ready' && !profile.data.levelTestDone;
+  const ready = member && profile.status === 'ready' && profile.ageConfirmed;
+  const open = engagementOpen(kstDate());
+  const start = engagementStart();
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-4">
@@ -50,6 +58,11 @@ export function HomePage() {
                   레벨 테스트로 처음 등급 정하기
                 </Link>
               )}
+              {user && open && (
+                <Link to="/ranking" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                  월간 등수
+                </Link>
+              )}
               {user && (
                 <Link to="/notes" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
                   오답노트
@@ -68,6 +81,28 @@ export function HomePage() {
           </>
         )}
       </main>
+      {user !== undefined &&
+        (open && ready && user ? (
+          <Suspense fallback={null}>
+            <AttendanceCard uid={user.uid} />
+          </Suspense>
+        ) : (
+          <section aria-labelledby="attendance-title" className="sticker flex flex-col gap-2 p-4 text-sm break-keep">
+            <h2 id="attendance-title" className="font-cute text-xl">
+              {open ? '매일 출석 · 월간 등수' : '곧 시작: 매일 출석 · 월간 등수'}
+            </h2>
+            <p>
+              {open
+                ? '회원은 하루 한 번 출석 도장을 찍고 포인트를 모아 이달의 야구왕에 도전해요.'
+                : `${Number(start.slice(5, 7))}월 ${Number(start.slice(8, 10))}일부터 회원은 하루 한 번 출석 도장을 찍고, 모은 포인트로 월간 등수에 올라요.`}
+            </p>
+            {!member && (
+              <Link to="/auth?mode=signup&returnTo=%2F" className="flex min-h-11 items-center self-start font-semibold underline">
+                가입하고 출석 도장 받기
+              </Link>
+            )}
+          </section>
+        ))}
     </div>
   );
 }

@@ -126,6 +126,8 @@ test('처리방침: 시행 중인 판과 14개 항목, 개정 예고(시행일 �
     await expect(page.getByText('운영자의 열람·처리 기록(접속기록)')).toBeVisible();
     await page.goto('/privacy');
   }
+  // 출석·월간 등수 개정(2026-11-05) 예고
+  if (today < '2026-11-05') await expect(page.getByRole('heading', { name: /2026-11-05부터 바뀌는 점/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: '7. 국외 이전' })).toBeVisible();
   await expect(page.getByRole('rowheader', { name: '이전받는 자' })).toBeVisible();
   await expect(page.getByText('Supabase')).toHaveCount(0);

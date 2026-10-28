@@ -14,6 +14,8 @@ export interface ProfileData {
   favoriteTeams: string[];
   favoritePlayers: string[];
   levelTestDone: boolean;
+  /** 월간 등수에서 닉네임 숨기기(docs/engagement-plan.md §4) */
+  rankingHidden: boolean;
 }
 
 export type ProfileState =

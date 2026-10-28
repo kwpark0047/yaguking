@@ -66,6 +66,18 @@ service cloud.firestore {
       return int((request.time.toMillis() + 32400000) / 86400000);
     }
 
+    // 한국 시각의 이번 달 "YYYYMM"과 오늘 날짜(1~31) — 서버 시각 기준(출석·이번 달 연습 점수, docs/engagement-plan.md).
+    // 화면 쪽 계산(src/lib/game/attendance.ts kstMonthKey·kstDayOfMonth)과 같아야 한다.
+    function kstNow() {
+      return request.time + duration.value(9, 'h');
+    }
+    function kstMonth() {
+      return string(kstNow().year() * 100 + kstNow().month());
+    }
+    function kstDayOfMonth() {
+      return kstNow().day();
+    }
+
     // KBO 10개 구단(src/content/teams.ts와 같아야 한다)
     function isTeamSlug(slug) {
       return slug in ['doosan', 'lg', 'kiwoom', 'ssg', 'kt', 'nc', 'samsung', 'lotte', 'kia', 'hanwha'];
@@ -91,13 +103,15 @@ service cloud.firestore {
       // 온보딩·설정(3단계)과 레벨 테스트(4단계)
       allow update: if isSelf(uid) && isMember()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['nickname', 'favoriteTeams', 'favoritePlayers', 'levelTest', 'updatedAt'])
+             .hasOnly(['nickname', 'favoriteTeams', 'favoritePlayers', 'levelTest', 'rankingHidden', 'updatedAt'])
         && request.resource.data.updatedAt == request.time
         && resource.data.get('ageConfirmedAt', null) != null
         && validNickname(uid)
         && validFavoriteTeams()
         && validFavoritePlayers()
-        && validLevelTest();
+        && validLevelTest()
+        // 월간 등수에서 닉네임 숨기기(docs/engagement-plan.md §4)
+        && (!changed('rankingHidden') || request.resource.data.rankingHidden is bool);
 
       allow delete: if isSelf(uid);
 
@@ -221,6 +235,49 @@ service cloud.firestore {
             && isNonNegativeInt(s.runs, 10000000) && isNonNegativeInt(s.xp, 100000000)
             && s.h <= s.ab && s.ab <= s.pa && s.hr <= s.h;
         }
+      }
+
+      // ── 이번 달 연습 점수(비공식) — 경기마다 하나씩, 달마다 문서 하나(docs/engagement-plan.md §3) ──
+      // 문서 ID = 서버 기준 이번 달. 지난달·다음 달 문서는 늘릴 수 없다. 등수에는 쓰지 않는다(내 기록·목표 배지만).
+      match /monthly/{month} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow create: if isSelf(uid) && canRecord() && month == kstMonth()
+          && validMonthly() && request.resource.data.games == 1;
+        allow update: if isSelf(uid) && canRecord() && month == kstMonth()
+          && validMonthly() && request.resource.data.games == resource.data.games + 1
+          && request.resource.data.xp >= resource.data.xp;
+        allow delete: if isSelf(uid);
+
+        function validMonthly() {
+          let m = request.resource.data;
+          return m.keys().hasOnly(['games', 'xp', 'updatedAt'])
+            && m.updatedAt == request.time
+            && isNonNegativeInt(m.games, 100000)
+            && isNonNegativeInt(m.xp, 10000000);
+        }
+      }
+
+      // ── 매일 출석 — 하루 한 번, 달마다 문서 하나(docs/engagement-plan.md §2) ─────────────
+      // 확인 회원만. 문서 ID = 서버 기준 이번 달, 새 목록 = 이전 목록 끝에 **서버 기준 오늘** 하나만 더한 것.
+      // 기기 시계를 바꿔도 어제·내일 도장은 찍히지 않고, 같은 날 두 번도 안 된다. 등수는 운영자 PC가 이 문서로 계산한다.
+      match /attendance/{month} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow create: if isSelf(uid) && ageConfirmed() && month == kstMonth()
+          && request.resource.data.keys().hasOnly(['days', 'updatedAt'])
+          && request.resource.data.days == [kstDayOfMonth()]
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isSelf(uid) && ageConfirmed() && month == kstMonth()
+          && request.resource.data.keys().hasOnly(['days', 'updatedAt'])
+          && !(kstDayOfMonth() in resource.data.days)
+          && request.resource.data.days == resource.data.days.concat([kstDayOfMonth()])
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if isSelf(uid);
+      }
+
+      // ── 월간 칭호 — 운영자 PC(Admin SDK)만 쓴다. 본인은 읽고, 탈퇴할 때 지운다 ──
+      match /awards/{month} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow delete: if isSelf(uid);
       }
 
       // ── 오답노트 — 1·3·7·14일 복습 ───────────────────────────────────
@@ -360,6 +417,12 @@ service cloud.firestore {
     }
 
     // 관리자 행동 기록(개인정보 접속기록, 2년 보관 — 법정 1년 이상) — 만들기만, 작성자·서버 시각 강제
+    // ── 월간 등수 — 운영자 PC 매일 작업(ops/monthly.mjs)만 쓴다. 로그인한 누구나 읽는다 ──
+    // 닉네임·최애 구단·포인트만(숨기기를 고른 회원은 "익명 선수"). uid는 leaderboardKeys(규칙 없음 = 아무도 못 읽음)에만.
+    match /leaderboards/{month} {
+      allow read: if signedIn();
+    }
+
     match /adminLogs/{logId} {
       allow create: if isAdmin()
         && request.resource.data.keys().hasOnly(['by', 'action', 'target', 'detail', 'at'])

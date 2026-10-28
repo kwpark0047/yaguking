@@ -26,6 +26,7 @@ export async function loadProfile(uid: string): Promise<ProfileState> {
         favoriteTeams: strings(snapshot.get('favoriteTeams')),
         favoritePlayers: strings(snapshot.get('favoritePlayers')),
         levelTestDone: snapshot.get('levelTest') != null,
+        rankingHidden: snapshot.get('rankingHidden') === true,
       },
     };
   } catch {

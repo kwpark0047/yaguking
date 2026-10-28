@@ -12,5 +12,8 @@ export const GUEST_RETENTION_DAYS = 30;
 /** 친구 대결 방과 참가 기록 — 방을 만든 뒤 */
 export const ROOM_RETENTION_HOURS = 24;
 
+/** 월간 등수 문서(닉네임·최애 구단·포인트) — 그 달이 끝나고 이만큼 지나면 지운다(ops/monthly.mjs) */
+export const LEADERBOARD_MONTHS_KEPT = 12;
+
 /** 기기에 기억하는 "최근 본 문항" 수(src/lib/game/persist.ts) */
 export const SEEN_QUESTIONS_KEPT = 150;

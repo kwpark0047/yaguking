@@ -9,6 +9,8 @@ import {
   PRIVACY_VERSIONS,
   kstDateKey,
   upcomingVersion,
+  upcomingVersions,
+  ENGAGEMENT_PRIVACY_EFFECTIVE,
   versionInForce,
   PRIVACY_DRAFT,
   PRIVACY_EFFECTIVE_DATE,
@@ -16,7 +18,9 @@ import {
   PRIVACY_OPERATOR,
   PRIVACY_SECTIONS,
 } from '@/content/privacy';
-import { GUEST_RETENTION_DAYS, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
+import * as monthlyJob from '../../ops/monthly.mjs';
+import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP } from '@/lib/game/attendance';
+import { GUEST_RETENTION_DAYS, LEADERBOARD_MONTHS_KEPT, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
 
 /** 9단계 — 처리방침 Firebase판 초안이 코드의 사실과 맞는지 */
 const src = join(__dirname, '../../src');
@@ -95,7 +99,9 @@ describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
     expect(versionInForce('2026-11-02').effective).toBe('2026-10-27');
     expect(versionInForce('2026-11-03').effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-10-27')?.effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
-    expect(upcomingVersion('2026-11-03')).toBeNull();
+    expect(upcomingVersion('2026-11-03')?.effective).toBe(ENGAGEMENT_PRIVACY_EFFECTIVE);
+    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE]);
+    expect(upcomingVersion(ENGAGEMENT_PRIVACY_EFFECTIVE)).toBeNull();
     expect(kstDateKey(Date.UTC(2026, 10, 2, 15))).toBe('2026-11-03'); // 한국 시간 11월 3일 0시
   });
 
@@ -115,4 +121,29 @@ describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
     expect(cleanupJob.ADMIN_LOG_RETENTION_DAYS).toBe(ADMIN_LOG_RETENTION_YEARS * 365);
   });
   // 회원 정보 열람은 2026-10-28부터(운영자 결정) — 그전에 두었던 시행일 잠금(11-03)은 뺐다. docs/admin-dashboard-plan.md
+});
+
+describe('처리방침 개정(출석·월간 등수, docs/engagement-plan.md)', () => {
+  const next = PRIVACY_VERSIONS.find((version) => version.effective === ENGAGEMENT_PRIVACY_EFFECTIVE)!;
+  const text = JSON.stringify(next.sections);
+
+  it('출석·등수 화면을 여는 날 = 시행일, 11-03 판 위에 더한다(관리자 열람 내용 유지)', () => {
+    expect(ENGAGEMENT_PRIVACY_EFFECTIVE).toBe(ENGAGEMENT_START);
+    expect(ENGAGEMENT_PRIVACY_EFFECTIVE > ADMIN_PRIVACY_EFFECTIVE).toBe(true);
+    expect(text).toContain('서비스 운영 관리');
+    expect(text).toContain(`시행일: ${ENGAGEMENT_PRIVACY_EFFECTIVE}`);
+    const admin = PRIVACY_VERSIONS.find((version) => version.effective === ADMIN_PRIVACY_EFFECTIVE)!;
+    const same = (id: string) => JSON.stringify(next.sections.find((s) => s.id === id));
+    const before = (id: string) => JSON.stringify(admin.sections.find((s) => s.id === id));
+    for (const id of ['outsourcing', 'overseas', 'third-party', 'device', 'rights', 'children', 'security']) expect(same(id)).toBe(before(id));
+  });
+
+  it('공개 범위·보관 기간이 등수 작업(ops/monthly.mjs)과 같다', () => {
+    expect(monthlyJob.LEADERBOARD_MONTHS_KEPT).toBe(LEADERBOARD_MONTHS_KEPT);
+    expect(text).toContain(`${LEADERBOARD_MONTHS_KEPT}개월`);
+    expect(text).toContain(`상위 ${RANKING_TOP}명`);
+    expect(text).toContain(HIDDEN_NAME);
+    expect(text).toContain(monthlyJob.REMOVED_NAME);
+    expect(text).toContain('출석한 날짜');
+  });
 });

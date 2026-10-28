@@ -20,6 +20,7 @@ import type { AtBatRecord } from '@/lib/data/types';
 import { buildBoxScore } from '@/lib/engine';
 import { firestore } from '@/lib/firebase/db';
 import { countReads, countWrites, queryReads } from '@/lib/firebase/meter';
+import { kstMonthKey } from './attendance';
 import { GUEST_DAILY_GAMES } from './guestLimit';
 import type { PlayedAtBat } from './match';
 import { noteAfterReviewCorrect, noteAfterWrong, REVIEW_DAYS, type NoteState } from './review';
@@ -97,8 +98,22 @@ export interface SaveMatchResult {
   wrongSaved: number;
 }
 
-/** 경기 저장 — 읽기 0, 쓰기 = 경기 1 + 누적 1 + (비회원) 카운터 1 + 틀린 문항 수 */
+/**
+ * 경기 저장 — 읽기 0, 쓰기 = 경기 1 + 누적 1 + 이번 달 연습 1 + (비회원) 카운터 1 + 틀린 문항 수.
+ *
+ * 이번 달 연습 문서는 규칙이 **서버 기준 이번 달**만 받는다. 기기 시계가 틀려 달이 바뀌는 자정 무렵에 어긋나면
+ * 묶음 전체가 거절되므로, 그때는 이번 달 연습 없이 한 번 더 저장한다(경기 기록이 우선).
+ */
 export async function saveMatch(input: SaveMatchInput): Promise<SaveMatchResult> {
+  try {
+    return await commitMatch(input, true);
+  } catch (caught) {
+    if (input.mode !== 'practice' || (caught as { code?: string }).code !== 'permission-denied') throw caught;
+    return commitMatch(input, false);
+  }
+}
+
+async function commitMatch(input: SaveMatchInput, withMonthly: boolean): Promise<SaveMatchResult> {
   const db = firestore();
   const batch = writeBatch(db);
   const userRef = doc(db, 'users', input.uid);
@@ -137,6 +152,16 @@ export async function saveMatch(input: SaveMatchInput): Promise<SaveMatchResult>
       { merge: true },
     );
     writes += 1;
+
+    if (withMonthly) {
+      // 이번 달 연습 점수(비공식, docs/engagement-plan.md §3) — 등수에는 쓰지 않는다
+      batch.set(
+        doc(userRef, 'monthly', kstMonthKey()),
+        { games: increment(1), xp: increment(input.xp), updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+      writes += 1;
+    }
 
     if (input.isGuest) {
       batch.set(doc(userRef, 'daily', kstDayKey()), { count: increment(1) }, { merge: true });

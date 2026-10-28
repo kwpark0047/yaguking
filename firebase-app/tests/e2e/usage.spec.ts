@@ -70,7 +70,7 @@ async function strikeOut(page: Page) {
   await expect(page.getByText(/오답노트에 담았어요/)).toBeVisible({ timeout: 15_000 });
 }
 
-test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 6 · 오답노트 열기 = 노트 수', async ({ page }) => {
+test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 7 · 오답노트 열기 = 노트 수', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('/');
   await waitForPublicHome(page);
@@ -79,7 +79,7 @@ test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 6 · 
     await strikeOut(page);
   });
   expect(game.reads).toBeLessThanOrEqual(2); // 남은 판 1 + 경기 끝 누적 XP 1(비공식 레벨 승급, docs/motion-plan.md)
-  expect(game.writes).toBe(6); // 경기 + 누적 + 카운터 + 오답 3
+  expect(game.writes).toBe(7); // 경기 + 누적 + 이번 달 연습 + 카운터 + 오답 3
 
   const second = await measure(page, '비회원 한 판 더(같은 문항 다시 틀려도 오답은 읽지 않음)', async () => {
     await page.getByRole('button', { name: '한 판 더' }).click();
@@ -95,7 +95,7 @@ test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 6 · 
   expect(notes.reads).toBe(count);
 });
 
-test('회원: 앱 열기 2읽기, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
+test('회원: 앱 열기 4읽기(출석 카드 포함), 출석 도장 쓰기 1, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
   test.setTimeout(150_000);
   await signUp(page, uniqueEmail());
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
@@ -107,15 +107,23 @@ test('회원: 앱 열기 2읽기, 개인 경기 1읽기(누적 XP), 레벨 테�
   // 프로필을 읽기 전에도 보이므로 **닉네임**이 나올 때까지 기다린다(전에는 이 경쟁으로 0읽기가 잡혔다)
   await expect(page.getByText(`${nickname} 선수, 반가워요!`)).toBeVisible({ timeout: 15_000 });
   await waitForPublicHome(page);
+  // 출석 카드(docs/engagement-plan.md)가 이번 달 출석·등수를 다 읽을 때까지
+  await expect(page.getByRole('button', { name: /출석 도장 찍기/ })).toBeVisible({ timeout: 15_000 });
   const open = await meter(page);
-  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음)', ...open });
-  expect(open).toEqual({ reads: 2, writes: 0 }); // 프로필 1 + 공지 묶음 1(관리자 1차, 앱 열기당 한 번)
+  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음 + 출석 카드)', ...open });
+  expect(open).toEqual({ reads: 4, writes: 0 }); // 프로필 1 + 공지 묶음 1 + 이번 달 출석 1 + 등수 1
+
+  const stamp = await measure(page, '출석 도장(하루 1번)', async () => {
+    await page.getByRole('button', { name: /출석 도장 찍기/ }).click();
+    await expect(page.getByRole('region', { name: '오늘 출석' }).getByRole('status')).toContainText('출석!');
+  });
+  expect(stamp).toEqual({ reads: 0, writes: 1 });
 
   const game = await measure(page, '회원 개인 경기 1판(3문항 틀림)', async () => {
     await page.getByRole('link', { name: /게임 시작/ }).click();
     await strikeOut(page);
   });
-  expect(game).toEqual({ reads: 1, writes: 5 }); // 경기 끝 누적 XP 1(비공식 레벨)
+  expect(game).toEqual({ reads: 1, writes: 6 }); // 경기 끝 누적 XP 1(비공식 레벨), 쓰기에 이번 달 연습 1
 
   await page.getByRole('link', { name: '◀ 나가기' }).click();
   const levelTest = await measure(page, '레벨 테스트(20문항, 1개 틀림)', async () => {

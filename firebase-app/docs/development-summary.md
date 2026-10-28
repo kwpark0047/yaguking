@@ -173,7 +173,8 @@
 |---|---|
 | 비회원 하루 3판 우회 | 사람이 창을 새로 열면 App Check로도 못 막는다. reCAPTCHA 한도·처리방침 때문에 보류, 대신 비회원 급증 감시(`docs/app-check-decision.md`) |
 | 공식 XP·랭킹 | 설계만(`docs/official-xp-rp.md` §10의 6가지 결정 필요). 승급 휘장 효과도 그 뒤 |
-| 매일 작업 | 정리 → 대기 작업 → 계정 동기화 → 하루 요약(`daily`), 매일 03:30 |
+| 매일 작업 | 정리 → 대기 작업 → 계정 동기화 → 하루 요약(`daily`) → 월간 등수(`monthly`), 매일 03:30 |
+| 월간 등수 | 1차는 출석 포인트만(공식전 점수는 2차 — `docs/engagement-plan.md` §5). 운영자 PC가 꺼진 날은 다음 실행이 따라잡는다 |
 | 관리자 2차 이후 | 계정 삭제(D), 통계 스냅샷(E), 이벤트·아이템(F), 자체 광고(G) — `docs/admin-plan.md` §9 |
 | 축하 효과 2차·3차 | 나머지 타석 효과·연속 배지·대결 카운트다운·오답노트 도장·최고 기록, 소리(기본 끔) — `docs/effects-plan.md` §9 |
 | 이용약관 | 문안 없음(확정 전 표시) |
@@ -213,6 +214,6 @@ npm run dev
 | 애니메이션 2차(구현) | `docs/motion-plan.md` |
 | App Check 판단 근거(보류) | `docs/app-check-decision.md` |
 | 재미 포인트(찬스 이벤트 1차 구현, 최신 경기 문항) | `docs/fun-plan.md` |
-| 참여 높이기(누적 점수·매일 출석·월간 등수 — 기획만) | `docs/engagement-plan.md` |
+| 참여 높이기(매일 출석·월간 등수·이번 달 연습 점수 — 1차 구현, 11-05 시작) | `docs/engagement-plan.md` |
 | 기존 앱에서 가져온 코드 | `COPIED_FROM.md` |
 | 전환 배경(기존 문서와 바뀐 점) | `../KBO_YaguKing_Docs_20261023/16_야구왕_무료플랜_Firebase_전환.md` |
