@@ -262,3 +262,33 @@ test('공지: 관리자가 올리면 이용자 앱 메인 띠·목록에 뜨고,
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('공지 올림');
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('공지 고침');
 });
+
+test('이벤트: 출석 2배 날을 더해 저장하면 설정 문서와 관리자 기록에 남는다, 지난 날은 고를 수 없다', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto(ADMIN);
+  const popupPromise = page.context().waitForEvent('page');
+  await page.getByRole('button', { name: '구글로 로그인' }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  await popup.locator('li', { hasNotText: 'Add new account' }).first().click();
+  await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('link', { name: '이벤트' }).click();
+  await expect(page.getByRole('heading', { name: '이벤트', level: 1 })).toBeVisible();
+  await expect(page.getByRole('region', { name: '공식전 남은 문항' })).toContainText('ops/official/pool.csv');
+  const kst = (offset: number) => new Date(Date.now() + 9 * 3_600_000 + offset * 86_400_000).toISOString().slice(0, 10);
+  await page.getByLabel('날짜').fill(kst(-1));
+  await page.getByRole('button', { name: '더하기' }).click();
+  await expect(page.getByRole('alert')).toContainText('지난 날은 고를 수 없어요');
+  await page.getByLabel('날짜').fill(kst(2));
+  await page.getByRole('button', { name: '더하기' }).click();
+  await expect(page.getByRole('list', { name: '출석 2배 날 목록' })).toContainText(kst(2));
+  await page.getByRole('button', { name: '저장' }).click();
+  await expect(page.getByRole('status')).toContainText('저장했어요');
+  await axe(page, 'events');
+  expect((await adminDb.doc('adminConfig/events').get()).get('doubleDays')).toEqual([kst(2)]);
+
+  await page.getByRole('link', { name: '관리자 기록' }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('출석 2배 날 저장');
+});

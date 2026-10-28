@@ -110,6 +110,25 @@ describe.skipIf(!emulatorHost)('출석·월간 등수 규칙', () => {
       await assertFails(getDoc(doc(member(env, 'alice'), `leaderboardKeys/${month}`)));
     });
 
+    it('이벤트 설정(출석 2배 날): 관리자만 읽고 쓰고, 공식전 현황(운영자 PC)은 못 바꾼다', async () => {
+      const admin = env
+        .authenticatedContext('boss', { admin: true, email_verified: true, firebase: { sign_in_provider: 'google.com' as never } })
+        .firestore() as unknown as ReturnType<typeof member>;
+      const events = (db: ReturnType<typeof member>, data: object) =>
+        setDoc(doc(db, 'adminConfig/events'), { updatedAt: serverTimestamp(), by: 'boss', ...data }, { merge: true });
+      await assertSucceeds(events(admin, { doubleDays: ['2026-11-20'] }));
+      await assertSucceeds(getDoc(doc(admin, 'adminConfig/events')));
+      await assertFails(events(member(env, 'alice'), { doubleDays: ['2026-11-21'] }));
+      await assertFails(getDoc(doc(member(env, 'alice'), 'adminConfig/events')));
+      await assertFails(events(admin, { doubleDays: '2026-11-20' })); // 목록만
+      await assertFails(events(admin, { doubleDays: [], official: { remaining: 999 } }));
+      await assertFails(events(admin, { doubleDays: [], by: 'someone' }));
+      await assertFails(setDoc(doc(admin, 'adminConfig/other'), { doubleDays: [], updatedAt: serverTimestamp(), by: 'boss' }));
+      // 운영자 PC가 공식전 현황을 쓴 뒤에도 관리자는 2배 날만 고칠 수 있다
+      await seed('adminConfig/events', { doubleDays: [], official: { remaining: 10 }, updatedAt: new Date(), by: 'boss' });
+      await assertSucceeds(events(admin, { doubleDays: ['2026-11-22'] }));
+    });
+
     it('닉네임 숨기기는 참·거짓만', async () => {
       const db = member(env, 'alice');
       await assertSucceeds(updateDoc(doc(db, 'users/alice'), { rankingHidden: true, updatedAt: serverTimestamp() }));

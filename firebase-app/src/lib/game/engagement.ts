@@ -94,6 +94,15 @@ async function readLeaderboard(month: string): Promise<Leaderboard | null> {
       participants: Number(data.participants ?? 0),
       histogram,
       through: Number(data.through ?? 0),
+      doubleDays: Array.isArray(data.doubleDays) ? data.doubleDays.map(Number).filter(Number.isInteger) : [],
+      teams: Array.isArray(data.teams)
+        ? data.teams.map((item: Record<string, unknown>) => ({
+            team: String(item.team ?? ''),
+            fans: Number(item.fans ?? 0),
+            days: Number(item.days ?? 0),
+            points: Number(item.points ?? 0),
+          }))
+        : [],
       final: data.final === true,
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : 0,
     };

@@ -30,6 +30,8 @@ import {
   pickQuestion,
   plannedDifficulty,
   rulesAllowed,
+  FRESH_SLOTS,
+  isFresh,
   XP,
   startMatch,
   xpOf,
@@ -58,6 +60,7 @@ import {
   type ChanceReason,
   type ChanceRecord,
 } from "@/lib/game/chance";
+import { kstDate } from "@/lib/game/attendance";
 import { LIMIT_MS } from "@/lib/engine";
 import { gameEndSound, playSound, verdictSound } from "@/lib/sound/sound";
 import { celebrate, resetGameEffects } from "@/lib/effects/celebrate";
@@ -118,13 +121,23 @@ export function PlayPage() {
     const categories = current.atBats.map(
       (atBat) => categoryOf.get(atBat.questionId) ?? "",
     );
+    const rulesOk = rulesAllowed(categories);
+    // 최신 경기 특집 — 정해진 타석에서는 아직 안 본 최신 경기 문항부터(없으면 보통대로)
+    if (FRESH_SLOTS.includes(current.atBats.length)) {
+      const today = kstDate();
+      const fresh = bank.current.filter(
+        (q) => isFresh(q, today) && !seen.current.has(q.id) && (rulesOk || q.category !== "rules"),
+      );
+      const pick = pickQuestion(fresh, difficulty, used.current, new Set(), Math.random);
+      if (pick) return pick;
+    }
     return pickQuestion(
       bank.current,
       difficulty,
       used.current,
       seen.current,
       Math.random,
-      rulesAllowed(categories) ? undefined : (q) => q.category !== "rules",
+      rulesOk ? undefined : (q) => q.category !== "rules",
     );
   }, []);
 
@@ -374,6 +387,7 @@ export function PlayPage() {
           <QuestionView
             limitMs={timeBonus ? LIMIT_MS + TIME_BONUS_MS : LIMIT_MS}
             question={phase.question}
+            fresh={isFresh(phase.question, kstDate())}
             onAnswer={(choice, elapsed) =>
               answer(phase.question, choice, elapsed)
             }

@@ -74,6 +74,25 @@ describe.skipIf(!emulated)('월간 등수(에뮬레이터)', () => {
     expect((await board('202611')).top[2]).toMatchObject({ nickname: '클로저', days: 1 });
   });
 
+  it('출석 2배 날(관리자 설정)은 그날 출석 20점, 등수 문서에 그 달의 2배 날과 구단 대항전(팬 3명 이상)', async () => {
+    await db.doc('adminConfig/events').set({ doubleDays: ['2026-12-02', '2026-12-20', '2026-11-30'], official: { remaining: 3 } });
+    for (const [uid, team, days] of [
+      ['a', 'lg', [1, 2]],
+      ['b', 'lg', [2]],
+      ['c', 'lg', [1]],
+      ['d', 'kia', [1, 2, 3]],
+    ] as const) {
+      await db.doc(`users/${uid}`).set({ nickname: `선수${uid}`, favoriteTeams: [team], ageConfirmedAt: new Date() });
+      await db.doc(`users/${uid}/attendance/202612`).set({ days: [...days], updatedAt: new Date() });
+    }
+    await runMonthly({ db, now: at(2026, 12, 4), start: '2026-12-01' });
+    const current = await board('202612');
+    expect(current.doubleDays).toEqual([2, 20]);
+    expect(current.top.find((entry: { nickname: string }) => entry.nickname === '선수a').points).toBe(10 + 20);
+    expect(current.top.find((entry: { nickname: string }) => entry.nickname === '선수d').points).toBe(10 + 20 + 10);
+    expect(current.teams).toEqual([{ team: 'lg', fans: 3, days: 4, points: 30 + 20 + 10 }]); // KIA는 팬 1명이라 빠짐
+  });
+
   it('탈퇴한 회원은 확정된 달에서도 지우고, 12달이 지난 등수는 지운다', async () => {
     await memberWith('a', '에이스', { '202611': [10, 11] });
     await memberWith('b', '불펜', { '202611': [10] });

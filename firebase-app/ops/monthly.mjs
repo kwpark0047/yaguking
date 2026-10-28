@@ -14,6 +14,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export const ENGAGEMENT_START = '2026-11-05';
 export const POINTS = { day: 10, week: 30, perfect: 100 };
+export const DOUBLE_FACTOR = 2;
+export const TEAM_MIN_FANS = 3;
 export const STREAK_WEEK = 7;
 export const RANKING_TOP = 50;
 export const HIDDEN_NAME = '익명 선수';
@@ -44,8 +46,8 @@ export function firstCountedDay(month, start = ENGAGEMENT_START) {
   return month === startMonthOf(start) ? Number(start.slice(8, 10)) : 1;
 }
 
-/** 하루 10, 그 달 안에서 7일 연속마다 +30, 개근 +100(그 달을 다 셌을 때만) — attendance.ts와 같다 */
-export function attendancePoints(days, month, through = daysInMonth(month), start = ENGAGEMENT_START) {
+/** 하루 10(2배 날 20), 그 달 안에서 7일 연속마다 +30, 개근 +100(그 달을 다 셌을 때만) — attendance.ts와 같다 */
+export function attendancePoints(days, month, through = daysInMonth(month), start = ENGAGEMENT_START, doubleDays = []) {
   const first = firstCountedDay(month, start);
   const last = Math.min(through, daysInMonth(month));
   const counted = [...new Set(days)].filter((day) => Number.isInteger(day) && day >= first && day <= last).sort((a, b) => a - b);
@@ -57,8 +59,9 @@ export function attendancePoints(days, month, through = daysInMonth(month), star
   });
   const monthDone = last === daysInMonth(month);
   const perfect = monthDone && counted.length > 0 && counted.length === last - first + 1;
+  const doubled = counted.filter((day) => doubleDays.includes(day)).length;
   return {
-    points: counted.length * POINTS.day + weeks * POINTS.week + (perfect ? POINTS.perfect : 0),
+    points: (counted.length + doubled * (DOUBLE_FACTOR - 1)) * POINTS.day + weeks * POINTS.week + (perfect ? POINTS.perfect : 0),
     days: counted.length,
     weeks,
     perfect,
@@ -101,6 +104,30 @@ export function officialSum(days, month, through = 31) {
   return { points, rounds };
 }
 
+/**
+ * 구단 대항전 — 최애 구단 1위별 출석 일수·포인트 합. 출석한 팬이 TEAM_MIN_FANS명 이상인 구단만(숨김을 고른 회원도 합에는 든다 —
+ * 합만 보이고 누구인지는 보이지 않는다). 출석 일수 합 순, 같으면 포인트 합 순
+ */
+export function teamsOf(rows) {
+  const byTeam = new Map();
+  for (const row of rows) {
+    if (!row.team || row.days <= 0) continue;
+    const team = byTeam.get(row.team) ?? { team: row.team, fans: 0, days: 0, points: 0 };
+    team.fans += 1;
+    team.days += row.days;
+    team.points += row.points;
+    byTeam.set(row.team, team);
+  }
+  return [...byTeam.values()].filter((team) => team.fans >= TEAM_MIN_FANS).sort((a, b) => b.days - a.days || b.points - a.points);
+}
+
+/** 운영 설정(adminConfig/events)의 출석 2배 날 중 그 달 것 → 날짜(1~31) */
+export function doubleDaysOf(list, month) {
+  return [...new Set((Array.isArray(list) ? list : [])
+    .filter((value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && value.slice(0, 4) + value.slice(5, 7) === month)
+    .map((value) => Number(value.slice(8, 10))))].sort((a, b) => a - b);
+}
+
 export function histogramOf(ranked) {
   const histogram = {};
   for (const row of ranked) histogram[String(row.points)] = (histogram[String(row.points)] ?? 0) + 1;
@@ -124,8 +151,8 @@ async function loadMembers(db) {
   return { members, uids: new Set(snapshot.docs.map((item) => item.id)) };
 }
 
-/** 한 달 계산(쓰지 않음) — 출석 포인트 + 공식 점수 */
-async function computeMonth(db, members, month, through, start) {
+/** 한 달 계산(쓰지 않음) — 출석 포인트 + 공식 점수. 구단 대항전을 위해 0점인 줄도 함께 돌려준다 */
+async function computeMonth(db, members, month, through, start, doubleDays) {
   const uids = [...members.keys()];
   const rows = [];
   for (let i = 0; i < uids.length; i += 150) {
@@ -137,7 +164,7 @@ async function computeMonth(db, members, month, through, start) {
       const officialDoc = snapshots[index * 2 + 1];
       if (!attendanceDoc.exists && !officialDoc.exists) return;
       const days = Array.isArray(attendanceDoc.get('days')) ? attendanceDoc.get('days') : [];
-      const attendance = attendancePoints(days, month, through, start);
+      const attendance = attendancePoints(days, month, through, start, doubleDays);
       const official = officialSum(officialDoc.exists ? officialDoc.get('days') : {}, month, through);
       rows.push({
         uid,
@@ -150,7 +177,7 @@ async function computeMonth(db, members, month, through, start) {
       });
     });
   }
-  return rankRows(rows);
+  return { ranked: rankRows(rows), teams: teamsOf(rows) };
 }
 
 const publicEntry = (row, titles) => ({
@@ -175,6 +202,8 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
   if (month < startMonth) return report;
 
   const { members, uids } = await loadMembers(db);
+  // 출석 2배 날(관리자 "이벤트" 화면) — 문서 하나
+  const doubleList = (await db.doc('adminConfig/events').get()).get('doubleDays') ?? [];
 
   // 1) 지난달 확정
   const last = previousMonth(month);
@@ -183,7 +212,8 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
     const lastRef = db.doc(`leaderboards/${last}`);
     const lastDoc = await lastRef.get();
     if (!lastDoc.exists || lastDoc.get('final') !== true) {
-      const ranked = await computeMonth(db, members, last, daysInMonth(last), start);
+      const lastDouble = doubleDaysOf(doubleList, last);
+      const { ranked, teams } = await computeMonth(db, members, last, daysInMonth(last), start, lastDouble);
       const batch = db.batch();
       let awards = 0;
       for (const row of ranked) {
@@ -200,6 +230,8 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
         participants: ranked.length,
         histogram: histogramOf(ranked),
         through: daysInMonth(last),
+        doubleDays: lastDouble,
+        teams,
         final: true,
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -218,7 +250,8 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
 
   // 2) 이번 달 — 어제까지(1일에는 아직 셀 날이 없다)
   const through = Number(new Date(now + KST).getUTCDate()) - 1;
-  const ranked = await computeMonth(db, members, month, through, start);
+  const doubleDays = doubleDaysOf(doubleList, month);
+  const { ranked, teams } = await computeMonth(db, members, month, through, start, doubleDays);
   const top = ranked.slice(0, RANKING_TOP);
   const batch = db.batch();
   batch.set(db.doc(`leaderboards/${month}`), {
@@ -227,6 +260,9 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
     participants: ranked.length,
     histogram: histogramOf(ranked),
     through,
+    // 출석 2배 날은 그 달 전부(앞으로 올 날도 — 화면이 "오늘은 2배"·예고를 보여 준다)
+    doubleDays,
+    teams,
     final: false,
     updatedAt: FieldValue.serverTimestamp(),
   });

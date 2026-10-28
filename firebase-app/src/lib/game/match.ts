@@ -139,6 +139,18 @@ export function xpOf(atBats: readonly PlayedAtBat[], finishedInning: boolean): n
   return xp;
 }
 
+/**
+ * 최신 경기 특집(docs/engagement-plan.md §6 "가을야구 주간") — 기준일이 최근 FRESH_DAYS일 안인 문항(사람이 확인해 쓴 최신 경기 문항)을
+ * 한 경기의 정해진 타석(FRESH_SLOTS)에 먼저 낸다. 이 기기에서 이미 본 문항은 빼서 같은 문항이 되풀이되지 않게.
+ */
+export const FRESH_DAYS = 21;
+export const FRESH_SLOTS: readonly number[] = [0, 3];
+
+export function isFresh(question: Pick<Question, 'recordAsOf'>, today: string): boolean {
+  const age = (Date.parse(today) - Date.parse(question.recordAsOf)) / 86_400_000;
+  return Number.isFinite(age) && age >= 0 && age <= FRESH_DAYS;
+}
+
 /** 한 경기에서 규칙 문항은 절반 이하(docs/fun-plan.md §6) — 다음 문항을 규칙으로 내도 되나 */
 export function rulesAllowed(categoriesSoFar: readonly string[]): boolean {
   const rules = categoriesSoFar.filter((category) => category === 'rules').length;

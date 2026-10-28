@@ -44,7 +44,7 @@ describe.skipIf(!emulated)('오늘의 공식전(에뮬레이터)', () => {
     // 다음 날: 06일은 이미 있고, 07일은 문항이 2개뿐이라 못 만든다
     const second = await runOfficial({ db, poolText: pool(12), now: at(2026, 11, 6), start: START, bank: new Set() });
     expect(second).toMatchObject({ published: [], short: ['20261107'], remaining: 2 });
-    expect((await db.doc('adminStats/official').get()).data()).toMatchObject({ remaining: 2, daysLeft: 0, short: ['20261107'] });
+    expect((await db.doc('adminConfig/events').get()).get('official')).toMatchObject({ remaining: 2, daysLeft: 0, short: ['20261107'] });
 
     expect((await runOfficial({ db, poolText: pool(12), now: at(2026, 11, 3), start: START, bank: new Set() })).published).toEqual([]);
   });

@@ -486,6 +486,26 @@ service cloud.firestore {
       allow read: if signedIn();
     }
 
+    // ── 운영 설정(docs/engagement-plan.md §6) — 출석 2배 날짜("YYYY-MM-DD" 목록). 운영자 PC는 같은 문서에 공식전 문항 현황
+    // (official)을 쓴다 — 관리자 "이벤트" 화면이 문서 하나만 읽게. 날짜 모양은 화면과 등수 작업이 다시 확인한다
+    match /adminConfig/{docId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && docId == 'events'
+        && request.resource.data.keys().hasOnly(['doubleDays', 'updatedAt', 'by'])
+        && validEvents();
+      allow update: if isAdmin() && docId == 'events'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doubleDays', 'updatedAt', 'by'])
+        && validEvents();
+      allow delete: if false;
+
+      function validEvents() {
+        return request.resource.data.doubleDays is list
+          && request.resource.data.doubleDays.size() <= 31
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.by == request.auth.uid;
+      }
+    }
+
     match /adminLogs/{logId} {
       allow create: if isAdmin()
         && request.resource.data.keys().hasOnly(['by', 'action', 'target', 'detail', 'at'])

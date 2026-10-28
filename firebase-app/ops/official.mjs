@@ -7,6 +7,7 @@
  * 2) 출제: 오늘·내일 공식전이 없으면 문항 풀(운영자 PC의 CSV — **저장소에 올리지 않는다**)에서 안 쓴 문항 5개로 만든다.
  *    앱 문제은행(공개 묶음)에 있는 문항은 쓰지 않는다
  * 3) 보관: 공식전 날부터 40일이 지난 공식전(문제·시도)과 정답 문서를 지운다
+ * 남은 문항 수는 adminConfig/events.official에(관리자 "이벤트" 화면)
  *
  * 점수 계산은 src/lib/game/official.ts와 같아야 한다(tests/unit/official.test.ts가 대조).
  */
@@ -224,15 +225,20 @@ export async function runOfficial({ db, poolText = null, now = Date.now(), start
     report.deletedRounds += 1;
   }
 
-  // 관리자 화면용 — 남은 문항(며칠 치)
+  // 관리자 "이벤트" 화면용 — 남은 문항(며칠 치). 출석 2배 날과 같은 문서(화면 읽기 1번)
   if (report.remaining !== null) {
-    await db.doc('adminStats/official').set({
-      remaining: report.remaining,
-      daysLeft: Math.floor(report.remaining / OFFICIAL_TOTAL),
-      short: report.short,
-      problems: report.problems.length,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    await db.doc('adminConfig/events').set(
+      {
+        official: {
+          remaining: report.remaining,
+          daysLeft: Math.floor(report.remaining / OFFICIAL_TOTAL),
+          short: report.short,
+          problems: report.problems.length,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+      },
+      { merge: true },
+    );
   }
   return report;
 }

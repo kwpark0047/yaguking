@@ -4,7 +4,9 @@ import { useAuth } from '@/auth/AuthProvider';
 import { AttendanceCalendar } from '@/components/engagement/AttendanceCalendar';
 import { TEAMS } from '@/content/teams';
 import {
+  DOUBLE_FACTOR,
   HIDDEN_NAME,
+  TEAM_MIN_FANS,
   MONTH_GAMES_GOAL,
   MONTH_XP_GOALS,
   POINTS,
@@ -116,11 +118,16 @@ export function RankingPage() {
   }, [open, uid, member, month, last]);
 
   const start = engagementStart();
-  const myPoints = mine ? attendancePoints(mine.days, month, today, start) : null;
+  const doubleDays = board?.doubleDays ?? [];
+  const myTeam = profile.status === 'ready' ? (profile.data.favoriteTeams[0] ?? null) : null;
+  const myPoints = mine ? attendancePoints(mine.days, month, today, start, doubleDays) : null;
   const myOfficial = mine ? officialSum(mine.official, month) : null;
   const myRank =
     mine && board
-      ? rankFromHistogram(attendancePoints(mine.days, month, board.through, start).points + officialSum(mine.official, month, board.through).points, board.histogram)
+      ? rankFromHistogram(
+          attendancePoints(mine.days, month, board.through, start, doubleDays).points + officialSum(mine.official, month, board.through).points,
+          board.histogram,
+        )
       : null;
   const goals = mine ? monthGoals(mine.practice.xp, mine.practice.games) : null;
 
@@ -187,7 +194,7 @@ export function RankingPage() {
                   </Link>
                 </p>
               )}
-              <AttendanceCalendar month={month} days={mine.days} today={today} />
+              <AttendanceCalendar month={month} days={mine.days} today={today} doubleDays={doubleDays} />
               <div className="flex flex-col gap-1 text-sm">
                 <p>
                   이번 달 연습 점수 <strong>{mine.practice.xp.toLocaleString('ko-KR')}</strong> · 경기 {mine.practice.games}판
@@ -218,6 +225,41 @@ export function RankingPage() {
             )
           )}
 
+          {board && (
+            <section aria-labelledby="ranking-teams" className="flex flex-col gap-2">
+              <h2 id="ranking-teams" className="font-cute text-xl">
+                구단 대항전
+              </h2>
+              <p className="text-sm text-ink-2 break-keep">
+                최애 구단(1위)이 같은 팬들의 이번 달 출석 일수 합이에요. 출석한 팬이 {TEAM_MIN_FANS}명 이상인 구단만 보여요.
+              </p>
+              {board.teams.length === 0 ? (
+                <p className="text-sm">아직 {TEAM_MIN_FANS}명 이상 출석한 구단이 없어요. 같은 팬을 불러 모아 보세요!</p>
+              ) : (
+                <ol aria-label="구단 대항전 순위" className="flex flex-col gap-1">
+                  {board.teams.map((item, index) => (
+                    <li
+                      key={item.team}
+                      aria-current={item.team === myTeam ? 'true' : undefined}
+                      className="flex items-center gap-3 rounded-option border px-3 py-2 text-sm"
+                      style={{ borderColor: item.team === myTeam ? 'var(--accent)' : 'var(--line)', borderWidth: item.team === myTeam ? 2 : 1 }}
+                    >
+                      <span className="font-cute w-10 shrink-0 text-lg">{index + 1}위</span>
+                      <span className="flex-1 font-semibold">
+                        {teamName(item.team)}
+                        {item.team === myTeam && <span className="ml-2 text-xs text-ink-2">우리 구단</span>}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block font-semibold">출석 {item.days}일</span>
+                        <span className="block text-xs text-ink-2">팬 {item.fans}명</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          )}
+
           {lastBoard && (
             <section aria-labelledby="ranking-last" className="flex flex-col gap-3">
               <h2 id="ranking-last" className="font-cute text-xl">
@@ -239,6 +281,11 @@ export function RankingPage() {
             <p>
               포인트 = 출석 + 오늘의 공식전. 출석 하루 {POINTS.day}점, 그 달 안에서 {STREAK_WEEK}일 연속마다 +{POINTS.week}점, 개근 +{POINTS.perfect}점. 공식전은 하루 {OFFICIAL_TOTAL}문제를 새벽에 채점한 점수예요. 같은 포인트는 같은 순위예요.
             </p>
+            {doubleDays.length > 0 && (
+              <p className="font-semibold text-ink-1">
+                이번 달 출석 {DOUBLE_FACTOR}배 날: {doubleDays.map((day) => `${Number(month.slice(4, 6))}월 ${day}일`).join(', ')}
+              </p>
+            )}
             <p>
               매달 1일 새벽에 지난달 등수를 확정해요. 1위 {TITLE_LABEL.king}, 2~3위 {TITLE_LABEL.allstar}, 4~10위 {TITLE_LABEL.hall}, 개근하면 {TITLE_LABEL.perfect}.
             </p>

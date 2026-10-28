@@ -113,3 +113,39 @@ test('비회원 홈: 출석은 가입 안내만(Firestore 읽기 없음)', async
   await expect(card.getByRole('link', { name: '가입하고 출석 도장 받기' })).toBeVisible();
   await expect(page.getByRole('button', { name: /출석 도장 찍기/ })).toHaveCount(0);
 });
+
+test('3차: 관리자가 정한 출석 2배 날·구단 대항전(팬 3명 이상)이 홈 카드와 등수에, 첫 타석은 최신 경기 문항', async ({ page }) => {
+  test.setTimeout(90_000);
+  await signUp(page, uniqueEmail());
+  await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
+  await finishOnboarding(page); // 최애 구단 LG
+  const today = kstDayOfMonth();
+  const date = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+  await db.doc('adminConfig/events').set({ doubleDays: [date] }, { merge: true });
+  for (const uid of ['fan1', 'fan2', 'fan3']) {
+    await db.doc(`users/${uid}`).set({ nickname: `엘지팬${uid}`, favoriteTeams: ['lg'], ageConfirmedAt: new Date() });
+    await db.doc(`users/${uid}/attendance/${kstMonthKey()}`).set({ days: [today], updatedAt: new Date() });
+  }
+  await nightly();
+
+  await page.goto('/');
+  const card = page.getByRole('region', { name: /오늘 출석/ });
+  await expect(card.getByRole('heading', { name: /오늘은 출석 2배!/ })).toBeVisible();
+  await expect(card.getByRole('button', { name: /출석 도장 찍기 \+20점/ })).toBeVisible();
+  await expect(card.getByRole('listitem', { name: `${today}일, 출석 2배` })).toBeVisible();
+  await expect(card).toContainText('구단 대항전: 1위 LG · 우리 LG 1위');
+
+  await page.goto('/ranking');
+  const teams = page.getByRole('list', { name: '구단 대항전 순위' });
+  await expect(teams.getByRole('listitem')).toHaveCount(1);
+  await expect(teams).toContainText('LG');
+  await expect(teams).toContainText(/팬 [3-9]명/); // 앞 테스트의 회원(LG)도 이번 달 출석했다
+  await expect(page.getByText(/이번 달 출석 2배 날:/)).toBeVisible();
+
+  // 최신 경기 특집(기준일 2026-10-28 문항, 21일 동안) — 첫 타석
+  if (date <= '2026-11-18') {
+    await page.goto('/play');
+    await expect(page.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('최신 경기', { exact: true })).toBeVisible();
+  }
+});

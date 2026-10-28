@@ -1,5 +1,5 @@
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
-import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP } from '@/lib/game/attendance';
+import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
 import {
   GUEST_RETENTION_DAYS,
   LEADERBOARD_MONTHS_KEPT,
@@ -340,6 +340,7 @@ function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
           items: [
             ...(section.items ?? []),
             `월간 등수: 로그인한 이용자에게 이번 달과 지난 달 상위 ${RANKING_TOP}명의 닉네임, 최애 구단(1위), 출석 일수, 포인트, 칭호가 보입니다. 설정에서 닉네임을 숨기면 "${HIDDEN_NAME}"로 표시되고 최애 구단은 보이지 않습니다(순위와 포인트는 그대로).`,
+            `구단 대항전: 최애 구단(1위)별 팬의 출석 일수 합과 참여 인원이 보입니다. 출석한 팬이 ${TEAM_MIN_FANS}명 이상인 구단만 보이고, 누가 포함됐는지는 보이지 않습니다.`,
           ],
         };
       case 'changes':
@@ -369,7 +370,7 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
     changes: [
       '매일 출석·오늘의 공식전과 월간 등수를 시작합니다. 회원이 출석 도장을 찍은 날짜, 공식전 답(고른 보기·답한 시각)과 점수, 이번 달 연습 점수를 기록합니다.',
       `오늘의 공식전 답은 공식전 날부터 ${OFFICIAL_RETENTION_DAYS}일 보관하고, 운영자가 채점해 점수를 월간 등수에 더합니다.`,
-      `로그인한 이용자에게 월간 등수 상위 ${RANKING_TOP}명의 닉네임·최애 구단(1위)·출석 일수·포인트·칭호가 보입니다. 설정에서 닉네임을 숨길 수 있습니다.`,
+      `로그인한 이용자에게 월간 등수 상위 ${RANKING_TOP}명의 닉네임·최애 구단(1위)·출석 일수·포인트·칭호가 보입니다. 설정에서 닉네임을 숨길 수 있습니다. 구단 대항전에는 구단별 합계만(팬 ${TEAM_MIN_FANS}명 이상) 보입니다.`,
       `월간 등수는 그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월 보관하고, 탈퇴하면 다음 날 등수에서 닉네임을 지웁니다.`,
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],

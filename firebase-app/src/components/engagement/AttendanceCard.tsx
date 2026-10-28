@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { celebrate } from '@/lib/effects/celebrate';
 import { currentMode } from '@/lib/effects/preference';
+import { TEAMS } from '@/content/teams';
 import {
+  DOUBLE_FACTOR,
   POINTS,
   STREAK_MILESTONES,
   attendancePoints,
@@ -27,7 +29,7 @@ const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }
  * 홈 "오늘 출석" 카드(회원 — docs/engagement-plan.md §2). 읽기: 이번 달 출석 1 + 등수 1(앱을 쓰는 동안 기억), 도장 쓰기 1.
  * 도장을 찍으면 "쾅"(기존 도장 효과·소리), 3·7·14·30일 연속이면 띠와 꽃가루.
  */
-export default function AttendanceCard({ uid }: { uid: string }) {
+export default function AttendanceCard({ uid, team }: { uid: string; team: string | null }) {
   const [now] = useState(() => Date.now());
   const month = kstMonthKey(now);
   const today = kstDayOfMonth(now);
@@ -87,14 +89,25 @@ export default function AttendanceCard({ uid }: { uid: string }) {
   const milestone = stamped && (STREAK_MILESTONES as readonly number[]).includes(streak);
   const mine =
     days && board
-      ? rankFromHistogram(attendancePoints(days, month, board.through, engagementStart()).points + officialSum(official, month, board.through).points, board.histogram)
+      ? rankFromHistogram(
+          attendancePoints(days, month, board.through, engagementStart(), board.doubleDays).points + officialSum(official, month, board.through).points,
+          board.histogram,
+        )
       : null;
+  const double = board?.doubleDays.includes(today) ?? false;
+  const teamName = (slug: string) => TEAMS.find((item) => item.slug === slug)?.shortName ?? slug;
+  const teamRank = team && board ? board.teams.findIndex((item) => item.team === team) + 1 : 0;
 
   return (
     <section aria-labelledby="attendance-title" className="sticker flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="attendance-title" className="font-cute text-xl">
           오늘 출석
+          {double && (
+            <span className="ml-2 rounded-full px-2 align-middle font-sans text-sm font-semibold" style={primary}>
+              오늘은 출석 2배!
+            </span>
+          )}
         </h2>
         {days && (
           <p className="text-sm text-ink-2">
@@ -112,7 +125,7 @@ export default function AttendanceCard({ uid }: { uid: string }) {
 
       {days && !done && (
         <button type="button" disabled={pending} onClick={() => void stamp()} className="squishy font-cute min-h-14 text-xl disabled:opacity-60" style={primary}>
-          출석 도장 찍기 <span className="text-sm">+{POINTS.day}점</span>
+          출석 도장 찍기 <span className="text-sm">+{POINTS.day * (double ? DOUBLE_FACTOR : 1)}점</span>
         </button>
       )}
       {days && done && (
@@ -126,7 +139,14 @@ export default function AttendanceCard({ uid }: { uid: string }) {
         </p>
       )}
 
-      {days && <AttendanceCalendar month={month} days={days} today={today} />}
+      {days && <AttendanceCalendar month={month} days={days} today={today} doubleDays={board?.doubleDays ?? []} />}
+
+      {board && board.teams.length > 0 && (
+        <p className="text-sm break-keep">
+          구단 대항전: 1위 {teamName(board.teams[0]!.team)}
+          {team && (teamRank > 0 ? ` · 우리 ${teamName(team)} ${teamRank}위` : ` · 우리 ${teamName(team)}는 팬 출석이 더 필요해요`)}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="break-keep">

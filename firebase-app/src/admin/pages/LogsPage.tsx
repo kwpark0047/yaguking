@@ -16,6 +16,7 @@ const ACTION_LABEL: Record<string, string> = {
   'create-notice': '공지 올림',
   'update-notice': '공지 고침',
   'delete-notice': '공지 지움',
+  'set-double-days': '출석 2배 날 저장',
 };
 
 /** 관리자 기록 — 개인정보 접속기록. 고치거나 지울 수 없다(규칙). 2년 보관. 열 때 보기 하나(읽기 1) */

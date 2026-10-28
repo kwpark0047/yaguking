@@ -2,6 +2,7 @@ import {
   Timestamp,
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -145,4 +146,41 @@ export async function loadRecentGames(uid: string): Promise<RecentGame[]> {
       correct: atBats.filter((atBat) => atBat.correct).length,
     };
   });
+}
+
+// ── 이벤트(출석 2배 날·공식전 문항 현황) — docs/engagement-plan.md §6 ─────────────────────
+export interface EventsConfig {
+  /** 출석 2배 날 "YYYY-MM-DD" */
+  doubleDays: string[];
+  updatedAt: number;
+  /** 운영자 PC가 쓰는 공식전 문항 현황(ops/official.mjs) */
+  official: { remaining: number; daysLeft: number; short: string[]; problems: number; updatedAt: number } | null;
+}
+
+/** 이벤트 설정 — 문서 하나(읽기 1) */
+export async function loadEvents(): Promise<EventsConfig> {
+  const snapshot = await getDoc(doc(firestore(), 'adminConfig', 'events'));
+  const official = snapshot.get('official') as Record<string, unknown> | undefined;
+  return {
+    doubleDays: Array.isArray(snapshot.get('doubleDays')) ? (snapshot.get('doubleDays') as unknown[]).map(String) : [],
+    updatedAt: ms(snapshot.get('updatedAt')),
+    official: official
+      ? {
+          remaining: Number(official.remaining ?? 0),
+          daysLeft: Number(official.daysLeft ?? 0),
+          short: Array.isArray(official.short) ? official.short.map(String) : [],
+          problems: Number(official.problems ?? 0),
+          updatedAt: ms(official.updatedAt),
+        }
+      : null,
+  };
+}
+
+/** 출석 2배 날 저장 + 관리자 기록. 다음 새벽 등수 작업부터 반영 */
+export async function saveDoubleDays(days: readonly string[]): Promise<void> {
+  const db = firestore();
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'adminConfig', 'events'), { doubleDays: [...days], updatedAt: serverTimestamp(), by: uidNow() }, { merge: true });
+  batch.set(doc(collection(db, 'adminLogs')), logEntry('set-double-days', 'events', days.join(',')));
+  await batch.commit();
 }

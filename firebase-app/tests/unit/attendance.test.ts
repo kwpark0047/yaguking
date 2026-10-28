@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as job from '../../ops/monthly.mjs';
+import { FRESH_DAYS, FRESH_SLOTS, isFresh } from '@/lib/game/match';
 import {
+  DOUBLE_FACTOR,
   ENGAGEMENT_START,
+  TEAM_MIN_FANS,
   HIDDEN_NAME,
   MONTH_XP_GOALS,
   POINTS,
@@ -67,13 +70,52 @@ describe('출석 포인트', () => {
       const month = ['202611', '202612', '202701', '202702'][Math.floor(random() * 4)]!;
       const days = range(1, 31).filter(() => random() < 0.7);
       const through = 1 + Math.floor(random() * 31);
-      expect(job.attendancePoints(days, month, through)).toEqual(attendancePoints(days, month, through));
+      const doubled = range(1, 31).filter(() => random() < 0.1);
+      expect(job.attendancePoints(days, month, through, ENGAGEMENT_START, doubled)).toEqual(attendancePoints(days, month, through, ENGAGEMENT_START, doubled));
     }
     expect(job.ENGAGEMENT_START).toBe(ENGAGEMENT_START);
     expect(job.POINTS).toEqual(POINTS);
     expect(job.RANKING_TOP).toBe(RANKING_TOP);
     expect(job.HIDDEN_NAME).toBe(HIDDEN_NAME);
+    expect(job.DOUBLE_FACTOR).toBe(DOUBLE_FACTOR);
+    expect(job.TEAM_MIN_FANS).toBe(TEAM_MIN_FANS);
     for (const rank of [1, 2, 3, 4, 10, 11]) expect(job.titlesFor(rank, rank === 11)).toEqual(titlesFor(rank, rank === 11));
+  });
+});
+
+describe('3차: 출석 2배 날·구단 대항전·최신 경기 특집', () => {
+  it(`2배 날 출석은 ${POINTS.day * DOUBLE_FACTOR}점 — 연속·개근 보너스는 그대로`, () => {
+    expect(attendancePoints([3, 4], '202612', 31, ENGAGEMENT_START, [4, 9]).points).toBe(10 + 20);
+    expect(attendancePoints([9], '202612', 8, ENGAGEMENT_START, [9]).points).toBe(0); // 아직 안 센 날
+    expect(attendancePoints(range(1, 7), '202612', 31, ENGAGEMENT_START, [1]).points).toBe(80 + 30);
+  });
+
+  it('운영 설정의 날짜 중 그 달 것만, 모양이 틀린 값은 버린다', () => {
+    expect(job.doubleDaysOf(['2026-12-25', '2026-12-01', '2026-11-30', '12-24', 7, '2026-12-25'], '202612')).toEqual([1, 25]);
+    expect(job.doubleDaysOf(undefined, '202612')).toEqual([]);
+  });
+
+  it(`구단 대항전: 최애 구단 1위별 출석 합, 출석한 팬 ${TEAM_MIN_FANS}명 이상만, 출석 합 순`, () => {
+    const fan = (team: string | null, days: number, points = days * 10) => ({ team, days, points });
+    const teams = job.teamsOf([
+      fan('lg', 5), fan('lg', 3), fan('lg', 1),
+      fan('kia', 10), fan('kia', 10), fan('kia', 0), // 출석 0일은 팬 수에 안 듦 → 2명이라 빠짐
+      fan('doosan', 2), fan('doosan', 2), fan('doosan', 2), fan('doosan', 4),
+      fan(null, 30),
+    ]);
+    expect(teams).toEqual([
+      { team: 'doosan', fans: 4, days: 10, points: 100 },
+      { team: 'lg', fans: 3, days: 9, points: 90 },
+    ]);
+    expect(teams.map((team) => team.team)).not.toContain('kia');
+  });
+
+  it(`최신 경기 문항 = 기준일이 ${FRESH_DAYS}일 안, 한 경기 ${FRESH_SLOTS.length}타석에 먼저`, () => {
+    expect(isFresh({ recordAsOf: '2026-10-28' }, '2026-10-29')).toBe(true);
+    expect(isFresh({ recordAsOf: '2026-10-28' }, '2026-11-18')).toBe(true);
+    expect(isFresh({ recordAsOf: '2026-10-28' }, '2026-11-19')).toBe(false);
+    expect(isFresh({ recordAsOf: '2026-10-30' }, '2026-10-29')).toBe(false); // 기준일이 미래
+    expect(isFresh({ recordAsOf: '2026-09-01' }, '2026-10-29')).toBe(false);
   });
 });
 

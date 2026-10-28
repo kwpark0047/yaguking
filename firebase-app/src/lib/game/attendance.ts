@@ -11,6 +11,10 @@
 export const ENGAGEMENT_START = '2026-11-05';
 
 export const POINTS = { day: 10, week: 30, perfect: 100 } as const;
+/** 출석 2배 날(관리자가 정함)에는 그날 출석이 두 배 */
+export const DOUBLE_FACTOR = 2;
+/** 구단 대항전 — 참여 팬이 이만큼 이상인 구단만 보여 준다(한두 명이면 누구인지 짐작할 수 있어서) */
+export const TEAM_MIN_FANS = 3;
 export const STREAK_WEEK = 7;
 export const RANKING_TOP = 50;
 export const HIDDEN_NAME = '익명 선수';
@@ -75,7 +79,7 @@ export interface AttendancePoints {
 }
 
 /**
- * 출석 포인트 — 하루 10, 그 달 안에서 7일 연속을 채울 때마다 +30, 개근(세는 첫날부터 그 달 끝까지 모두) +100.
+ * 출석 포인트 — 하루 10(출석 2배 날은 20), 그 달 안에서 7일 연속을 채울 때마다 +30, 개근(세는 첫날부터 그 달 끝까지 모두) +100.
  * `through`일까지만 센다(등수는 "어제까지" 기준). 개근은 그 달을 다 셌을 때만.
  */
 export function attendancePoints(
@@ -83,6 +87,7 @@ export function attendancePoints(
   month: string,
   through: number = daysInMonth(month),
   start: string = ENGAGEMENT_START,
+  doubleDays: readonly number[] = [],
 ): AttendancePoints {
   const first = firstCountedDay(month, start);
   const last = Math.min(through, daysInMonth(month));
@@ -95,8 +100,9 @@ export function attendancePoints(
   });
   const monthDone = last === daysInMonth(month);
   const perfect = monthDone && counted.length > 0 && counted.length === last - first + 1;
+  const doubled = counted.filter((day) => doubleDays.includes(day)).length;
   return {
-    points: counted.length * POINTS.day + weeks * POINTS.week + (perfect ? POINTS.perfect : 0),
+    points: (counted.length + doubled * (DOUBLE_FACTOR - 1)) * POINTS.day + weeks * POINTS.week + (perfect ? POINTS.perfect : 0),
     days: counted.length,
     weeks,
     perfect,
@@ -149,6 +155,14 @@ export function titlesFor(rank: number, perfect: boolean): Title[] {
   return titles;
 }
 
+/** 구단 대항전 한 줄 — 최애 구단 1위가 같은 팬들의 합(참여 TEAM_MIN_FANS명 이상인 구단만) */
+export interface TeamStanding {
+  team: string;
+  fans: number;
+  days: number;
+  points: number;
+}
+
 /** 등수 문서(leaderboards/{YYYYMM}) — ops/monthly.mjs가 쓴다 */
 export interface LeaderboardEntry {
   rank: number;
@@ -171,6 +185,10 @@ export interface Leaderboard {
   histogram: Record<string, number>;
   /** 이날까지 셌다(1~31) */
   through: number;
+  /** 그 달의 출석 2배 날(1~31) */
+  doubleDays: number[];
+  /** 구단 대항전 — 출석 일수 합 순 */
+  teams: TeamStanding[];
   final: boolean;
   updatedAt: number;
 }

@@ -27,6 +27,7 @@ export function QuestionView({
   question,
   onAnswer,
   limitMs = LIMIT_MS,
+  fresh = false,
 }: {
   /** 화면에 보이는 부분만 — 정답은 받지 않는다(오늘의 공식전 문제에는 정답이 없다) */
   question: Pick<Question, 'id' | 'category' | 'difficulty' | 'recordAsOf' | 'seasonScope' | 'stem' | 'options'>;
@@ -34,6 +35,8 @@ export function QuestionView({
   onAnswer: (choice: OptionLabel | null, elapsedMs: number) => void;
   /** 제한 시간 — 찬스 이벤트 보너스(초성 정답)면 3초 길다 */
   limitMs?: number;
+  /** 최신 경기 특집 문항 — "최신 경기" 표시 */
+  fresh?: boolean;
 }) {
   const startedAt = useRef(performance.now());
   const answered = useRef(false);
@@ -114,6 +117,11 @@ export function QuestionView({
       </div>
 
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-2">
+        {fresh && (
+          <span className="rounded-full px-2 font-semibold" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}>
+            최신 경기
+          </span>
+        )}
         <span>{CATEGORY_TITLE[question.category]}</span>
         <span aria-hidden="true">·</span>
         <span>{DIFFICULTY_LABEL[question.difficulty]}</span>

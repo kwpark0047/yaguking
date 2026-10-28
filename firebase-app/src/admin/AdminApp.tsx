@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router';
 import { DENIAL_MESSAGE, maskEmail, signInProblem } from '@/lib/admin/access';
 import { DashboardPage } from './pages/DashboardPage';
+import { EventsPage } from './pages/EventsPage';
 import { GamesPage } from './pages/GamesPage';
 import { LogsPage } from './pages/LogsPage';
 import { MemberDetailPage, MembersPage } from './pages/MembersPage';
@@ -94,6 +95,7 @@ function Gate() {
           ['/games', '오늘 경기'],
           ['/rooms', '대결 방'],
           ['/notices', '공지사항'],
+          ['/events', '이벤트'],
           ['/logs', '관리자 기록'],
         ].map(([to, label]) => (
           <NavLink
@@ -116,6 +118,7 @@ function Gate() {
           <Route path="/games" element={<GamesPage />} />
           <Route path="/rooms" element={<RoomsPage />} />
           <Route path="/notices" element={<NoticesPage />} />
+          <Route path="/events" element={<EventsPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="*" element={<p className="text-sm">없는 화면이에요.</p>} />
         </Routes>

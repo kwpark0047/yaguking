@@ -4,6 +4,8 @@ import type { Firestore } from 'firebase-admin/firestore';
 export const ENGAGEMENT_START: string;
 export const POINTS: { day: number; week: number; perfect: number };
 export const STREAK_WEEK: number;
+export const DOUBLE_FACTOR: number;
+export const TEAM_MIN_FANS: number;
 export const RANKING_TOP: number;
 export const HIDDEN_NAME: string;
 export const REMOVED_NAME: string;
@@ -17,7 +19,10 @@ export function attendancePoints(
   month: string,
   through?: number,
   start?: string,
+  doubleDays?: readonly number[],
 ): { points: number; days: number; weeks: number; perfect: boolean };
+export function teamsOf(rows: readonly { team: string | null; days: number; points: number }[]): { team: string; fans: number; days: number; points: number }[];
+export function doubleDaysOf(list: unknown, month: string): number[];
 export function titlesFor(rank: number, perfect: boolean): string[];
 export function rankRows<T extends { points: number; days: number; nickname: string }>(rows: T[]): (T & { rank: number })[];
 export function officialSum(days: Record<string, number>, month: string, through?: number): { points: number; rounds: number };

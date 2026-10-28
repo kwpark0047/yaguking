@@ -89,7 +89,7 @@ export function HomePage() {
       {user !== undefined &&
         (open && ready && user ? (
           <Suspense fallback={null}>
-            <AttendanceCard uid={user.uid} />
+            <AttendanceCard uid={user.uid} team={profile.status === 'ready' ? (profile.data.favoriteTeams[0] ?? null) : null} />
           </Suspense>
         ) : (
           <section aria-labelledby="attendance-title" className="sticker flex flex-col gap-2 p-4 text-sm break-keep">
