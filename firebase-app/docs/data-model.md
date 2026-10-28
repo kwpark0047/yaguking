@@ -46,6 +46,7 @@
 | `public/home` | **누구나 읽기**, 관리자 쓰기 | 공지를 고칠 때 같은 묶음으로 | 공지 20개까지, 필드 notices·updatedAt만 |
 | `adminLogs/{id}` | 관리자 | 열람·이메일 보기·공지·동기화 요청 | 만들기만(고치기·지우기 불가), 작성자·서버 시각 강제 — 접속기록 2년 보관(법정 1년 이상, 정리 작업이 지난 것을 지움) |
 | `adminTasks/{id}` | 관리자(요청) | 운영자 PC가 처리 | 1차는 syncAccounts만, 상태는 pending으로만 만들기 |
+| `adminViews/{화면}` | 관리자 읽기·쓰기 | "새로 만들기" | 화면을 열 때 읽는 보기 하나(JSON). 정해진 6개 이름만, 쓴 사람·서버 시각 강제 — docs/admin-dashboard-plan.md |
 | `accountMirror/{uid}`, `adminStats/accounts` | 관리자 읽기 | 운영자 PC 동기화만 | 회원(이메일·구글) 계정 사본, 비회원은 개수만 |
 
 관리자 = 토큰 표시 `admin` + 이메일 인증 + **구글로 로그인한 세션**(`isAdmin()`). 관리자는 회원의 프로필·경기·누적·오답을 **읽기만**

@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router';
 import { DENIAL_MESSAGE, maskEmail, signInProblem } from '@/lib/admin/access';
 import { DashboardPage } from './pages/DashboardPage';
+import { GamesPage } from './pages/GamesPage';
 import { LogsPage } from './pages/LogsPage';
 import { MemberDetailPage, MembersPage } from './pages/MembersPage';
 import { NoticesPage } from './pages/NoticesPage';
+import { RoomsPage } from './pages/RoomsPage';
 import { SignupsPage } from './pages/SignupsPage';
 import { AdminSessionProvider, useAdminSession } from './session';
 import { ErrorText, line, primary } from './ui';
@@ -89,6 +91,8 @@ function Gate() {
           ['/', '대시보드'],
           ['/members', '가입자'],
           ['/signups', '가입 확인'],
+          ['/games', '오늘 경기'],
+          ['/rooms', '대결 방'],
           ['/notices', '공지사항'],
           ['/logs', '관리자 기록'],
         ].map(([to, label]) => (
@@ -109,6 +113,8 @@ function Gate() {
           <Route path="/members" element={<MembersPage />} />
           <Route path="/members/:uid" element={<MemberDetailPage />} />
           <Route path="/signups" element={<SignupsPage />} />
+          <Route path="/games" element={<GamesPage />} />
+          <Route path="/rooms" element={<RoomsPage />} />
           <Route path="/notices" element={<NoticesPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="*" element={<p className="text-sm">없는 화면이에요.</p>} />

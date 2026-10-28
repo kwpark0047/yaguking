@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import * as adminOps from '../../ops/admin.mjs';
 import * as cleanupJob from '../../ops/cleanup.mjs';
 import {
   ADMIN_LOG_RETENTION_YEARS,
@@ -17,7 +16,6 @@ import {
   PRIVACY_OPERATOR,
   PRIVACY_SECTIONS,
 } from '@/content/privacy';
-import { memberDataOpen } from '@/lib/admin/policyGate';
 import { GUEST_RETENTION_DAYS, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
 
 /** 9단계 — 처리방침 Firebase판 초안이 코드의 사실과 맞는지 */
@@ -113,17 +111,8 @@ describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
     expect(next.changes.length).toBeGreaterThan(0);
   });
 
-  it('날짜·기간이 실제로 지키는 코드와 같다: 운영자 PC(ops/admin.mjs)·정리 작업(ops/cleanup.mjs)', () => {
-    expect(adminOps.MEMBER_DATA_FROM).toBe(ADMIN_PRIVACY_EFFECTIVE);
+  it('관리자 기록 보관 기간이 정리 작업(ops/cleanup.mjs)과 같다', () => {
     expect(cleanupJob.ADMIN_LOG_RETENTION_DAYS).toBe(ADMIN_LOG_RETENTION_YEARS * 365);
-    expect(adminOps.memberDataOpenFor('yaguking-bc25c', Date.UTC(2026, 10, 2, 14, 59))).toBe(false);
-    expect(adminOps.memberDataOpenFor('yaguking-bc25c', Date.UTC(2026, 10, 2, 15))).toBe(true);
-    expect(adminOps.memberDataOpenFor('demo-yaguking', 0)).toBe(true);
   });
-
-  it('관리 화면: 운영 빌드는 시행일 전 회원 정보를 열지 않는다(에뮬레이터는 검증을 위해 연다)', () => {
-    expect(memberDataOpen('2026-11-02', true)).toBe(false);
-    expect(memberDataOpen('2026-11-03', true)).toBe(true);
-    expect(memberDataOpen('2026-10-27', false)).toBe(true);
-  });
+  // 회원 정보 열람은 2026-10-28부터(운영자 결정) — 그전에 두었던 시행일 잠금(11-03)은 뺐다. docs/admin-dashboard-plan.md
 });

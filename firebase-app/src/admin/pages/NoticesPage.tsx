@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { NOTICE_BODY_MAX, NOTICE_TITLE_MAX, noticeProblem, type Notice } from '@/lib/admin/notices';
-import { loadNotices, saveNotice } from '../data';
+import { saveNotice, seedNoticesView } from '../data';
+import { readView, type NoticesView } from '../views';
 import { ErrorText, PageTitle, field, fmtTime, fromLocalInput, line, primary, toLocalInput } from '../ui';
 
 interface Draft {
@@ -26,8 +27,10 @@ export function NoticesPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // 공지 보기 하나만 읽는다(읽기 1). 아직 없으면 한 번 원본에서 만든다
   const refresh = useCallback(() => {
-    loadNotices()
+    readView<NoticesView>('notices')
+      .then((view) => (view ? view.data.notices : seedNoticesView()))
       .then(setNotices)
       .catch(() => setError('공지를 불러오지 못했어요.'));
   }, []);

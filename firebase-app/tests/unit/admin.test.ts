@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ADMIN_SITE_URL, adminDenial, maskEmail, signInProblem } from '@/lib/admin/access';
 import { buildPublicNotices, noticeProblem, visibleNotices, type Notice } from '@/lib/admin/notices';
-import { signupCheck, summarize } from '@/lib/admin/signupCheck';
 
 describe('관리자 판별 = 규칙의 isAdmin()과 같은 조건', () => {
   const google = { firebase: { sign_in_provider: 'google.com' } };
@@ -27,25 +26,6 @@ describe('관리자 판별 = 규칙의 isAdmin()과 같은 조건', () => {
     expect(maskEmail('kwpark0047@gmail.com')).toBe('kw***@gmail.com');
     expect(maskEmail('a@b.c')).toBe('a***@b.c');
     expect(maskEmail(null)).toBe('(이메일 없음)');
-  });
-});
-
-describe('가입 확인(점검 목록)', () => {
-  const mirror = { emailVerified: true, providers: ['google.com'] };
-  const profile = { ageConfirmed: true, nickname: '곰', favoriteTeams: ['lg'] };
-  it('프로필이 없거나 14세 확인 전, 닉네임·구단 미완료, 완료를 구분한다', () => {
-    expect(signupCheck(mirror, null).status).toBe('needs-age');
-    expect(signupCheck(mirror, { ...profile, ageConfirmed: false }).status).toBe('needs-age');
-    expect(signupCheck(mirror, { ...profile, nickname: null }).status).toBe('needs-profile');
-    expect(signupCheck(mirror, { ...profile, favoriteTeams: [] }).status).toBe('needs-profile');
-    expect(signupCheck(mirror, profile).status).toBe('complete');
-  });
-
-  it('이메일 미인증은 이메일·비밀번호 가입에만 표시(구글은 구글이 인증)', () => {
-    expect(signupCheck({ emailVerified: false, providers: ['password'] }, profile).emailUnverified).toBe(true);
-    expect(signupCheck({ emailVerified: false, providers: ['google.com'] }, profile).emailUnverified).toBe(false);
-    const summary = summarize([signupCheck(mirror, profile), signupCheck(mirror, null), signupCheck({ emailVerified: false, providers: ['password'] }, null)]);
-    expect(summary).toEqual({ total: 3, complete: 1, needsAge: 2, needsProfile: 0, emailUnverified: 1 });
   });
 });
 

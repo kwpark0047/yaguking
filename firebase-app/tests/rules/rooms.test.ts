@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { arrayRemove, arrayUnion, doc, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, collectionGroup, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { emulatorHost, guest, member, now, seedConfirmedMember, startRulesEnv } from './setup';
 
@@ -137,6 +137,17 @@ describe.skipIf(!emulatorHost)('친구 대결 방 규칙', () => {
         updatedAt: now(),
       }),
     ); // 남의 자리
+  });
+
+  it('방 목록은 훑을 수 없다(2026-10-28 좁힘) — 방·자리는 코드를 알아야 읽는다, 모든 방의 자리 묶음 쿼리도 안 됨', async () => {
+    await createRoom(member(env, 'host'));
+    await join(member(env, 'p2'), 'p2');
+    const outsider = guest(env, 'stranger');
+    await assertFails(getDocs(collection(outsider, 'rooms')));
+    await assertFails(getDocs(collection(member(env, 'p2'), 'rooms')));
+    await assertSucceeds(getDoc(doc(outsider, `rooms/${CODE}`)));
+    await assertSucceeds(getDocs(collection(member(env, 'p2'), `rooms/${CODE}/players`)));
+    await assertFails(getDocs(collectionGroup(outsider, 'players')));
   });
 
   it('로그인하지 않으면 방을 볼 수도 만들 수도 없다', async () => {

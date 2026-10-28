@@ -257,7 +257,9 @@ service cloud.firestore {
 
     // ── 친구 대결(비공식) — 방 코드가 곧 문서 ID ────────────────────────
     match /rooms/{code} {
-      allow read: if signedIn();
+      // 코드로 하나 읽기(들어가기·구독)는 로그인한 누구나, 목록(모든 방 훑기)은 관리자만 — 2026-10-28 좁힘
+      allow get: if signedIn();
+      allow list: if isAdmin();
 
       allow create: if signedIn() && canRecord()
         && code.matches('^[A-Z2-9]{6}$')
@@ -275,7 +277,8 @@ service cloud.firestore {
 
       allow update: if signedIn() && (joining() || leaving() || hostStarts() || hostFinishes());
 
-      allow delete: if signedIn() && resource.data.hostUid == request.auth.uid;
+      // 방장이 닫기, 관리자가 지난 방 정리(정리 작업과 같은 기준 — 화면이 고른다)
+      allow delete: if (signedIn() && resource.data.hostUid == request.auth.uid) || isAdmin();
 
       function onlyChanges(keys) {
         return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
@@ -319,6 +322,9 @@ service cloud.firestore {
 
       // 참가자 자리 — 방의 playerIds에 들어간 사람만 자기 자리를 만든다
       match /players/{playerUid} {
+        // 자리 읽기는 로그인한 누구나 — 방 코드를 알아야 한다(방 목록은 관리자만이라 코드를 훑을 수 없고,
+        // 모든 방의 자리를 한꺼번에 읽는 묶음 쿼리는 이 규칙이 허락하지 않는다). 명단 확인 get()을 두면 참가 직후
+        // (내 참가가 서버에 닿기 전) 구독이 거절돼 끊겼다(2026-10-28 E2E)
         allow read: if signedIn();
 
         allow create: if isSelf(playerUid)
@@ -340,7 +346,8 @@ service cloud.firestore {
           && request.resource.data.answers.size() <= get(/databases/$(database)/documents/rooms/$(code)).data.questionIds.size()
           && isNonNegativeInt(request.resource.data.score, 10000);
 
-        allow delete: if isSelf(playerUid);
+        // 자기 자리 지우기(나가기·방 닫기), 관리자가 지난 방 정리
+        allow delete: if isSelf(playerUid) || isAdmin();
       }
     }
 
@@ -350,7 +357,7 @@ service cloud.firestore {
       allow list: if isAdmin();
     }
 
-    // 관리자 행동 기록(개인정보 접속기록, 1년 이상 보관) — 만들기만, 작성자·서버 시각 강제
+    // 관리자 행동 기록(개인정보 접속기록, 2년 보관 — 법정 1년 이상) — 만들기만, 작성자·서버 시각 강제
     match /adminLogs/{logId} {
       allow create: if isAdmin()
         && request.resource.data.keys().hasOnly(['by', 'action', 'target', 'detail', 'at'])
@@ -374,6 +381,19 @@ service cloud.firestore {
         && request.resource.data.requestedAt == request.time;
       allow read: if isAdmin();
       allow update, delete: if false;
+    }
+
+    // 관리자 화면 "한 번 읽기" 보기(docs/admin-dashboard-plan.md) — 화면을 열 때 이 문서 하나만 읽는다.
+    // 관리자가 "새로 만들기"로 다시 쓴다. 내용은 JSON 한 덩어리(json), 쓴 사람·서버 시각 강제
+    match /adminViews/{viewId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && viewId in ['dashboard', 'members', 'games', 'rooms', 'notices', 'logs']
+        && request.resource.data.keys().hasOnly(['json', 'by', 'updatedAt'])
+        && request.resource.data.json is string
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     // 로그인 계정 사본(이메일·로그인 수단 등)과 계정 통계 — 운영자 PC 동기화만 쓴다

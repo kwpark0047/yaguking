@@ -12,8 +12,6 @@ export interface AccountMirror {
   admin: boolean;
 }
 
-export const MEMBER_DATA_FROM: string;
-export function memberDataOpenFor(projectId: string, now?: number): boolean;
 export function isMemberAccount(user: Pick<UserRecord, 'providerData' | 'email'>): boolean;
 export function mirrorOf(user: UserRecord): AccountMirror;
 export function setAdmin(options: { auth: Auth; email: string; value?: boolean }): Promise<{

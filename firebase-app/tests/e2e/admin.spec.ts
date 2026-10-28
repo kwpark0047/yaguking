@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { processAdminTasks, syncAccounts } from '../../ops/admin.mjs';
 import { accounts, clearEmulators, hasFirestore, listDocs, patchDoc, PROJECT } from './helpers';
 
@@ -102,64 +102,103 @@ test('로그인 창이 막히거나 닫히면 이유와 할 일을 알린다', a
   await expect(page.getByRole('button', { name: '구글로 로그인' })).toBeEnabled();
 });
 
-test('관리자 1차: 표시 없으면 거절 → 표시 후 대시보드·가입자·가입 확인·기록', async ({ page }) => {
-  test.setTimeout(120_000);
+test('관리자 2차: 화면마다 보기 하나 — 새로 만들기, 가입자·가입 확인·오늘 경기·대결 방·기록', async ({ page }) => {
+  test.setTimeout(150_000);
+  // 24시간 지난 대결 방 하나(정리 대상)
+  const old = Timestamp.fromMillis(Date.now() - 26 * 3_600_000);
+  await adminDb.doc('rooms/OLD234').set({ hostUid: 'h', status: 'finished', createdAt: old, maxPlayers: 2, playerIds: ['h'], questionIds: ['q1'], questionSeconds: 15 });
+  await adminDb.doc('rooms/OLD234/players/h').set({ nickname: '옛방장', joinedAt: old, score: 120, answers: [{ choice: 'A', elapsedMs: 900, correct: true }] });
+
   await page.goto(ADMIN);
   await expect(page.getByRole('heading', { name: '야구왕 관리자' })).toBeVisible();
   await axe(page, 'login');
 
-  // 1) 관리자 표시 없는 구글 계정 → 거절, uid 안내
+  // 1) 관리자 표시 없는 구글 계정 → 거절, uid 안내 → 표시를 붙이면 "다시 확인"으로 들어온다
   await signInWithGoogle(page);
   await expect(page.getByRole('alert')).toContainText('관리자 표시가 없어요');
   const googleUser = (await accounts()).find((user) => user.email && !user.email.endsWith('@example.test'))!;
   await expect(page.getByText(googleUser.localId)).toBeVisible();
-
-  // 2) 운영자가 표시를 붙이면 "다시 확인"으로 들어온다
   await grantAdmin(googleUser.localId);
   await page.getByRole('button', { name: '다시 확인' }).click();
   await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('region', { name: '회원', exact: true })).toContainText('2');
+
+  // 2) 대시보드: 보기가 아직 없음 → 새로 만들기(회원·경기·방 모두) → 숫자·가입 단계·살펴볼 것
+  await expect(page.getByText('아직 만든 적이 없어요')).toBeVisible();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  await expect(page.getByRole('region', { name: '회원', exact: true })).toContainText('2', { timeout: 20_000 });
   await expect(page.getByRole('region', { name: '오늘 경기', exact: true })).toContainText('2');
+  await expect(page.getByRole('region', { name: '대결 방', exact: true })).toContainText('1');
   await expect(page.getByRole('region', { name: '비회원', exact: true })).toContainText('0');
+  await expect(page.getByRole('link', { name: '정리할 지난 방 1' })).toBeVisible();
+  await expect(page.getByText(/에 만든 내용/)).toBeVisible();
   await axe(page, 'dashboard');
 
-  // 3) 가입자: 이메일은 가려서, 닉네임 검색, 열면 기록
-  await page.getByRole('link', { name: '가입자' }).click();
-  const table = page.getByRole('region', { name: '가입자 목록', exact: true });
-  await expect(table.getByRole('row')).toHaveCount(4); // 머리줄 + 3명
-  await expect(table).toContainText('be***@example.test');
-  await expect(table).not.toContainText('bear@example.test');
+  // 3) 가입자: 보기 하나, 이메일은 가려서 — 보기를 누르면 보이고 기록, 거르기·검색, 상세
+  await page.getByRole('link', { name: '가입자', exact: true }).click();
+  const list = page.getByRole('list', { name: '가입자 목록' });
+  await expect(list.getByRole('listitem')).toHaveCount(3);
+  await expect(list).toContainText('be***@example.test');
+  await expect(list).not.toContainText('bear@example.test');
   await axe(page, 'members');
-  await page.getByLabel('닉네임 앞글자로 찾기').fill('곰');
-  await page.getByRole('button', { name: '찾기' }).click();
-  await expect(page.getByText('검색 결과 1명')).toBeVisible();
-  await table.getByRole('link', { name: '곰돌이' }).click();
+  await page.getByLabel('상태').selectOption({ label: '14세 미확인' });
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await page.getByLabel('상태').selectOption({ label: '전체' });
+  await page.getByLabel('닉네임 앞글자').fill('곰');
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await list.getByRole('button', { name: /이메일 보기/ }).click();
+  await expect(list).toContainText('bear@example.test');
+  await list.getByRole('link', { name: '곰돌이' }).click();
   await expect(page.getByRole('heading', { name: '곰돌이' })).toBeVisible();
-  await expect(page.getByText('경기 3 ·', { exact: false })).toBeVisible();
-  await page.getByRole('button', { name: '이메일 보기(기록됨)' }).click();
-  await expect(page.getByText('bear@example.test')).toBeVisible();
+  await expect(page.getByText('3경기', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '타임라인' })).toBeVisible();
+  await page.getByRole('button', { name: /최근 경기 10개 보기/ }).click();
+  await expect(page.getByText(/개인 경기 · 타석 4/)).toBeVisible();
+  await axe(page, 'member-detail');
 
-  // 4) 가입 확인: 만 14세 확인 전 1명
+  // 4) 가입 확인: 기본은 "가입이 덜 끝남" — 만 14세 확인 전 1명
   await page.getByRole('link', { name: '가입 확인' }).click();
-  await expect(page.getByRole('region', { name: '만 14세 확인 안 함', exact: true })).toContainText('1');
-  await page.getByRole('button', { name: /만 14세 확인 안 함 1/ }).click();
+  await expect(page.getByRole('button', { name: /가입이 덜 끝남 1/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('list', { name: '가입 점검 목록' }).getByRole('listitem')).toHaveCount(1);
   await axe(page, 'signups');
 
-  // 5) 관리자 기록: 열람·이메일 보기가 남았다
-  await page.getByRole('link', { name: '관리자 기록' }).click();
-  const logs = page.getByRole('region', { name: '관리자 기록', exact: true });
-  await expect(logs).toContainText('회원 열람');
-  await expect(logs).toContainText('이메일 보기');
+  // 5) 오늘 경기: 요약·목록·타석 상세
+  await page.getByRole('link', { name: '오늘 경기' }).click();
+  await expect(page.getByRole('region', { name: '경기', exact: true })).toContainText('2');
+  const games = page.getByRole('list', { name: '경기 목록' });
+  await expect(games.getByRole('listitem')).toHaveCount(2);
+  await expect(games).toContainText('곰돌이');
+  await axe(page, 'games');
 
-  // 6) 계정 동기화 요청 → 대기 작업 1 → 운영자 PC가 처리하면 0
+  // 6) 대결 방: 24시간 지난 방 → 지금 정리 → 보기에서 사라짐
+  await page.getByRole('link', { name: '대결 방' }).click();
+  await page.getByRole('button', { name: /24시간 지남 1/ }).click();
+  const rooms = page.getByRole('list', { name: '대결 방 목록' });
+  await expect(rooms).toContainText('OLD234');
+  await rooms.getByRole('button', { name: /OLD234/ }).click();
+  await expect(page.getByRole('region', { name: 'OLD234 참가자' })).toContainText('옛방장');
+  await axe(page, 'rooms');
+  await page.getByRole('button', { name: '지난 방 1개 지금 정리' }).click();
+  await expect(page.getByRole('status')).toContainText('지난 방 1개를 정리했어요');
+  await expect(page.getByRole('button', { name: /24시간 지남 0/ })).toBeVisible();
+  expect((await adminDb.doc('rooms/OLD234').get()).exists).toBe(false);
+
+  // 7) 관리자 기록: 새로 만들면 열람·이메일 보기·정리가 보인다
+  await page.getByRole('link', { name: '관리자 기록' }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  const logs = page.getByRole('region', { name: '관리자 기록', exact: true });
+  for (const label of ['가입자 목록 열람', '회원 열람', '이메일 보기', '회원 경기 열람', '오늘 경기 열람', '대결 방 열람', '지난 방 정리', '화면 새로 만들기']) {
+    await expect(logs).toContainText(label);
+  }
+
+  // 8) 계정 동기화 요청 → 대기 작업 1 → 운영자 PC가 처리하면 0(대시보드 새로 만들기로 확인)
   await page.getByRole('link', { name: '대시보드' }).click();
   await page.getByRole('button', { name: '계정 동기화 요청' }).click();
   await expect(page.getByRole('status')).toContainText('동기화를 요청했어요');
-  await expect(page.getByRole('region', { name: '처리 대기 작업', exact: true })).toContainText('1');
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  await expect(page.getByRole('region', { name: '처리 대기 작업', exact: true })).toContainText('1', { timeout: 20_000 });
   await processAdminTasks({ auth: adminAuth, db: adminDb });
-  await page.getByRole('button', { name: '다시 세기' }).click();
-  await expect(page.getByRole('region', { name: '처리 대기 작업', exact: true })).toContainText('0');
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  await expect(page.getByRole('region', { name: '처리 대기 작업', exact: true })).toContainText('0', { timeout: 20_000 });
 });
 
 test('공지: 관리자가 올리면 이용자 앱 메인 띠·목록에 뜨고, 숨기면 사라진다', async ({ page, browser }) => {
@@ -203,8 +242,9 @@ test('공지: 관리자가 올리면 이용자 앱 메인 띠·목록에 뜨고,
   await expect(later.getByRole('heading', { name: '야구 상식으로 홈런 치자!' })).toBeVisible();
   await expect(later.getByRole('complementary', { name: '공지' })).toHaveCount(0);
 
-  // 관리자 기록에 공지 올림·고침
+  // 관리자 기록에 공지 올림·고침(기록 화면은 보기 — 새로 만들기)
   await page.getByRole('link', { name: '관리자 기록' }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('공지 올림');
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('공지 고침');
 });

@@ -1,32 +1,33 @@
-import { useEffect, useState } from 'react';
-import { loadLogs, type LogRow } from '../data';
-import { ErrorText, PageTitle, fmtTime, line } from '../ui';
+import { useView, ViewBar } from '../useView';
+import { rebuildLogs, type LogsView } from '../views';
+import { PageTitle, fmtTime, line } from '../ui';
 
 const ACTION_LABEL: Record<string, string> = {
   'view-member': '회원 열람',
+  'view-members': '가입자 목록 열람',
+  'view-signups': '가입 확인 열람',
+  'view-member-games': '회원 경기 열람',
+  'view-games': '오늘 경기 열람',
+  'view-rooms': '대결 방 열람',
   'view-email': '이메일 보기',
+  'build-view': '화면 새로 만들기',
+  'cleanup-rooms': '지난 방 정리',
   'request-sync': '계정 동기화 요청',
   'create-notice': '공지 올림',
   'update-notice': '공지 고침',
   'delete-notice': '공지 지움',
 };
 
-/** 관리자 기록 — 개인정보 접속기록. 고치거나 지울 수 없다(규칙). 1년 이상 보관 */
+/** 관리자 기록 — 개인정보 접속기록. 고치거나 지울 수 없다(규칙). 2년 보관. 열 때 보기 하나(읽기 1) */
 export function LogsPage() {
-  const [logs, setLogs] = useState<LogRow[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadLogs()
-      .then(setLogs)
-      .catch(() => setError('기록을 불러오지 못했어요.'));
-  }, []);
+  const { view, busy, error, refresh } = useView<LogsView>('logs', rebuildLogs);
+  const logs = view?.data.logs ?? (view === null ? [] : null);
 
   return (
     <>
-      <PageTitle note="최근 50건. 개인정보 접속기록이라 1년 이상 보관하고, 고치거나 지울 수 없습니다.">관리자 기록</PageTitle>
-      {error && <ErrorText>{error}</ErrorText>}
-      {!logs && !error && <p className="text-sm text-ink-2">불러오는 중…</p>}
+      <PageTitle note="최근 100건. 개인정보 접속기록이라 2년 보관하고, 고치거나 지울 수 없습니다.">관리자 기록</PageTitle>
+      <ViewBar updatedAt={view?.updatedAt ?? null} busy={busy} error={error} onRefresh={() => void refresh()} cost="기록 최근 100건을 읽습니다" />
+      {view === undefined && !error && <p className="text-sm text-ink-2">불러오는 중…</p>}
       {logs && logs.length === 0 && <p className="text-sm text-ink-2">아직 기록이 없어요.</p>}
       {logs && logs.length > 0 && (
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="관리자 기록">

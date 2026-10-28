@@ -123,6 +123,34 @@ describe.skipIf(!emulatorHost)('관리자 규칙(배포 규칙)', () => {
       await assertFails(deleteDoc(doc(admin(), 'adminLogs/l1')));
     });
 
+    it('화면 보기(adminViews): 관리자만 읽고 쓴다, 정해진 이름·JSON 한 덩어리·작성자·서버 시각만', async () => {
+      const view = (db: Firestore, id = 'dashboard', overrides: object = {}) =>
+        setDoc(doc(db, `adminViews/${id}`), { json: '{}', by: 'boss', updatedAt: now(), ...overrides });
+      await assertSucceeds(view(admin()));
+      await assertSucceeds(getDoc(doc(admin(), 'adminViews/dashboard')));
+      await assertFails(getDoc(doc(player(), 'adminViews/dashboard')));
+      await assertFails(view(player(), 'dashboard', { by: 'alice' }));
+      await assertFails(view(admin(), 'secrets'));
+      await assertFails(view(admin(), 'members', { by: 'someone' }));
+      await assertFails(view(admin(), 'members', { updatedAt: Timestamp.fromMillis(0) }));
+      await assertFails(view(admin(), 'members', { json: 1 }));
+      await assertFails(view(admin(), 'members', { extra: true }));
+      await assertFails(deleteDoc(doc(admin(), 'adminViews/dashboard')));
+    });
+
+    it('대결 방: 관리자는 목록·자리 목록을 읽고 지난 방을 지운다, 일반 회원은 남의 방을 못 지운다', async () => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'rooms/OLD234'), { hostUid: 'bob', status: 'finished', playerIds: ['bob'], questionIds: [] });
+        await setDoc(doc(db, 'rooms/OLD234/players/bob'), { nickname: '밥', score: 0, answers: [] });
+      });
+      await assertSucceeds(getDocs(collection(admin(), 'rooms')));
+      await assertSucceeds(getDocs(collection(admin(), 'rooms/OLD234/players')));
+      await assertFails(deleteDoc(doc(player(), 'rooms/OLD234')));
+      await assertSucceeds(deleteDoc(doc(admin(), 'rooms/OLD234/players/bob')));
+      await assertSucceeds(deleteDoc(doc(admin(), 'rooms/OLD234')));
+    });
+
     it('작업 대기열: 계정 동기화 요청만, "대기"로만, 완료 표시는 운영자 PC만', async () => {
       const task = (db: Firestore, overrides: object = {}) =>
         setDoc(doc(db, 'adminTasks/t1'), { type: 'syncAccounts', target: '', status: 'pending', by: 'boss', requestedAt: now(), ...overrides });

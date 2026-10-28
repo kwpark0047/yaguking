@@ -145,7 +145,7 @@ test('프로필 설정·설정 화면: axe critical/serious 위반 0, 가로 스
   await expect(page.getByRole('heading', { level: 1, name: '설정' })).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
-  expect(blocking.map((v) => `settings ${v.id}: ${v.help}`)).toEqual([]);
+  expect(blocking.map((v) => `settings ${v.id}: ${v.help} ${v.nodes.map((n) => n.html.slice(0, 160)).join(" / ")}`)).toEqual([]);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
