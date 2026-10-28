@@ -204,6 +204,7 @@ npm run dev
 | 배포할 때마다 무엇을 확인했나 | `docs/deploy-log.md` |
 | 9단계 검증(배포 전) | `docs/verification-report.md` |
 | 관리자 기획·1차 상태 | `docs/admin-plan.md` |
+| 관리자 대시보드 2차(회원·오늘 경기·대결 방 세부) | `docs/admin-dashboard-plan.md` |
 | 공식 XP·RP 설계 | `docs/official-xp-rp.md` |
 | 축하 효과 기획·1차 상태 | `docs/effects-plan.md` |
 | 기존 앱에서 가져온 코드 | `COPIED_FROM.md` |
