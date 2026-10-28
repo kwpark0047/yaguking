@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
-import { Mascot } from '@/components/brand/Mascot';
+import emblem from '@/assets/brand/yaguking-emblem.webp';
 import { needsAgeCheck } from '@/lib/auth/gate';
 import { confirmAge, deleteOwnAccount } from '@/lib/auth/profile';
 import { authErrorMessage } from '@/lib/auth/messages';
@@ -60,7 +60,7 @@ export function AgeCheckPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-4 py-8">
-      <Mascot mood={phase === 'deleted' ? 'wink' : 'happy'} className="mx-auto h-32 w-32" />
+      <img src={emblem} alt="야구왕" width={349} height={440} className="mx-auto h-32 w-auto" />
 
       {error && (
         <p role="alert" className="text-sm" style={{ color: 'var(--out)' }}>

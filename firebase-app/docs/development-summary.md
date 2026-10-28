@@ -209,5 +209,7 @@ npm run dev
 | 관리자 대시보드 2차(회원·오늘 경기·대결 방 세부) | `docs/admin-dashboard-plan.md` |
 | 공식 XP·RP 설계 | `docs/official-xp-rp.md` |
 | 축하 효과 기획·1차 상태 | `docs/effects-plan.md` |
+| 소리 기획(승인 대기) | `docs/sound-plan.md` |
+| 애니메이션 2차 기획(승인 대기) | `docs/motion-plan.md` |
 | 기존 앱에서 가져온 코드 | `COPIED_FROM.md` |
 | 전환 배경(기존 문서와 바뀐 점) | `../KBO_YaguKing_Docs_20261023/16_야구왕_무료플랜_Firebase_전환.md` |
