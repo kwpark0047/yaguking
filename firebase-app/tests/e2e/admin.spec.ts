@@ -107,8 +107,14 @@ test('관리자 2차: 화면마다 보기 하나 — 새로 만들기, 가입자
   // 24시간 지난 대결 방 하나(정리 대상)
   const old = Timestamp.fromMillis(Date.now() - 26 * 3_600_000);
   await adminDb.doc('rooms/OLD234').set({ hostUid: 'h', status: 'finished', createdAt: old, maxPlayers: 2, playerIds: ['h'], questionIds: ['q1'], questionSeconds: 15 });
+  // 운영자 PC가 매일 밤 쓴 하루 요약 두 날(어제·그제)
+  await adminDb.doc('adminDaily/20261027').set({ day: '20261027', games: 5, levelTests: 1, memberGames: 3, guestGames: 2, players: 3, averageRuns: 1.2, atBats: 20, correctRate: 0.6, homeRunRate: 0.1, signups: 2, hourly: Array.from({ length: 24 }, (_, h) => (h === 20 ? 5 : 0)), questions: { q1: [6, 1] } });
+  await adminDb.doc('adminDaily/20261026').set({ day: '20261026', games: 3, levelTests: 0, memberGames: 1, guestGames: 2, players: 2, averageRuns: 2, atBats: 10, correctRate: 0.5, homeRunRate: 0.2, signups: 1, hourly: [], questions: {} });
   await adminDb.doc('rooms/OLD234/players/h').set({ nickname: '옛방장', joinedAt: old, score: 120, answers: [{ choice: 'A', elapsedMs: 900, correct: true }] });
 
+  page.on('console', (message) => {
+    if (message.type() === 'error') console.log('[admin console]', message.text().slice(0, 300));
+  });
   await page.goto(ADMIN);
   await expect(page.getByRole('heading', { name: '야구왕 관리자' })).toBeVisible();
   await axe(page, 'login');
@@ -131,6 +137,14 @@ test('관리자 2차: 화면마다 보기 하나 — 새로 만들기, 가입자
   await expect(page.getByRole('region', { name: '비회원', exact: true })).toContainText('0');
   await expect(page.getByRole('link', { name: '정리할 지난 방 1' })).toBeVisible();
   await expect(page.getByText(/에 만든 내용/)).toBeVisible();
+  // 어제·최근 7일(하루 요약) — 어제가 기본, 7일로 바꾸면 합계·날짜별 막대·많이 틀린 문항
+  await expect(page.getByRole('heading', { name: /어제\(10-27\)/ })).toBeVisible();
+  await page.getByRole('button', { name: '최근 7일' }).click();
+  const period = page.getByRole('region', { name: /최근 2일/ });
+  await expect(period).toBeVisible();
+  await expect(page.getByRole('list', { name: '날짜별 경기 수' }).getByRole('listitem')).toHaveCount(2);
+  await expect(period.getByRole('definition').first()).toHaveText('8'); // 경기 5 + 3
+  await expect(page.getByText(/17% \(6번\)/)).toBeVisible();
   await axe(page, 'dashboard');
 
   // 3) 가입자: 보기 하나, 이메일은 가려서 — 보기를 누르면 보이고 기록, 거르기·검색, 상세

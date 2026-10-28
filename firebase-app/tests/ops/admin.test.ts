@@ -2,7 +2,8 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { isMemberAccount, processAdminTasks, setAdmin, syncAccounts } from '../../ops/admin.mjs';
+import { Timestamp } from 'firebase-admin/firestore';
+import { buildDailyStats, isMemberAccount, processAdminTasks, setAdmin, syncAccounts } from '../../ops/admin.mjs';
 
 /** 관리자 운영 작업(ops/admin.mjs) — Auth·Firestore 에뮬레이터에서 실제로. `npm run test:ops` */
 const emulated = Boolean(process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST);
@@ -64,6 +65,30 @@ describe.skipIf(!emulated)('관리자 운영 작업(에뮬레이터)', () => {
     expect(third).toMatchObject({ members: 1, written: 1, removed: 1 });
     expect((await db.doc(`accountMirror/${other.uid}`).get()).exists).toBe(false);
     expect((await db.doc(`accountMirror/${member.uid}`).get()).get('emailVerified')).toBe(true);
+  });
+
+  it('하루 요약: 어제(한국 시간) 경기만 모아 adminDaily/YYYYMMDD 하나에 쓴다, 다시 돌리면 덮어쓴다', async () => {
+    const now = Date.parse('2026-10-28T09:00:00+09:00');
+    const yesterday = Date.parse('2026-10-27T20:00:00+09:00');
+    await db.doc('accountMirror/m1').set({ email: 'm@example.test', createdAt: Timestamp.fromMillis(yesterday) });
+    const game = (uid: string, id: string, createdAt: number, correct: boolean) =>
+      db.doc(`users/${uid}/games/${id}`).set({
+        mode: 'practice',
+        runs: correct ? 1 : 0,
+        createdAt: Timestamp.fromMillis(createdAt),
+        atBats: [{ questionId: 'q1', correct, result: correct ? 'HR' : 'K' }],
+      });
+    await game('m1', 'a', yesterday, true);
+    await game('g1', 'b', yesterday + 3_600_000, false);
+    await game('m1', 'today', now - 60_000, true); // 오늘 경기는 빠진다
+    const report = await buildDailyStats({ db, now });
+    expect(report).toEqual({ day: '20261027', games: 2, players: 2, signups: 1 });
+    const saved = (await db.doc('adminDaily/20261027').get()).data()!;
+    expect(saved).toMatchObject({ day: '20261027', games: 2, memberGames: 1, guestGames: 1, homeRunRate: 0.5, signups: 1 });
+    expect(saved.questions).toEqual({ q1: [2, 1] });
+    await buildDailyStats({ db, now });
+    expect((await db.collection('adminDaily').get()).size).toBe(1);
+    expect((await buildDailyStats({ db, day: '2026-10-28' })).games).toBe(1);
   });
 
   it('작업 대기열: 대기 중인 동기화 요청을 한 번만 돌리고 모두 완료로, 모르는 작업은 실패로', async () => {

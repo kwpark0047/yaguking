@@ -27,12 +27,13 @@ export function useView<T>(id: ViewId, rebuild: () => Promise<unknown>) {
     try {
       await rebuild();
       load();
-    } catch {
+    } catch (reason) {
+      console.error('보기 새로 만들기 실패', id, reason);
       setError('새로 만들지 못했어요. 연결을 확인해 주세요.');
     } finally {
       setBusy(false);
     }
-  }, [rebuild, load]);
+  }, [rebuild, load, id]);
 
   return { view, busy, error, refresh, reload: load };
 }

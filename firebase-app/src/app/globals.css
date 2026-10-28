@@ -1204,3 +1204,22 @@ body {
 :root[data-effects='calm'] .welcome-banner {
   animation-name: fx-banner-fade;
 }
+
+/* 대결 시작 3·2·1 — 숫자가 크게 나타났다 작아진다(위치·크기만) */
+.countdown-number {
+  font-size: 5rem;
+  line-height: 1;
+  color: var(--accent);
+  animation: fx-countdown 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes fx-countdown {
+  from {
+    transform: scale(1.8);
+  }
+  to {
+    transform: none;
+  }
+}
+:root[data-effects='none'] .countdown-number {
+  animation: none;
+}

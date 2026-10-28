@@ -67,6 +67,9 @@ export function RoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const finishing = useRef(false);
+  /** 대결 시작 카운트다운이 끝나는 시각(ms) — 이 기기가 "대기 → 경기 중"을 본 순간부터 3초(docs/effects-plan.md §2-2) */
+  const [countdownEnd, setCountdownEnd] = useState<number | null>(null);
+  const previousStatus = useRef<string | null>(null);
 
   const uid = user?.uid ?? null;
   const joined = !!room && !!uid && room.playerIds.includes(uid);
@@ -108,6 +111,14 @@ export function RoomPage() {
   }, [code, isHost, room?.status, seats, total]);
 
   const table = useMemo(() => standings(seats ?? []), [seats]);
+
+  // 방장이 시작하는 순간을 본 사람만 3·2·1 — 새로고침해서 들어온 사람(이미 경기 중)은 바로 이어 푼다.
+  // 서버 시각이 아니라 이 기기 시각 기준이라 기기 시계가 달라도 거의 같이 시작한다
+  useEffect(() => {
+    const status = room?.status ?? null;
+    if (previousStatus.current === 'waiting' && status === 'playing') setCountdownEnd(Date.now() + COUNTDOWN_MS);
+    previousStatus.current = status;
+  }, [room?.status]);
 
   if (!code) {
     return (
@@ -335,7 +346,15 @@ export function RoomPage() {
     );
   }
 
-  // 경기 중
+  // 경기 중 — 시작 카운트다운
+  if (countdownEnd !== null) {
+    return (
+      <Shell>
+        <Countdown end={countdownEnd} onDone={() => setCountdownEnd(null)} />
+      </Shell>
+    );
+  }
+
   const answered = mine?.length ?? 0;
   const question = bank && answered < total ? bank.get(room.questionIds[answered]!) : undefined;
 
@@ -433,6 +452,48 @@ function LiveBoard({ table, uid, total }: { table: Standing[]; uid: string | nul
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+const COUNTDOWN_MS = 3_000;
+
+/**
+ * 대결 시작 3·2·1 → "플레이 볼!" — 숫자는 글자로도 읽힌다(화면 효과·소리 설정과 상관없이 보인다: 시작을 맞추는 정보라서).
+ * 숫자마다 "삐", 시작에 "삑"(소리 켠 사람만).
+ */
+function Countdown({ end, onDone }: { end: number; onDone: () => void }) {
+  const left = () => Math.max(0, Math.ceil((end - Date.now()) / 1000));
+  const [shown, setShown] = useState(left);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  useEffect(() => {
+    playSound('countdown');
+    let last = left();
+    const timer = window.setInterval(() => {
+      const now = left();
+      if (now !== last) {
+        last = now;
+        setShown(now);
+        playSound(now > 0 ? 'countdown' : 'go');
+      }
+      if (Date.now() >= end + 600) {
+        window.clearInterval(timer);
+        onDoneRef.current();
+      }
+    }, 100);
+    return () => window.clearInterval(timer);
+    // 카운트다운은 시작할 때 한 번
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [end]);
+  return (
+    <section className="flex min-h-[50dvh] flex-col items-center justify-center gap-2" aria-labelledby="countdown-title">
+      <h1 id="countdown-title" className="text-sm text-ink-2">
+        곧 시작해요
+      </h1>
+      <p key={shown} className="countdown-number font-cute" role="status">
+        {shown > 0 ? shown : '플레이 볼!'}
+      </p>
     </section>
   );
 }

@@ -157,3 +157,43 @@ describe('대결 방 — 멈춤·시작 안 함·정리 대상(정리 작업과 
     expect(roomsSummary(rows, NOW)).toMatchObject({ rooms: 3, waiting: 1, playing: 1, finished: 1, expired: 1, stalled: 0 });
   });
 });
+
+describe('하루 요약 합치기(어제·최근 7일)', () => {
+  const day = (patch: Partial<import('@/lib/admin/views').DailyRow>) => ({
+    day: '20261027',
+    games: 0,
+    levelTests: 0,
+    memberGames: 0,
+    guestGames: 0,
+    players: 0,
+    averageRuns: 0,
+    atBats: 0,
+    correctRate: 0,
+    homeRunRate: 0,
+    signups: 0,
+    hourly: [],
+    ...patch,
+  });
+
+  it('평균·비율은 경기·타석 수로 가중', async () => {
+    const { sumDays } = await import('@/lib/admin/views');
+    const total = sumDays([
+      day({ games: 1, averageRuns: 4, atBats: 10, correctRate: 0.5, signups: 1, hourly: [1] }),
+      day({ games: 3, averageRuns: 0, atBats: 30, correctRate: 0.9, signups: 2, hourly: [2] }),
+    ]);
+    expect(total).toMatchObject({ games: 4, signups: 3, averageRuns: 1, correctRate: 0.8 });
+    expect(total.hourly[0]).toBe(3);
+  });
+
+  it('많이 틀린 문항은 여러 날 합쳐 5번 이상 나온 것만', async () => {
+    const { hardestFromTallies } = await import('@/lib/admin/views');
+    const hardest = hardestFromTallies([{ q1: [3, 0], q2: [4, 4] }, { q1: [3, 1], q3: [2, 0] }]);
+    expect(hardest).toEqual([{ questionId: 'q1', shown: 6, rate: 1 / 6 }]);
+  });
+
+  it('비회원 급증 기준이 운영자 PC(ops/admin.mjs)와 같다', async () => {
+    const { GUEST_BURST_PER_HOUR } = await import('@/lib/admin/views');
+    const ops = await import('../../ops/admin.mjs');
+    expect(GUEST_BURST_PER_HOUR).toBe(ops.GUEST_BURST_PER_HOUR);
+  });
+});

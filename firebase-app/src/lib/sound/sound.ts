@@ -26,7 +26,9 @@ export type SoundName =
   | 'rankReveal'
   | 'duelWin'
   | 'levelUp'
-  | 'welcome';
+  | 'welcome'
+  | 'countdown'
+  | 'go';
 
 export type Volume = 'low' | 'mid' | 'high';
 
@@ -266,6 +268,8 @@ const RECIPES: Record<SoundName, (ctx: AudioContext, out: AudioNode, t: number) 
     tone(c, o, t, { at: 0.4, freq: C6, to: C6 * 1.5, dur: 0.5, type: 'triangle', gain: 0.3 });
     return 0.9;
   },
+  countdown: (c, o, t) => (tone(c, o, t, { at: 0, freq: 880, dur: 0.15, type: 'square', gain: 0.14 }), 0.15),
+  go: (c, o, t) => (tone(c, o, t, { at: 0, freq: 1760, dur: 0.45, type: 'square', gain: 0.16 }), 0.45),
   welcome: (c, o, t) => {
     [E5, G5, C6].forEach((freq, i) => tone(c, o, t, { at: i * 0.12, freq, dur: 0.35, gain: 0.25 }));
     return 0.6;

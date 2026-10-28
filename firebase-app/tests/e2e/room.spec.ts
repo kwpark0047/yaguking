@@ -71,6 +71,11 @@ test('두 친구가 링크로 모여 실시간으로 대결하고 최종 순위�
   await expect(friend.getByText('방장이 시작하기를 기다리는 중…')).toBeVisible();
 
   await host.getByRole('button', { name: '시작하기' }).click();
+  // 두 화면 모두 3·2·1 카운트다운을 보고, 그동안 문제는 아직 없다
+  for (const page of [host, friend]) {
+    await expect(page.getByRole('heading', { name: '곧 시작해요' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('#question-stem')).toHaveCount(0);
+  }
   // 친구 화면도 시작 신호를 받아 첫 문제가 뜬다
   await expect(friend.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
   await expect(friend.getByText(/^1 \/ 5/)).toBeVisible();

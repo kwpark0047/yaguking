@@ -12,4 +12,6 @@ node ops\cleanup-cli.mjs --project=yaguking-bc25c --apply >> ops\logs\cleanup.lo
 rem Admin: process queued admin tasks, then refresh the account copy (accountMirror) for the admin site.
 node ops\admin-cli.mjs tasks --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 node ops\admin-cli.mjs sync --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
+rem Nightly stats: yesterday's games summarized into adminDaily/YYYYMMDD (the admin dashboard reads only this).
+node ops\admin-cli.mjs daily --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 >> ops\logs\cleanup.log echo [%date% %time%] admin exit %errorlevel%

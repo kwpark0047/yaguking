@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { CATEGORY_TITLE, loadQuestions, type Question } from '@/content/questions';
+import { GUEST_BURST_PER_HOUR, sumDays, type DailyRow } from '@/lib/admin/views';
 import { requestAccountSync } from '../data';
 import { useView, ViewBar } from '../useView';
 import { rebuildAll, type DashboardView } from '../views';
@@ -32,6 +34,9 @@ export function DashboardPage() {
         data.rooms?.expired ? { to: '/rooms', text: `정리할 지난 방 ${data.rooms.expired}` } : null,
         data.members?.stuckSignups ? { to: '/signups', text: `14세 확인 안 하고 3일 지난 가입 ${data.members.stuckSignups}` } : null,
         data.games?.flagged ? { to: '/games', text: `이상 징후 경기 ${data.games.flagged}` } : null,
+        (data.members?.guestsPeakHour ?? 0) > GUEST_BURST_PER_HOUR
+          ? { to: '/', text: `비회원 급증: 한 시간에 ${data.members?.guestsPeakHour}개(최근 24시간 ${data.members?.guestsNew24h})` }
+          : null,
       ].filter((item): item is { to: string; text: string } => item !== null)
     : [];
 
@@ -107,6 +112,8 @@ export function DashboardPage() {
             </section>
           )}
 
+          <PeriodSummary data={data} />
+
           {data.games && (
             <section aria-labelledby="games-title" className="sticker flex flex-col gap-3 p-4">
               <h2 id="games-title" className="font-semibold">
@@ -173,5 +180,110 @@ export function HourBars({ hourly }: { hourly: readonly number[] }) {
         {hourly.map((count, hour) => (count ? `${hour}시 ${count}경기` : null)).filter(Boolean).join(', ') || '오늘 경기 없음'}
       </p>
     </figure>
+  );
+}
+
+type Period = 'yesterday' | 'week';
+
+/** 어제·최근 7일 — 운영자 PC가 매일 밤 쓴 하루 요약(adminDaily). 오늘 숫자는 아래 "오늘 경기 요약" */
+function PeriodSummary({ data }: { data: DashboardView }) {
+  const [period, setPeriod] = useState<Period>('yesterday');
+  const [bank, setBank] = useState<Map<string, Question> | null>(null);
+  useEffect(() => {
+    loadQuestions()
+      .then((questions) => setBank(new Map(questions.map((question) => [question.id, question]))))
+      .catch(() => setBank(new Map()));
+  }, []);
+  const days = data.daily?.days ?? [];
+  if (!data.daily) return null;
+  if (days.length === 0)
+    return (
+      <section aria-labelledby="period-title" className="sticker flex flex-col gap-1 p-4">
+        <h2 id="period-title" className="font-semibold">
+          어제·최근 7일
+        </h2>
+        <p className="text-sm text-ink-2 break-keep">아직 하루 요약이 없어요. 운영자 PC 작업이 매일 03:30에 전날 요약을 만듭니다.</p>
+      </section>
+    );
+  const chosen: DailyRow[] = period === 'yesterday' ? days.slice(0, 1) : days;
+  const total = sumDays(chosen);
+  const label = (day: string) => `${day.slice(4, 6)}-${day.slice(6, 8)}`;
+  const maxGames = Math.max(1, ...days.map((day) => day.games));
+  return (
+    <section aria-labelledby="period-title" className="sticker flex flex-col gap-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="period-title" className="font-semibold">
+          {period === 'yesterday' ? `어제(${label(days[0]!.day)})` : `최근 ${days.length}일`}{' '}
+          <span className="text-xs font-normal text-ink-2">비공식 · 매일 밤 요약</span>
+        </h2>
+        <div className="flex gap-1" role="group" aria-label="기간">
+          {(['yesterday', 'week'] as Period[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={period === value}
+              onClick={() => setPeriod(value)}
+              className={`min-h-11 rounded-option border-2 px-3 text-sm font-semibold ${period === value ? '' : 'text-ink-2'}`}
+              style={period === value ? { borderColor: 'var(--accent)' } : line}
+            >
+              {value === 'yesterday' ? '어제' : '최근 7일'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <dl className="grid grid-cols-2 gap-2 text-sm md:grid-cols-5">
+        {[
+          ['경기', total.games],
+          ['가입', total.signups],
+          ['평균 득점', total.averageRuns],
+          ['정답률', `${Math.round(total.correctRate * 100)}%`],
+          ['홈런 비율', `${Math.round(total.homeRunRate * 100)}%`],
+        ].map(([name, value]) => (
+          <div key={name}>
+            <dt className="text-ink-2">{name}</dt>
+            <dd className="num-tabular text-lg font-bold">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {period === 'week' ? (
+        <figure className="flex flex-col gap-1">
+          <figcaption className="text-xs text-ink-2">날짜별 경기 수</figcaption>
+          <ol className="flex h-20 items-end gap-1" aria-label="날짜별 경기 수">
+            {[...days].reverse().map((day) => (
+              <li key={day.day} className="flex flex-1 flex-col items-center gap-1">
+                <span className="num-tabular text-xs">{day.games}</span>
+                <span
+                  aria-hidden="true"
+                  className="w-full rounded-t"
+                  style={{ height: `${Math.max(day.games ? 8 : 2, (day.games / maxGames) * 48)}px`, backgroundColor: day.games ? 'var(--accent)' : 'var(--line)' }}
+                />
+                <span className="text-xs text-ink-2">{label(day.day)}</span>
+              </li>
+            ))}
+          </ol>
+        </figure>
+      ) : (
+        <HourBars hourly={total.hourly} />
+      )}
+      {period === 'week' && (data.daily.hardest.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-semibold">최근 7일 많이 틀린 문항(5번 이상 나온 것)</h3>
+          <ol className="flex flex-col gap-1 text-sm">
+            {data.daily.hardest.map((item) => {
+              const question = bank?.get(item.questionId);
+              return (
+                <li key={item.questionId}>
+                  <span className="num-tabular font-semibold">{Math.round(item.rate * 100)}%</span> ({item.shown}번) ·{' '}
+                  {question ? `${CATEGORY_TITLE[question.category]} · ${question.stem}` : item.questionId}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="text-xs text-ink-2 break-keep">고칠 문항은 문제은행 CSV를 고쳐 다시 배포합니다.</p>
+        </div>
+      ) : (
+        <p className="text-xs text-ink-2">5번 이상 나온 문항이 아직 없어요.</p>
+      ))}
+    </section>
   );
 }

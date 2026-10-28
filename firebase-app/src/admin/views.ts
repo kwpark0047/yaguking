@@ -3,6 +3,7 @@ import {
   collection,
   collectionGroup,
   doc,
+  documentId,
   getCountFromServer,
   getDoc,
   getDocs,
@@ -17,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import {
   gamesSummary,
+  hardestFromTallies,
   hardestQuestions,
   kstDayStart,
   membersSummary,
@@ -24,6 +26,7 @@ import {
   roomsSummary,
   type GameViewRow,
   type MemberViewRow,
+  type DailyRow,
   type RoomViewRow,
   type ViewId,
 } from '@/lib/admin/views';
@@ -61,7 +64,16 @@ function log(batch: WriteBatch, action: string, target: string, detail = '') {
 
 // ── 대시보드 ────────────────────────────────────────────────────────────────
 export interface DashboardView {
-  members?: ReturnType<typeof membersSummary> & { guests: number | null; guestsActive7d: number | null; syncedAt: number | null; builtAt: number };
+  members?: ReturnType<typeof membersSummary> & {
+    guests: number | null;
+    guestsActive7d: number | null;
+    guestsNew24h?: number | null;
+    guestsPeakHour?: number | null;
+    syncedAt: number | null;
+    builtAt: number;
+  };
+  /** 운영자 PC의 하루 요약(최근 7일, 최신 먼저)과 7일간 많이 틀린 문항 */
+  daily?: { days: DailyRow[]; hardest: ReturnType<typeof hardestFromTallies>; builtAt: number };
   games?: ReturnType<typeof gamesSummary> & { builtAt: number };
   rooms?: ReturnType<typeof roomsSummary> & { builtAt: number };
   system?: { pendingTasks: number; builtAt: number };
@@ -127,6 +139,8 @@ export async function rebuildMembers(now = Date.now()): Promise<MembersView> {
       ...membersSummary(rows, now),
       guests: stats.exists() ? Number(stats.get('guests')) : null,
       guestsActive7d: stats.exists() ? Number(stats.get('guestsActive7d')) : null,
+      guestsNew24h: stats.exists() && stats.get('guestsNew24h') != null ? Number(stats.get('guestsNew24h')) : null,
+      guestsPeakHour: stats.exists() && stats.get('guestsPeakHour') != null ? Number(stats.get('guestsPeakHour')) : null,
       syncedAt: stats.exists() ? ms(stats.get('syncedAt')) || null : null,
       builtAt: now,
     },
@@ -270,11 +284,39 @@ export async function cleanupExpiredRooms(rows: readonly RoomViewRow[], now = Da
   return expired.length;
 }
 
-/** 대시보드 "모두 새로 만들기" — 회원 → 경기(회원 보기를 씀) → 방 순서 */
+/** 운영자 PC가 매일 밤 쓴 하루 요약 최근 7개(읽기 7) → 대시보드의 어제·최근 7일 */
+export async function rebuildDaily(now = Date.now()): Promise<void> {
+  const db = firestore();
+  // 문서 ID(YYYYMMDD)가 날짜라 "7일 전 이상"으로 범위를 잡는다(ID 내림차순 조회는 에뮬레이터가 지원하지 않는다)
+  const since = new Date(kstDayStart(now) - 7 * 86_400_000 + 9 * 3_600_000).toISOString().slice(0, 10).replaceAll('-', '');
+  const snapshot = await getDocs(query(collection(db, 'adminDaily'), where(documentId(), '>=', since), orderBy(documentId()), limit(7)));
+  const docs = [...snapshot.docs].reverse(); // 최신 먼저
+  const days: DailyRow[] = docs.map((item) => ({
+    day: item.id,
+    games: Number(item.get('games') ?? 0),
+    levelTests: Number(item.get('levelTests') ?? 0),
+    memberGames: Number(item.get('memberGames') ?? 0),
+    guestGames: Number(item.get('guestGames') ?? 0),
+    players: Number(item.get('players') ?? 0),
+    averageRuns: Number(item.get('averageRuns') ?? 0),
+    atBats: Number(item.get('atBats') ?? 0),
+    correctRate: Number(item.get('correctRate') ?? 0),
+    homeRunRate: Number(item.get('homeRunRate') ?? 0),
+    signups: Number(item.get('signups') ?? 0),
+    hourly: Array.isArray(item.get('hourly')) ? (item.get('hourly') as number[]) : [],
+  }));
+  const tallies = docs.map((item) => (item.get('questions') ?? {}) as Record<string, [number, number]>);
+  const batch = writeBatch(db);
+  await patchDashboard(batch, { daily: { days, hardest: hardestFromTallies(tallies), builtAt: now } });
+  await batch.commit();
+}
+
+/** 대시보드 "모두 새로 만들기" — 회원 → 경기(회원 보기를 씀) → 방 → 하루 요약 순서 */
 export async function rebuildAll(now = Date.now()): Promise<void> {
   await rebuildMembers(now);
   await rebuildGames(now);
   await rebuildRooms(now);
+  await rebuildDaily(now);
 }
 
 // ── 공지·기록 ────────────────────────────────────────────────────────────────

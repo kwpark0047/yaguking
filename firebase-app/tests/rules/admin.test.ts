@@ -138,6 +138,15 @@ describe.skipIf(!emulatorHost)('관리자 규칙(배포 규칙)', () => {
       await assertFails(deleteDoc(doc(admin(), 'adminViews/dashboard')));
     });
 
+    it('하루 통계 요약(adminDaily): 관리자만 읽고, 아무도 쓰지 못한다(운영자 PC만)', async () => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'adminDaily/20261027'), { games: 3 });
+      });
+      await assertSucceeds(getDoc(doc(admin(), 'adminDaily/20261027')));
+      await assertFails(getDoc(doc(player(), 'adminDaily/20261027')));
+      await assertFails(setDoc(doc(admin(), 'adminDaily/20261028'), { games: 1 }));
+    });
+
     it('대결 방: 관리자는 목록·자리 목록을 읽고 지난 방을 지운다, 일반 회원은 남의 방을 못 지운다', async () => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();

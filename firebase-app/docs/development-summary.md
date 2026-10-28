@@ -171,9 +171,9 @@
 
 | 항목 | 상태 · 다음 할 일 |
 |---|---|
-| 비회원 하루 3판 우회 | 익명 계정을 새로 만들면 우회된다 → App Check(무료 월 1만 건) 도입 여부 결정 |
+| 비회원 하루 3판 우회 | 사람이 창을 새로 열면 App Check로도 못 막는다. reCAPTCHA 한도·처리방침 때문에 보류, 대신 비회원 급증 감시(`docs/app-check-decision.md`) |
 | 공식 XP·랭킹 | 설계만(`docs/official-xp-rp.md` §10의 6가지 결정 필요). 승급 휘장 효과도 그 뒤 |
-| 매일 계정 동기화 | 예약 작업에 `tasks`·`sync` 추가(운영자 승인 대기). 관리자 대시보드 2-E(매일 밤 스냅샷) |
+| 매일 작업 | 정리 → 대기 작업 → 계정 동기화 → 하루 요약(`daily`), 매일 03:30 |
 | 관리자 2차 이후 | 계정 삭제(D), 통계 스냅샷(E), 이벤트·아이템(F), 자체 광고(G) — `docs/admin-plan.md` §9 |
 | 축하 효과 2차·3차 | 나머지 타석 효과·연속 배지·대결 카운트다운·오답노트 도장·최고 기록, 소리(기본 끔) — `docs/effects-plan.md` §9 |
 | 이용약관 | 문안 없음(확정 전 표시) |
@@ -209,7 +209,8 @@ npm run dev
 | 관리자 대시보드 2차(회원·오늘 경기·대결 방 세부) | `docs/admin-dashboard-plan.md` |
 | 공식 XP·RP 설계 | `docs/official-xp-rp.md` |
 | 축하 효과 기획·1차 상태 | `docs/effects-plan.md` |
-| 소리 기획(승인 대기) | `docs/sound-plan.md` |
-| 애니메이션 2차 기획(승인 대기) | `docs/motion-plan.md` |
+| 소리(구현) | `docs/sound-plan.md` |
+| 애니메이션 2차(구현) | `docs/motion-plan.md` |
+| App Check 판단 근거(보류) | `docs/app-check-decision.md` |
 | 기존 앱에서 가져온 코드 | `COPIED_FROM.md` |
 | 전환 배경(기존 문서와 바뀐 점) | `../KBO_YaguKing_Docs_20261023/16_야구왕_무료플랜_Firebase_전환.md` |

@@ -252,3 +252,56 @@ export function roomsSummary(rooms: readonly RoomViewRow[], now: number) {
 
 /** 보기 문서가 이만큼 지났으면 화면이 "오래됨"을 알린다(자동으로 다시 만들지는 않는다 — 읽기 1 유지) */
 export const VIEW_STALE_MS = 30 * 60_000;
+
+// ── 하루 요약(운영자 PC가 매일 밤 쓰는 adminDaily) ─────────────────────────────
+/** 한 시간에 새 비회원 계정이 이만큼 넘으면 "살펴볼 것"(ops/admin.mjs GUEST_BURST_PER_HOUR와 같아야 한다 — 단위 테스트) */
+export const GUEST_BURST_PER_HOUR = 30;
+
+export interface DailyRow {
+  day: string;
+  games: number;
+  levelTests: number;
+  memberGames: number;
+  guestGames: number;
+  players: number;
+  averageRuns: number;
+  atBats: number;
+  correctRate: number;
+  homeRunRate: number;
+  signups: number;
+  hourly: number[];
+}
+
+/** 여러 날 합계 — 평균·비율은 타석·경기 수로 가중 */
+export function sumDays(days: readonly DailyRow[]) {
+  const games = days.reduce((sum, day) => sum + day.games, 0);
+  const atBats = days.reduce((sum, day) => sum + day.atBats, 0);
+  const round = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
+  return {
+    games,
+    levelTests: days.reduce((sum, day) => sum + day.levelTests, 0),
+    memberGames: days.reduce((sum, day) => sum + day.memberGames, 0),
+    guestGames: days.reduce((sum, day) => sum + day.guestGames, 0),
+    signups: days.reduce((sum, day) => sum + day.signups, 0),
+    averageRuns: games ? round(days.reduce((sum, day) => sum + day.averageRuns * day.games, 0) / games, 1) : 0,
+    correctRate: atBats ? round(days.reduce((sum, day) => sum + day.correctRate * day.atBats, 0) / atBats, 3) : 0,
+    homeRunRate: atBats ? round(days.reduce((sum, day) => sum + day.homeRunRate * day.atBats, 0) / atBats, 3) : 0,
+    hourly: Array.from({ length: 24 }, (_, hour) => days.reduce((sum, day) => sum + (day.hourly[hour] ?? 0), 0)),
+  };
+}
+
+/** 여러 날의 문항별 [나온, 맞힌]을 합쳐 정답률 낮은 순(minShown번 이상 나온 것만) */
+export function hardestFromTallies(tallies: readonly Record<string, [number, number]>[], top = 10, minShown = 5) {
+  const merged = new Map<string, [number, number]>();
+  for (const tally of tallies) {
+    for (const [questionId, [shown, correct]] of Object.entries(tally)) {
+      const item = merged.get(questionId) ?? [0, 0];
+      merged.set(questionId, [item[0] + shown, item[1] + correct]);
+    }
+  }
+  return [...merged.entries()]
+    .filter(([, [shown]]) => shown >= minShown)
+    .map(([questionId, [shown, correct]]) => ({ questionId, shown, rate: correct / shown }))
+    .sort((a, b) => a.rate - b.rate || b.shown - a.shown)
+    .slice(0, top);
+}
