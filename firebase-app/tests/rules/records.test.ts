@@ -107,6 +107,17 @@ describe.skipIf(!emulatorHost)('기록 규칙', () => {
     });
   });
 
+  describe('찬스 이벤트 결과(events) — 한 경기 최대 2개, 있을 때만', () => {
+    const event = { kind: 'timing', reason: 'streak', outcome: 'perfect' };
+    it('없거나 2개까지는 저장, 3개·목록 아님은 거절', async () => {
+      const db = member(env, 'alice');
+      await assertSucceeds(setDoc(doc(db, 'users/alice/games/e0'), game()));
+      await assertSucceeds(setDoc(doc(db, 'users/alice/games/e2'), game({ events: [event, { ...event, reason: 'twoOuts' }] })));
+      await assertFails(setDoc(doc(db, 'users/alice/games/e3'), game({ events: [event, event, event] })));
+      await assertFails(setDoc(doc(db, 'users/alice/games/e4'), game({ events: 'timing' })));
+    });
+  });
+
   describe('누적 기록(비공식)', () => {
     const summary = (overrides: object = {}) => ({
       games: 1,

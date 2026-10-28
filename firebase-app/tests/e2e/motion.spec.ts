@@ -41,6 +41,9 @@ test('경기: 문제 카드가 밀려 들어오고, 첫 안타·첫 홈런 표�
   await page.getByRole('button', { name: '다음 타석' }).click();
 
   for (let out = 0; out < 3; out += 1) {
+    // 2아웃이 되면 "마지막 찬스"(찬스 이벤트)가 뜰 수 있다 — 건너뛴다
+    await expect(page.locator('#question-stem').or(page.getByRole('button', { name: '건너뛰기' }))).toBeVisible();
+    if (await page.getByRole('button', { name: '건너뛰기' }).isVisible()) await page.getByRole('button', { name: '건너뛰기' }).click();
     await expect(page.locator('#question-stem')).toBeVisible();
     await answer(page, false);
     await expect(page.locator('.fx-shake')).toHaveCount(1); // 아웃 글자만 흔들림

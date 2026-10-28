@@ -45,7 +45,13 @@ export function pickQuestion(
   usedInMatch: ReadonlySet<string>,
   recentlySeen: ReadonlySet<string>,
   random: () => number,
+  /** 고를 수 있으면 이 조건을 먼저(예: 규칙 문항 비율) — 맞는 문항이 없으면 조건 없이 */
+  prefer?: (question: Question) => boolean,
 ): Question | null {
+  if (prefer) {
+    const preferred = pickQuestion(bank.filter(prefer), difficulty, usedInMatch, recentlySeen, random);
+    if (preferred) return preferred;
+  }
   const available = bank.filter((q) => !usedInMatch.has(q.id));
   const tiers = [
     available.filter((q) => q.difficulty === difficulty && !recentlySeen.has(q.id)),
@@ -121,7 +127,7 @@ export function boxScoreOf(match: Match): BoxScore {
  * 비공식 XP — 기존 앱의 지급 기준과 같은 숫자(정답 10, 고급 정답 +5, 이닝 완주 20).
  * 기기가 계산하므로 공식 등급·랭킹에 쓰지 않는다.
  */
-export const XP = { answerCorrect: 10, hardCorrectBonus: 5, inningComplete: 20 } as const;
+export const XP = { answerCorrect: 10, hardCorrectBonus: 5, inningComplete: 20, chanceSuccess: 10 } as const;
 
 export function xpOf(atBats: readonly PlayedAtBat[], finishedInning: boolean): number {
   let xp = finishedInning ? XP.inningComplete : 0;
@@ -131,4 +137,10 @@ export function xpOf(atBats: readonly PlayedAtBat[], finishedInning: boolean): n
     if (atBat.difficulty === 'hard') xp += XP.hardCorrectBonus;
   }
   return xp;
+}
+
+/** 한 경기에서 규칙 문항은 절반 이하(docs/fun-plan.md §6) — 다음 문항을 규칙으로 내도 되나 */
+export function rulesAllowed(categoriesSoFar: readonly string[]): boolean {
+  const rules = categoriesSoFar.filter((category) => category === 'rules').length;
+  return rules + 1 <= Math.floor((categoriesSoFar.length + 1) / 2);
 }

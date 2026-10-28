@@ -87,6 +87,8 @@ export interface SaveMatchInput {
   atBats: PlayedAtBat[];
   runs: number;
   xp: number;
+  /** 찬스 이벤트 결과(최대 2개, docs/fun-plan.md) — 있을 때만 경기 문서에 */
+  events?: readonly { kind: string; reason: string; outcome: string }[];
   /** 레벨 테스트면 결과를 프로필에 한 번만 남긴다 */
   levelTest?: { correct: number; total: number; tier: number; byCategory: Record<string, number> };
 }
@@ -109,6 +111,9 @@ export async function saveMatch(input: SaveMatchInput): Promise<SaveMatchResult>
     runs: input.runs,
     pa: input.atBats.length,
     atBats: input.atBats.map(toRecord),
+    ...(input.events && input.events.length > 0
+      ? { events: input.events.map(({ kind, reason, outcome }) => ({ kind, reason, outcome })) }
+      : {}),
   });
   writes += 1;
 

@@ -26,14 +26,17 @@ const KEY_TO_LABEL: Record<string, OptionLabel> = {
 export function QuestionView({
   question,
   onAnswer,
+  limitMs = LIMIT_MS,
 }: {
   question: Question;
   /** choice=null이면 시간 초과 */
   onAnswer: (choice: OptionLabel | null, elapsedMs: number) => void;
+  /** 제한 시간 — 찬스 이벤트 보너스(초성 정답)면 3초 길다 */
+  limitMs?: number;
 }) {
   const startedAt = useRef(performance.now());
   const answered = useRef(false);
-  const [left, setLeft] = useState(LIMIT_MS);
+  const [left, setLeft] = useState(limitMs);
   /** 남은 3·2·1초 "틱"을 이미 울린 초(소리 켠 사람만) */
   const ticked = useRef(4);
 
@@ -42,7 +45,7 @@ export function QuestionView({
     startedAt.current = performance.now();
     answered.current = false;
     ticked.current = 4;
-    setLeft(LIMIT_MS);
+    setLeft(limitMs);
     playSound('pitch');
   }, [question.id]);
 
@@ -55,14 +58,14 @@ export function QuestionView({
     answered.current = true;
     if (choice !== null) playSound('tap');
     const elapsed = performance.now() - startedAt.current;
-    onAnswerRef.current(choice, choice === null ? LIMIT_MS + 1 : elapsed);
+    onAnswerRef.current(choice, choice === null ? limitMs + 1 : elapsed);
   }
   const submitRef = useRef(submit);
   submitRef.current = submit;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const remaining = LIMIT_MS - (performance.now() - startedAt.current);
+      const remaining = limitMs - (performance.now() - startedAt.current);
       setLeft(Math.max(0, remaining));
       const second = Math.ceil(remaining / 1000);
       if (second >= 1 && second <= 3 && second < ticked.current && !answered.current) {
@@ -85,7 +88,7 @@ export function QuestionView({
     return () => window.removeEventListener('keydown', onKey);
   }, [question.id]);
 
-  const ratio = left / LIMIT_MS;
+  const ratio = left / limitMs;
 
   return (
     <section key={question.id} className="fx-pitch-in flex flex-col gap-4" aria-labelledby="question-stem">

@@ -162,7 +162,9 @@ service cloud.firestore {
       match /games/{gameId} {
         allow read: if isSelf(uid) || isAdmin();
         allow create: if isSelf(uid) && canRecord()
-          && request.resource.data.keys().hasOnly(['mode', 'createdAt', 'innings', 'runs', 'pa', 'atBats'])
+          && request.resource.data.keys().hasOnly(['mode', 'createdAt', 'innings', 'runs', 'pa', 'atBats', 'events'])
+          // 찬스 이벤트(docs/fun-plan.md) — 한 경기 최대 2개, 있을 때만
+          && (!('events' in request.resource.data) || (request.resource.data.events is list && request.resource.data.events.size() <= 2))
           && request.resource.data.mode in ['practice', 'levelTest']
           && request.resource.data.createdAt == request.time
           && isNonNegativeInt(request.resource.data.innings, 9) && request.resource.data.innings >= 1

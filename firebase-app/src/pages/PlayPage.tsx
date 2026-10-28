@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useAuth } from "@/auth/AuthProvider";
 import { BoxScore } from "@/components/game/BoxScore";
 import { LoadingBall, SoundToggle, useCountUp } from "@/components/effects/Effects";
+import { ChanceEvent } from "@/components/game/ChanceEvent";
 import { QuestionView } from "@/components/game/QuestionView";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import {
@@ -28,6 +29,8 @@ import {
   isFinished,
   pickQuestion,
   plannedDifficulty,
+  rulesAllowed,
+  XP,
   startMatch,
   xpOf,
   type Match,
@@ -42,6 +45,20 @@ import {
   saveMatch,
 } from "@/lib/game/persist";
 import { firstOfGame } from "@/lib/game/moments";
+import {
+  CHANCE_INTRO,
+  CHANCE_TITLE,
+  TIME_BONUS_MS,
+  applyChanceBonus,
+  bonusOf,
+  chanceFor,
+  succeeded,
+  type ChanceKind,
+  type ChanceOutcome,
+  type ChanceReason,
+  type ChanceRecord,
+} from "@/lib/game/chance";
+import { LIMIT_MS } from "@/lib/engine";
 import { gameEndSound, playSound, verdictSound } from "@/lib/sound/sound";
 import { celebrate, resetGameEffects } from "@/lib/effects/celebrate";
 import { currentMode } from "@/lib/effects/preference";
@@ -53,6 +70,7 @@ type Phase =
   | { kind: "error"; message: string }
   | { kind: "question"; question: Question }
   | { kind: "verdict"; question: Question; atBat: PlayedAtBat }
+  | { kind: "chance"; chance: ChanceKind; reason: ChanceReason }
   | { kind: "saving" }
   | {
       kind: "done";
@@ -78,6 +96,9 @@ export function PlayPage() {
   const used = useRef(new Set<string>());
   const seen = useRef(new Set<string>());
   const starting = useRef(false);
+  /** 이번 경기의 찬스 이벤트(최대 2개)와, 다음 문제에 쓸 시간 보너스(초성 정답) */
+  const chances = useRef<ChanceRecord[]>([]);
+  const [timeBonus, setTimeBonus] = useState(false);
   /** 위쪽 띠(플레이 볼·3아웃 체인지) — 띄울 때마다 새 key(다시 그려 애니메이션을 처음부터) */
   const [banner, setBanner] = useState<{ key: number; text: string } | null>(
     null,
@@ -92,12 +113,18 @@ export function PlayPage() {
       current.atBats.length + 1,
       Math.random(),
     );
+    // 한 경기에서 규칙 문항은 절반 이하(docs/fun-plan.md §6) — 넘게 되면 규칙이 아닌 문항을 먼저
+    const categoryOf = new Map(bank.current.map((q) => [q.id, q.category]));
+    const categories = current.atBats.map(
+      (atBat) => categoryOf.get(atBat.questionId) ?? "",
+    );
     return pickQuestion(
       bank.current,
       difficulty,
       used.current,
       seen.current,
       Math.random,
+      rulesAllowed(categories) ? undefined : (q) => q.category !== "rules",
     );
   }, []);
 
@@ -112,6 +139,8 @@ export function PlayPage() {
       return;
     }
     used.current.add(first.id);
+    chances.current = [];
+    setTimeBonus(false);
     resetGameEffects();
     showBanner("플레이 볼!");
     setPhase({ kind: "question", question: first });
@@ -161,11 +190,15 @@ export function PlayPage() {
     choice: OptionLabel | null,
     elapsedMs: number,
   ) {
+    // 초성 퀴즈 보너스: 3초 더 받았고, 그만큼 빨리 친 것으로 판정(시간 초과는 그대로 시간 초과)
+    const judged =
+      timeBonus && choice !== null ? Math.max(0, elapsedMs - TIME_BONUS_MS) : elapsedMs;
+    if (timeBonus) setTimeBonus(false);
     const { match: next, atBat } = answerAtBat(
       match,
       question,
       choice,
-      elapsedMs,
+      judged,
     );
     setMatch(next);
     setPhase({ kind: "verdict", question, atBat });
@@ -177,7 +210,9 @@ export function PlayPage() {
     setPhase({ kind: "saving" });
     rememberSeen(final.atBats.map((atBat) => atBat.questionId));
     try {
-      const gained = xpOf(final.atBats, final.state.finished);
+      const gained =
+        xpOf(final.atBats, final.state.finished) +
+        chances.current.filter(succeeded).length * XP.chanceSuccess;
       const { wrongSaved } = await saveMatch({
         uid: user.uid,
         isGuest: user.isAnonymous,
@@ -185,6 +220,7 @@ export function PlayPage() {
         atBats: final.atBats,
         runs: final.state.runs,
         xp: gained,
+        events: chances.current,
       });
       if (user.isAnonymous)
         setGuestLeft((left) => (left === null ? null : Math.max(0, left - 1)));
@@ -208,13 +244,38 @@ export function PlayPage() {
       void finish(match);
       return;
     }
-    const question = nextQuestion(match);
+    const chance = chanceFor(match, chances.current, Math.random);
+    if (chance) {
+      showBanner(`${CHANCE_INTRO[chance.reason]} — ${CHANCE_TITLE[chance.kind]}`);
+      setPhase({ kind: "chance", chance: chance.kind, reason: chance.reason });
+      return;
+    }
+    askNext(match);
+  }
+
+  function askNext(current: Match) {
+    const question = nextQuestion(current);
     if (!question) {
       void finish(match);
       return;
     }
     used.current.add(question.id);
     setPhase({ kind: "question", question });
+  }
+
+  /** 찬스 이벤트 끝 — 보너스를 반영하고 다음 문제로(못해도 손해 없음) */
+  function chanceDone(kind: ChanceKind, reason: ChanceReason, outcome: ChanceOutcome) {
+    chances.current = [...chances.current, { kind, reason, outcome }];
+    const bonus = bonusOf(kind, outcome);
+    let current = match;
+    if (bonus === "time") setTimeBonus(true);
+    else if (bonus) {
+      const { bonusRuns: _runs, ...applied } = applyChanceBonus(match, bonus);
+      current = applied;
+      setMatch(applied);
+      if (bonus === "HR") celebrate({ kind: "homeRun" });
+    }
+    askNext(current);
   }
 
   const scoreboard = {
@@ -254,7 +315,9 @@ export function PlayPage() {
         <SoundToggle />
       </header>
 
-      {(phase.kind === "question" || phase.kind === "verdict") && (
+      {(phase.kind === "question" ||
+        phase.kind === "verdict" ||
+        phase.kind === "chance") && (
         <ScoreBoard scoreboard={scoreboard} inningsTarget={1} />
       )}
 
@@ -294,8 +357,22 @@ export function PlayPage() {
           </section>
         )}
 
+        {phase.kind === "chance" && (
+          <ChanceEvent
+            key={chances.current.length}
+            kind={phase.chance}
+            reason={phase.reason}
+            onDone={(outcome) => chanceDone(phase.chance, phase.reason, outcome)}
+          />
+        )}
+
+        {phase.kind === "question" && timeBonus && (
+          <p className="fx-badge self-start font-semibold">시간 +3초</p>
+        )}
+
         {phase.kind === "question" && (
           <QuestionView
+            limitMs={timeBonus ? LIMIT_MS + TIME_BONUS_MS : LIMIT_MS}
             question={phase.question}
             onAnswer={(choice, elapsed) =>
               answer(phase.question, choice, elapsed)
