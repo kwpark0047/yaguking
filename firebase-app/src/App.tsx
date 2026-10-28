@@ -1,7 +1,10 @@
-import { lazy, Suspense, useEffect, type ReactNode } from 'react';
-import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { LoadingBall } from '@/components/effects/Effects';
+import { celebrate } from '@/lib/effects/celebrate';
+import { currentMode } from '@/lib/effects/preference';
+import { playSound } from '@/lib/sound/sound';
 import { needsAgeCheck, needsProfileSetup } from '@/lib/auth/gate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
@@ -64,6 +67,55 @@ function TeamThemeSync() {
   return null;
 }
 
+/**
+ * 화면 전환(docs/motion-plan.md §1) — 주소가 바뀌면 새 화면이 아래에서 8px 올라온다(0.2초, 위치만 — 투명도는 그대로).
+ * 화면 효과 "줄이기"·"끄기"·동작 줄이기에서는 움직이지 않는다(CSS).
+ */
+function AnimatedRoutes({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  return (
+    <div key={location.pathname} className="page-enter">
+      <Routes location={location}>{children}</Routes>
+    </div>
+  );
+}
+
+/** 가입이 끝난 첫 화면에서 한 번 — 프로필 저장이 넘긴 표시(state.welcome)를 받아 띠·꽃가루·소리 */
+function WelcomeBanner() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const [shown, setShown] = useState<{ nickname: string; carried: boolean } | null>(null);
+  const welcome = (location.state as { welcome?: boolean } | null)?.welcome === true;
+
+  useEffect(() => {
+    if (!welcome || !user) return;
+    const nickname = profile.status === 'ready' ? (profile.data.nickname ?? '') : '';
+    // 비회원으로 쓰던 계정에 가입을 연결했으면 계정이 가입보다 먼저 만들어졌다 — 기록이 이어졌다
+    const created = Date.parse(user.metadata.creationTime ?? '') || Date.now();
+    setShown({ nickname, carried: Date.now() - created > 3 * 60_000 });
+    celebrate({ kind: 'welcome' });
+    playSound('welcome');
+    // 새로고침해도 다시 뜨지 않게 표시를 지운다
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [welcome, user, profile, navigate, location.pathname, location.search]);
+
+  // 띠는 2.6초 뒤 닫는다(움직임이 없는 설정에서도 글자를 읽을 시간이 있게 — 애니메이션 끝에 기대지 않는다)
+  useEffect(() => {
+    if (!shown) return;
+    const timer = window.setTimeout(() => setShown(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [shown]);
+
+  if (!shown) return null;
+  return (
+    <div role="status" className="welcome-banner font-cute" style={currentMode() === 'none' ? { animation: 'none' } : undefined}>
+      환영해요, {shown.nickname ? `${shown.nickname} 선수` : '선수'}!
+      {shown.carried && <span className="block font-sans text-sm">비회원으로 쌓은 기록이 그대로 이어졌어요.</span>}
+    </div>
+  );
+}
+
 function NotFound() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-4 text-center">
@@ -80,7 +132,8 @@ export function App() {
     <AuthProvider>
       <TeamThemeSync />
       <BrowserRouter>
-        <Routes>
+        <WelcomeBanner />
+        <AnimatedRoutes>
           {/* 로그인·확인·약관 화면은 게이트 밖에 둔다(돌아올 길이 막히지 않게) */}
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/reset" element={<ResetPage />} />
@@ -101,7 +154,7 @@ export function App() {
             <Route path="/room/:code" element={<Lazy><RoomPage /></Lazy>} />
           </Route>
           <Route path="*" element={<NotFound />} />
-        </Routes>
+        </AnimatedRoutes>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { currentMode, EFFECTS_CHOICES, readChoice, saveChoice, type EffectsChoice } from '@/lib/effects/preference';
+import { onSoundChange, readSound, saveSound, VOLUME_LABEL, type SoundSettings, type Volume } from '@/lib/sound/sound';
 
 /** "화면 효과" 켜기·줄이기·끄기 — 기기에만 저장(yk_effects). 비회원도 쓸 수 있게 홈·설정에 둔다 */
 export function EffectsSetting({ compact = false }: { compact?: boolean }) {
@@ -66,4 +67,70 @@ export function useCountUp(target: number, durationMs = 600): number {
     return () => cancelAnimationFrame(frame);
   }, [target, durationMs]);
   return shown;
+}
+
+/** "소리" — 끄기(기본)·작게·보통·크게 한 칸. 전체 판(설정 화면)은 "버튼 소리"도 */
+export function SoundSetting({ compact = false }: { compact?: boolean }) {
+  const [settings, setSettings] = useState<SoundSettings>(readSound);
+  const id = useId();
+  useEffect(() => onSoundChange(setSettings), []);
+  const value = settings.on ? settings.volume : 'off';
+  const update = (next: SoundSettings) => {
+    setSettings(next);
+    saveSound(next);
+  };
+  return (
+    <div className={compact ? 'flex items-center gap-2 text-xs' : 'flex flex-col gap-1 text-sm'}>
+      <label htmlFor={id} className={compact ? 'text-ink-2' : undefined}>
+        소리
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) => {
+          const choice = event.target.value;
+          update(choice === 'off' ? { ...settings, on: false } : { ...settings, on: true, volume: choice as Volume });
+        }}
+        className={compact ? 'min-h-11 rounded-option border px-2' : 'min-h-11 rounded-option border px-3'}
+        style={{ borderColor: 'var(--line)', backgroundColor: 'var(--hero-button-bg, var(--bg-card))', color: 'inherit' }}
+      >
+        <option value="off">끄기</option>
+        {(Object.keys(VOLUME_LABEL) as Volume[]).map((volume) => (
+          <option key={volume} value={volume}>
+            {VOLUME_LABEL[volume]}
+          </option>
+        ))}
+      </select>
+      {!compact && (
+        <>
+          <label className="flex min-h-11 items-center gap-2">
+            <input type="checkbox" checked={settings.taps} onChange={(event) => update({ ...settings, taps: event.target.checked })} />
+            버튼 누를 때 소리
+          </label>
+          <p className="text-xs text-ink-2 break-keep">타격·홈런·아웃 같은 효과음이에요. 휴대폰 무음 모드에서는 나지 않을 수 있어요.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** 경기 화면 머리줄의 소리 켜고 끄기 단추 */
+export function SoundToggle() {
+  const [settings, setSettings] = useState<SoundSettings>(readSound);
+  useEffect(() => onSoundChange(setSettings), []);
+  return (
+    <button
+      type="button"
+      aria-pressed={settings.on}
+      aria-label="소리"
+      onClick={() => saveSound({ ...settings, on: !settings.on })}
+      className="flex min-h-11 min-w-11 items-center justify-center rounded-full"
+      title={settings.on ? '소리 끄기' : '소리 켜기'}
+    >
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 9v6h4l5 4V5L8 9H4z" />
+        {settings.on ? <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /> : <path d="M17 9l5 6M22 9l-5 6" />}
+      </svg>
+    </button>
+  );
 }

@@ -937,6 +937,8 @@ body {
   left: 50%;
   z-index: 55;
   translate: -50% 0;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   padding: 0.6rem 1.6rem;
   border-radius: 0 0 1.25rem 1.25rem;
   background: var(--accent);
@@ -1049,4 +1051,156 @@ body {
 }
 :root[data-effects='none'] .tier-flip__back {
   display: none;
+}
+
+/* ── 애니메이션 2차 (docs/motion-plan.md) ─────────────────────────────── */
+/*
+ * 투명도는 바꾸지 않는다(움직이는 중 글자 대비가 낮아지면 접근성 검사·읽기가 흔들린다) — 위치·크기만.
+ * calm(줄이기)은 이동·흔들림을 빼고 작은 강조만, none(끄기·동작 줄이기)은 모두 없음.
+ */
+.page-enter {
+  animation: fx-page 200ms ease-out both;
+}
+@keyframes fx-page {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* 다음 타석 — 문제 카드가 옆에서 밀려 들어온다(투구) */
+.fx-pitch-in {
+  animation: fx-pitch 250ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes fx-pitch {
+  from {
+    transform: translateX(28px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* 첫 안타 배지 · 첫 홈런 도장 */
+.fx-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.6rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  animation: fx-pop 480ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.fx-stamp {
+  display: inline-block;
+  padding: 0.15rem 0.7rem;
+  border: 3px solid var(--hr);
+  border-radius: 0.5rem;
+  color: var(--hr);
+  font-size: 1.1rem;
+  transform: rotate(-6deg);
+  animation: fx-stamp 420ms cubic-bezier(0.3, 1.4, 0.5, 1) 150ms both;
+}
+@keyframes fx-stamp {
+  from {
+    transform: rotate(-6deg) scale(1.9);
+  }
+  to {
+    transform: rotate(-6deg) scale(1);
+  }
+}
+
+/* 아웃 — 판정 글자만 짧게 옆으로(화면 전체는 흔들지 않는다), 아웃 등은 켜지며 살짝 커짐 */
+.fx-shake {
+  animation: fx-shake 320ms ease-in-out both;
+}
+@keyframes fx-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+.fx-pulse {
+  animation: fx-pulse 320ms ease-out both;
+}
+@keyframes fx-pulse {
+  50% {
+    transform: scale(1.6);
+  }
+}
+
+/* 대결 순위 발표 — 3위부터 차례로 올라온다(지연은 화면이 정함), 1등은 왕관이 떨어져 앉음 */
+.fx-rise-in {
+  animation: fx-rise-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes fx-rise-in {
+  from {
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    transform: none;
+  }
+}
+.fx-crown {
+  display: inline-block;
+  animation: fx-crown 600ms cubic-bezier(0.3, 1.5, 0.5, 1) 500ms both;
+}
+@keyframes fx-crown {
+  from {
+    transform: translateY(-24px) rotate(-20deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* 비공식 레벨 진행 막대 */
+.fx-bar {
+  transition: width 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 전광판 주자 칸 — 켜질 때 부드럽게 */
+.base-spot {
+  transition: fill 300ms ease-out;
+}
+
+:root[data-effects='calm'] :is(.page-enter, .fx-pitch-in, .fx-shake, .fx-rise-in, .fx-crown) {
+  animation: none;
+}
+:root[data-effects='none'] :is(.page-enter, .fx-pitch-in, .fx-badge, .fx-stamp, .fx-shake, .fx-pulse, .fx-rise-in, .fx-crown) {
+  animation: none;
+}
+:root[data-effects='none'] :is(.fx-bar, .base-spot) {
+  transition: none;
+}
+
+/* 가입 환영 띠 — 플레이 볼 띠와 같은 모양, 조금 더 머문다(글자로 알리므로 role=status) */
+.welcome-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 55;
+  translate: -50% 0;
+  /* 왼쪽 50%에서 시작하면 남은 폭이 화면 절반이라 좁게 접힌다 — 글자 폭에 맞추고 화면 안으로 */
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  word-break: keep-all;
+  padding: 0.7rem 1.6rem;
+  border-radius: 0 0 1.25rem 1.25rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.35rem;
+  text-align: center;
+  pointer-events: none;
+  animation: fx-banner 2600ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+:root[data-effects='calm'] .welcome-banner {
+  animation-name: fx-banner-fade;
 }

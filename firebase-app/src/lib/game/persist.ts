@@ -48,6 +48,16 @@ export async function guestGamesLeft(uid: string): Promise<number> {
   return Math.max(0, GUEST_DAILY_GAMES - used);
 }
 
+/**
+ * 경기를 저장한 뒤 누적 비공식 XP — 레벨 승급 연출용(docs/motion-plan.md §5). 읽기 1번.
+ * 누적은 증가 연산으로만 쓰므로 합계를 알려면 한 번 읽어야 한다.
+ */
+export async function readTotalXp(uid: string): Promise<number> {
+  const snapshot = await getDoc(doc(firestore(), 'users', uid, 'summary', 'main'));
+  countReads('levelAfterGame', 1);
+  return Number(snapshot.get('xp') ?? 0);
+}
+
 function toRecord(atBat: PlayedAtBat): AtBatRecord {
   return {
     questionId: atBat.questionId,

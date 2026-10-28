@@ -70,7 +70,7 @@ async function strikeOut(page: Page) {
   await expect(page.getByText(/오답노트에 담았어요/)).toBeVisible({ timeout: 15_000 });
 }
 
-test('비회원: 1이닝 한 판 = 읽기 1(남은 판), 쓰기 6 · 오답노트 열기 = 노트 수', async ({ page }) => {
+test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 6 · 오답노트 열기 = 노트 수', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('/');
   await waitForPublicHome(page);
@@ -78,14 +78,14 @@ test('비회원: 1이닝 한 판 = 읽기 1(남은 판), 쓰기 6 · 오답노�
     await page.getByRole('link', { name: /게임 시작/ }).click();
     await strikeOut(page);
   });
-  expect(game.reads).toBeLessThanOrEqual(1);
+  expect(game.reads).toBeLessThanOrEqual(2); // 남은 판 1 + 경기 끝 누적 XP 1(비공식 레벨 승급, docs/motion-plan.md)
   expect(game.writes).toBe(6); // 경기 + 누적 + 카운터 + 오답 3
 
-  const second = await measure(page, '비회원 한 판 더(같은 문항 다시 틀려도 읽지 않음)', async () => {
+  const second = await measure(page, '비회원 한 판 더(같은 문항 다시 틀려도 오답은 읽지 않음)', async () => {
     await page.getByRole('button', { name: '한 판 더' }).click();
     await strikeOut(page);
   });
-  expect(second.reads).toBe(0);
+  expect(second.reads).toBe(1); // 누적 XP만
 
   const notes = await measure(page, '오답노트 열기(노트 6개 이하)', async () => {
     await page.getByRole('link', { name: '오답노트' }).click();
@@ -95,7 +95,7 @@ test('비회원: 1이닝 한 판 = 읽기 1(남은 판), 쓰기 6 · 오답노�
   expect(notes.reads).toBe(count);
 });
 
-test('회원: 앱 열기 1읽기, 개인 경기 0읽기, 레벨 테스트', async ({ page }) => {
+test('회원: 앱 열기 2읽기, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
   test.setTimeout(150_000);
   await signUp(page, uniqueEmail());
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
@@ -115,7 +115,7 @@ test('회원: 앱 열기 1읽기, 개인 경기 0읽기, 레벨 테스트', asyn
     await page.getByRole('link', { name: /게임 시작/ }).click();
     await strikeOut(page);
   });
-  expect(game).toEqual({ reads: 0, writes: 5 });
+  expect(game).toEqual({ reads: 1, writes: 5 }); // 경기 끝 누적 XP 1(비공식 레벨)
 
   await page.getByRole('link', { name: '◀ 나가기' }).click();
   const levelTest = await measure(page, '레벨 테스트(20문항, 1개 틀림)', async () => {

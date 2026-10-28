@@ -89,7 +89,8 @@ export function ProfileSetupPage() {
         previous,
       );
       await refreshProfile();
-      navigate(returnTo, { replace: true });
+      // 가입이 끝난 첫 화면에서 한 번 환영(App의 WelcomeBanner, docs/motion-plan.md §2)
+      navigate(returnTo, { replace: true, state: { welcome: true } });
     } catch (caught) {
       if (caught instanceof NicknameTakenError) {
         setError(caught.message);

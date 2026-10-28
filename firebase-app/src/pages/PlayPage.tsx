@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/auth/AuthProvider";
 import { BoxScore } from "@/components/game/BoxScore";
-import { LoadingBall, useCountUp } from "@/components/effects/Effects";
+import { LoadingBall, SoundToggle, useCountUp } from "@/components/effects/Effects";
 import { QuestionView } from "@/components/game/QuestionView";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import {
@@ -14,9 +14,13 @@ import { startAsGuest } from "@/lib/auth/actions";
 import { authErrorMessage } from "@/lib/auth/messages";
 import {
   formatElapsed,
+  levelChange,
+  levelName,
+  levelProgress,
   RESULT_PRESENTATION,
   resultLabel,
   UPGRADE_LABEL,
+  type LevelChange,
 } from "@/lib/game/labels";
 import {
   answerAtBat,
@@ -33,9 +37,12 @@ import {
   GUEST_DAILY_GAMES,
   guestGamesLeft,
   recentlySeen,
+  readTotalXp,
   rememberSeen,
   saveMatch,
 } from "@/lib/game/persist";
+import { firstOfGame } from "@/lib/game/moments";
+import { gameEndSound, playSound, verdictSound } from "@/lib/sound/sound";
 import { celebrate, resetGameEffects } from "@/lib/effects/celebrate";
 import { currentMode } from "@/lib/effects/preference";
 import { dataErrorMessage } from "@/lib/firebase/errors";
@@ -47,7 +54,13 @@ type Phase =
   | { kind: "question"; question: Question }
   | { kind: "verdict"; question: Question; atBat: PlayedAtBat }
   | { kind: "saving" }
-  | { kind: "done"; wrongSaved: number; saveError: string | null };
+  | {
+      kind: "done";
+      wrongSaved: number;
+      saveError: string | null;
+      level: LevelChange | null;
+    };
+
 
 /**
  * 개인 퀴즈 — 1이닝(3아웃). **비공식**: 정답과 시계가 기기에 있다.
@@ -65,8 +78,14 @@ export function PlayPage() {
   const used = useRef(new Set<string>());
   const seen = useRef(new Set<string>());
   const starting = useRef(false);
-  /** 플레이 볼 띠 — 판을 시작할 때마다 새 값(다시 그려 애니메이션을 처음부터) */
-  const [banner, setBanner] = useState(0);
+  /** 위쪽 띠(플레이 볼·3아웃 체인지) — 띄울 때마다 새 key(다시 그려 애니메이션을 처음부터) */
+  const [banner, setBanner] = useState<{ key: number; text: string } | null>(
+    null,
+  );
+  const showBanner = (text: string) => {
+    if (currentMode() !== "none")
+      setBanner((value) => ({ key: (value?.key ?? 0) + 1, text }));
+  };
 
   const nextQuestion = useCallback((current: Match) => {
     const difficulty = plannedDifficulty(
@@ -94,7 +113,7 @@ export function PlayPage() {
     }
     used.current.add(first.id);
     resetGameEffects();
-    if (currentMode() !== "none") setBanner((value) => value + 1);
+    showBanner("플레이 볼!");
     setPhase({ kind: "question", question: first });
   }, [nextQuestion]);
 
@@ -150,6 +169,7 @@ export function PlayPage() {
     );
     setMatch(next);
     setPhase({ kind: "verdict", question, atBat });
+    if (next.state.inningEnded && atBat.result === "K") showBanner("3아웃 체인지");
   }
 
   async function finish(final: Match) {
@@ -157,22 +177,28 @@ export function PlayPage() {
     setPhase({ kind: "saving" });
     rememberSeen(final.atBats.map((atBat) => atBat.questionId));
     try {
+      const gained = xpOf(final.atBats, final.state.finished);
       const { wrongSaved } = await saveMatch({
         uid: user.uid,
         isGuest: user.isAnonymous,
         mode: "practice",
         atBats: final.atBats,
         runs: final.state.runs,
-        xp: xpOf(final.atBats, final.state.finished),
+        xp: gained,
       });
       if (user.isAnonymous)
         setGuestLeft((left) => (left === null ? null : Math.max(0, left - 1)));
-      setPhase({ kind: "done", wrongSaved, saveError: null });
+      // 비공식 레벨 승급(docs/motion-plan.md §5) — 누적 XP 읽기 1번. 못 읽으면 레벨만 빼고 결과는 보인다
+      const level = await readTotalXp(user.uid)
+        .then((total) => levelChange(total, gained))
+        .catch(() => null);
+      setPhase({ kind: "done", wrongSaved, saveError: null, level });
     } catch (reason) {
       setPhase({
         kind: "done",
         wrongSaved: 0,
         saveError: dataErrorMessage(reason, "기록을 저장하지 못했어요."),
+        level: null,
       });
     }
   }
@@ -201,14 +227,14 @@ export function PlayPage() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
-      {banner > 0 && (
+      {banner && (
         <div
-          key={banner}
+          key={banner.key}
           className="play-ball-banner font-cute"
           aria-hidden="true"
-          onAnimationEnd={() => setBanner(0)}
+          onAnimationEnd={() => setBanner(null)}
         >
-          플레이 볼!
+          {banner.text}
         </div>
       )}
       <header className="flex items-center justify-between gap-2 px-4 py-2">
@@ -225,6 +251,7 @@ export function PlayPage() {
           비공식 1이닝
           {isGuest && guestLeft !== null ? ` · 오늘 ${guestLeft}판 남음` : ""}
         </span>
+        <SoundToggle />
       </header>
 
       {(phase.kind === "question" || phase.kind === "verdict") && (
@@ -281,6 +308,7 @@ export function PlayPage() {
             question={phase.question}
             atBat={phase.atBat}
             last={isFinished(match)}
+            first={firstOfGame(match, phase.atBat)}
             onNext={next}
           />
         )}
@@ -294,6 +322,7 @@ export function PlayPage() {
             match={match}
             wrongSaved={phase.wrongSaved}
             saveError={phase.saveError}
+            level={phase.level}
             onRetrySave={() => void finish(match)}
             canPlayAgain={!isGuest || (guestLeft ?? 0) > 0}
             onPlayAgain={() => void begin()}
@@ -308,11 +337,13 @@ function Verdict({
   question,
   atBat,
   last,
+  first,
   onNext,
 }: {
   question: Question;
   atBat: PlayedAtBat;
   last: boolean;
+  first: "hit" | "homeRun" | null;
   onNext: () => void;
 }) {
   const presentation = RESULT_PRESENTATION[atBat.result];
@@ -335,7 +366,11 @@ function Verdict({
     if (atBat.result === "HR") celebrate({ kind: "homeRun" });
     if (atBat.upgradeReason)
       celebrate({ kind: "upgrade" }, { origin: ribbon.current });
-  }, [atBat]);
+    // 소리(켠 사람만): 판정 → 승급 보너스 → 3아웃
+    playSound(verdictSound(atBat.result, atBat.choice === null));
+    if (atBat.upgradeReason) playSound("upgrade", 0.35);
+    if (last && atBat.result === "K") playSound("inningEnd", 0.45);
+  }, [atBat, last]);
 
   return (
     <section
@@ -349,19 +384,33 @@ function Verdict({
           style={{ color: tone }}
         >
           <span aria-hidden="true">{presentation.icon}</span>
-          {atBat.result === "HR" ? (
-            <span className="fx-pop">
-              {resultLabel(atBat.result, timedOut)}
-            </span>
-          ) : (
-            resultLabel(atBat.result, timedOut)
-          )}
+          <span
+            className={
+              atBat.result === "HR"
+                ? "fx-pop"
+                : atBat.result === "K"
+                  ? "fx-shake inline-block"
+                  : undefined
+            }
+          >
+            {resultLabel(atBat.result, timedOut)}
+          </span>
           {atBat.rbi > 0 && (
             <span className="num-tabular text-sm text-ink-2">
               {atBat.rbi}타점
             </span>
           )}
         </p>
+        {first === "homeRun" && (
+          <p>
+            <span className="fx-stamp font-cute">첫 홈런!</span>
+          </p>
+        )}
+        {first === "hit" && (
+          <p>
+            <span className="fx-badge font-semibold">첫 안타!</span>
+          </p>
+        )}
         {atBat.upgradeReason && (
           <p ref={ribbon} className="fx-ribbon text-sm font-semibold">
             {UPGRADE_LABEL[atBat.upgradeReason]}
@@ -385,7 +434,10 @@ function Verdict({
       <button
         ref={nextButton}
         type="button"
-        onClick={onNext}
+        onClick={() => {
+          playSound("tap");
+          onNext();
+        }}
         className="squishy font-cute min-h-14 text-xl"
         style={{ backgroundColor: "var(--accent)", color: "var(--accent-ink)" }}
       >
@@ -399,6 +451,7 @@ function Results({
   match,
   wrongSaved,
   saveError,
+  level,
   onRetrySave,
   canPlayAgain,
   onPlayAgain,
@@ -406,6 +459,7 @@ function Results({
   match: Match;
   wrongSaved: number;
   saveError: string | null;
+  level: LevelChange | null;
   onRetrySave: () => void;
   canPlayAgain: boolean;
   onPlayAgain: () => void;
@@ -417,6 +471,7 @@ function Results({
 
   useEffect(() => {
     celebrate({ kind: "gameEnd", runs });
+    playSound(gameEndSound(runs));
   }, [runs]);
 
   return (
@@ -429,6 +484,7 @@ function Results({
         비공식 XP <span className="num-tabular font-semibold">+{xp}</span>
         {wrongSaved > 0 && ` · 틀린 ${wrongSaved}문항을 오답노트에 담았어요`}
       </p>
+      {level && <LevelPanel level={level} />}
       {saveError && (
         <div
           role="alert"
@@ -466,6 +522,69 @@ function Results({
         >
           오답노트
         </Link>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 비공식 레벨 — 진행 막대가 이번 경기만큼 차오르고, 레벨이 오르면 "승급!" 카드(docs/motion-plan.md §5 A안).
+ * 기기에서 채점한 비공식 XP로 계산한다(공식 랭킹 아님).
+ */
+function LevelPanel({ level }: { level: LevelChange }) {
+  const up = level.after > level.before;
+  const [width, setWidth] = useState(() =>
+    up ? 0 : levelProgress(level.before, level.xpBefore),
+  );
+  useEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      setWidth(levelProgress(level.after, level.xpAfter)),
+    );
+    if (!up) return () => cancelAnimationFrame(frame);
+    // 경기 종료 효과가 끝날 즈음 승급 축하
+    const timer = window.setTimeout(() => {
+      celebrate({ kind: "levelUp" });
+      playSound("levelUp");
+    }, 1400);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [level, up]);
+
+  return (
+    <section className="sticker flex flex-col gap-2 p-4" aria-labelledby="level-title">
+      <h2 id="level-title" className="flex flex-wrap items-baseline gap-2">
+        <span className="font-cute text-xl">
+          Lv.{level.after} {levelName(level.after)}
+        </span>
+        <span className="text-xs text-ink-2">비공식 레벨 · 누적 XP {level.xpAfter}</span>
+      </h2>
+      {up && (
+        <p className="flex flex-wrap items-center gap-2 font-semibold">
+          <span className="fx-stamp font-cute">승급!</span>
+          <span className="fx-rise-in" style={{ animationDelay: "200ms" }}>
+            {levelName(level.before)}
+          </span>
+          <span aria-hidden="true">→</span>
+          <span className="fx-rise-in" style={{ animationDelay: "450ms" }}>
+            {levelName(level.after)}
+          </span>
+        </p>
+      )}
+      <div
+        className="h-2.5 overflow-hidden rounded-full"
+        style={{ backgroundColor: "var(--line)" }}
+        role="progressbar"
+        aria-label="다음 레벨까지"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(levelProgress(level.after, level.xpAfter) * 100)}
+      >
+        <div
+          className="fx-bar h-full rounded-full"
+          style={{ width: `${Math.round(width * 100)}%`, backgroundColor: "var(--accent)" }}
+        />
       </div>
     </section>
   );

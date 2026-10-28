@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
-import { EffectsSetting } from '@/components/effects/Effects';
+import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { PlayerInputs } from '@/components/profile/PlayerInputs';
 import { TeamRankPicker } from '@/components/profile/TeamRankPicker';
 import { signOutUser } from '@/lib/auth/actions';
@@ -165,6 +165,7 @@ export function SettingsPage() {
           화면
         </h2>
         <EffectsSetting />
+        <SoundSetting />
       </section>
 
       <section aria-labelledby="account-title" className="flex flex-col gap-3">

@@ -91,6 +91,28 @@ export function levelProgress(level: number, totalXp: number): number {
   return Math.max(0, Math.min(1, ratio));
 }
 
+/** 누적 XP → 레벨(1~7) — 임계값 표(LEVEL_THRESHOLDS)의 하한을 넘은 가장 높은 레벨 */
+export function levelForXp(totalXp: number): number {
+  let level = 1;
+  LEVEL_THRESHOLDS.forEach((threshold, index) => {
+    if (totalXp >= threshold) level = index + 1;
+  });
+  return level;
+}
+
+export interface LevelChange {
+  before: number;
+  after: number;
+  xpBefore: number;
+  xpAfter: number;
+}
+
+/** 이번 경기 XP를 더하기 전·후의 레벨(비공식) */
+export function levelChange(xpAfter: number, gained: number): LevelChange {
+  const xpBefore = Math.max(0, xpAfter - gained);
+  return { before: levelForXp(xpBefore), after: levelForXp(xpAfter), xpBefore, xpAfter };
+}
+
 /** 밀리초를 "3.4초"로 */
 export function formatElapsed(ms: number | null): string {
   if (ms === null) return '-';

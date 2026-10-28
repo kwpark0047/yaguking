@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { describeBases } from '@/lib/engine';
 import { BaseDiamond } from './BaseDiamond';
 
@@ -28,6 +29,13 @@ export function ScoreBoard({
   inningsTarget: number;
 }) {
   const { inning, outs, runs, streak, bases } = scoreboard;
+  // 새로 켜진 아웃 등만 한 번 살짝 커진다(docs/motion-plan.md §4) — 다시 그리려고 key를 바꾼다
+  const previousOuts = useRef(outs);
+  const [pulse, setPulse] = useState<{ index: number; key: number } | null>(null);
+  useEffect(() => {
+    if (outs > previousOuts.current) setPulse((value) => ({ index: outs - 1, key: (value?.key ?? 0) + 1 }));
+    previousOuts.current = outs;
+  }, [outs]);
   const announcement = `${inning}회, 아웃 ${outs}, ${describeBases(bases)}, 득점 ${runs}`;
 
   return (
@@ -48,8 +56,8 @@ export function ScoreBoard({
           <span className="inline-flex items-center gap-1" aria-hidden="true">
             {[0, 1, 2].map((i) => (
               <span
-                key={i}
-                className="inline-block size-2.5 rounded-full border"
+                key={pulse?.index === i ? `${i}-${pulse.key}` : i}
+                className={`inline-block size-2.5 rounded-full border${pulse?.index === i ? ' fx-pulse' : ''}`}
                 style={{
                   borderColor: i < outs ? 'var(--out)' : 'var(--ink-2)',
                   backgroundColor: i < outs ? 'var(--out)' : 'transparent',

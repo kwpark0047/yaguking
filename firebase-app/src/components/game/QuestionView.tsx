@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CATEGORY_TITLE, type OptionLabel, type Question } from '@/content/questions';
 import { LIMIT_MS } from '@/lib/engine';
 import { DIFFICULTY_LABEL } from '@/lib/game/labels';
+import { playSound } from '@/lib/sound/sound';
 
 const KEY_TO_LABEL: Record<string, OptionLabel> = {
   '1': 'A',
@@ -33,12 +34,16 @@ export function QuestionView({
   const startedAt = useRef(performance.now());
   const answered = useRef(false);
   const [left, setLeft] = useState(LIMIT_MS);
+  /** 남은 3·2·1초 "틱"을 이미 울린 초(소리 켠 사람만) */
+  const ticked = useRef(4);
 
-  // 문항이 바뀌면 시계를 다시 맞춘다
+  // 문항이 바뀌면 시계를 다시 맞추고 투구 소리
   useEffect(() => {
     startedAt.current = performance.now();
     answered.current = false;
+    ticked.current = 4;
     setLeft(LIMIT_MS);
+    playSound('pitch');
   }, [question.id]);
 
   // 시계·키보드 처리기는 문항마다 한 번 건다. 최신 onAnswer는 ref로 본다.
@@ -48,6 +53,7 @@ export function QuestionView({
   function submit(choice: OptionLabel | null) {
     if (answered.current) return;
     answered.current = true;
+    if (choice !== null) playSound('tap');
     const elapsed = performance.now() - startedAt.current;
     onAnswerRef.current(choice, choice === null ? LIMIT_MS + 1 : elapsed);
   }
@@ -58,6 +64,11 @@ export function QuestionView({
     const timer = window.setInterval(() => {
       const remaining = LIMIT_MS - (performance.now() - startedAt.current);
       setLeft(Math.max(0, remaining));
+      const second = Math.ceil(remaining / 1000);
+      if (second >= 1 && second <= 3 && second < ticked.current && !answered.current) {
+        ticked.current = second;
+        playSound('tick');
+      }
       if (remaining <= 0) submitRef.current(null);
     }, 100);
     return () => window.clearInterval(timer);
@@ -77,7 +88,7 @@ export function QuestionView({
   const ratio = left / LIMIT_MS;
 
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="question-stem">
+    <section key={question.id} className="fx-pitch-in flex flex-col gap-4" aria-labelledby="question-stem">
       <div className="flex items-center gap-3">
         <div
           aria-hidden="true"

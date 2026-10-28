@@ -4,7 +4,9 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
 import { QuestionView } from '@/components/game/QuestionView';
 import { loadQuestions, type OptionLabel, type Question } from '@/content/questions';
+import { celebrate } from '@/lib/effects/celebrate';
 import { dataErrorMessage } from '@/lib/firebase/errors';
+import { playSound } from '@/lib/sound/sound';
 import { byId } from '@/lib/game/persist';
 import {
   RoomJoinError,
@@ -435,8 +437,25 @@ function LiveBoard({ table, uid, total }: { table: Standing[]; uid: string | nul
   );
 }
 
+/**
+ * 최종 순위 발표(docs/motion-plan.md §5 A안 — "랭킹 등록" 연출): 순위 카드가 꼴찌부터 차례로 올라오고(0.2초 간격),
+ * 1등 이름 위에 왕관이 떨어져 앉는다. 내가 1등이면 꽃가루·팡파르, 아니면 짧은 발표음. 순위는 비공식.
+ */
 function Results({ table, uid, total }: { table: Standing[]; uid: string | null; total: number }) {
   const me = table.find((row) => row.uid === uid);
+  const won = me?.rank === 1;
+  useEffect(() => {
+    const delay = Math.max(0, table.length - 1) * 0.2 + 0.3;
+    if (won) {
+      const timer = window.setTimeout(() => celebrate({ kind: 'duelWin' }), delay * 1000);
+      playSound('duelWin', delay);
+      return () => window.clearTimeout(timer);
+    }
+    playSound('rankReveal', delay);
+    return undefined;
+    // 발표는 화면에 처음 들어올 때 한 번
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <section className="flex flex-col gap-3" aria-labelledby="result-title">
       <h1 id="result-title" className="font-cute text-3xl">
@@ -448,13 +467,21 @@ function Results({ table, uid, total }: { table: Standing[]; uid: string | null;
         </p>
       )}
       <ol className="flex flex-col gap-2" aria-label="최종 순위">
-        {table.map((row) => (
+        {table.map((row, index) => (
           <li
             key={row.uid}
-            className="sticker num-tabular flex min-h-12 items-center justify-between gap-2 px-3"
-            style={row.uid === uid ? { borderColor: 'var(--accent)' } : undefined}
+            className="sticker num-tabular fx-rise-in flex min-h-12 items-center justify-between gap-2 px-3"
+            style={{
+              animationDelay: `${(table.length - 1 - index) * 200}ms`,
+              ...(row.uid === uid ? { borderColor: 'var(--accent)' } : {}),
+            }}
           >
             <span className="font-semibold">
+              {row.rank === 1 && (
+                <span className="fx-crown" aria-hidden="true">
+                  👑{' '}
+                </span>
+              )}
               {row.rank}위 {row.nickname}
               {row.uid === uid && <span className="text-ink-2"> (나)</span>}
             </span>

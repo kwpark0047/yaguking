@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import emblem from '@/assets/brand/yaguking-emblem.webp';
-import { EffectsSetting } from '@/components/effects/Effects';
+import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { NoticeBanner } from '@/components/NoticeBanner';
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
@@ -63,6 +63,7 @@ export function HomePage() {
                 공지사항
               </Link>
               <EffectsSetting compact />
+              <SoundSetting compact />
             </div>
           </>
         )}

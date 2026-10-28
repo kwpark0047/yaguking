@@ -100,7 +100,8 @@ test('설정에서 닉네임을 바꾸면 옛 닉네임을 놓아준다, 구단 
   await page.getByRole('button', { name: '두산 베어스, 1위' }).click(); // 빼고
   await page.getByRole('button', { name: '한화 이글스', exact: true }).click();
   await page.getByRole('button', { name: '저장하기' }).click();
-  await expect(page.getByRole('status')).toHaveText('저장했어요.');
+  // 가입 직후의 환영 띠(role=status)가 아직 떠 있을 수 있다 — 저장 안내만 찾는다
+  await expect(page.getByRole('status').filter({ hasText: '저장했어요.' })).toHaveText('저장했어요.');
 
   expect(await readDoc(`nicknames/${before.toLowerCase()}`)).toBeNull();
   expect(await readDoc(`nicknames/${after.toLowerCase()}`)).not.toBeNull();

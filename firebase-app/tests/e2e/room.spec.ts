@@ -81,6 +81,7 @@ test('두 친구가 링크로 모여 실시간으로 대결하고 최종 순위�
 
   // 다 끝나면 방장 기기가 방을 끝내고, 두 화면 모두 최종 순위
   await expect(host.getByRole('heading', { name: '우승!' })).toBeVisible({ timeout: 15_000 });
+  await expect(host.locator('.fx-crown')).toHaveCount(1); // 1등 왕관(순위 발표 연출)
   await expect(friend.getByRole('heading', { name: '최종 순위' })).toBeVisible({ timeout: 15_000 });
   const ranking = friend.getByRole('list', { name: '최종 순위' }).getByRole('listitem');
   await expect(ranking.nth(0)).toContainText('1위 방장곰');

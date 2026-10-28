@@ -8,7 +8,10 @@ export type EffectEvent =
   | { kind: 'homeRun' }
   | { kind: 'upgrade' }
   | { kind: 'gameEnd'; runs: number }
-  | { kind: 'tier'; level: number };
+  | { kind: 'tier'; level: number }
+  | { kind: 'welcome' }
+  | { kind: 'levelUp' }
+  | { kind: 'duelWin' };
 
 export type Palette = 'accent' | 'gold' | 'tier';
 
@@ -55,6 +58,11 @@ function strengthOf(event: EffectEvent): Strength {
       return event.runs >= BIG_GAME_RUNS ? 'big' : event.runs >= 1 ? 'medium' : 'none';
     case 'tier':
       return event.level >= 4 ? 'big' : event.level === 3 ? 'medium' : 'small';
+    case 'welcome':
+    case 'duelWin':
+      return 'medium';
+    case 'levelUp':
+      return 'big';
   }
 }
 
@@ -76,6 +84,8 @@ function stepsOf(event: EffectEvent, strength: Strength): EffectStep[] {
         step('firework', 900, 0.5, 0.22, 70, palette),
         step('confetti', 1100, 0.5, 0, 90, palette),
       ];
+    case 'levelUp':
+      return [step('firework', 300, 0.3, 0.26, 60, 'gold'), step('firework', 550, 0.7, 0.24, 60, 'gold'), step('confetti', 800, 0.5, 0.3, 60, 'gold')];
     case 'tier': {
       const shots = event.level >= 5 ? [0.25, 0.75, 0.5] : [0.3, 0.7];
       return [...shots.map((x, i) => step('firework', i * 220, x, 0.26, 60, palette)), step('confetti', shots.length * 220, 0.5, 0.3, 70, palette)];

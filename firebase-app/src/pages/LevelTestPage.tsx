@@ -16,6 +16,7 @@ import { LEVEL_TEST_SIZE, buildLevelTest, tierFor } from "@/lib/game/levelTest";
 import type { PlayedAtBat } from "@/lib/game/match";
 import { saveMatch } from "@/lib/game/persist";
 import { celebrate, resetGameEffects } from "@/lib/effects/celebrate";
+import { playSound } from "@/lib/sound/sound";
 import { dataErrorMessage } from "@/lib/firebase/errors";
 import { tierStyle, tierTheme } from "@/lib/theme/tiers";
 
@@ -245,6 +246,8 @@ function TierCard({
   // 카드가 뒤집힌 뒤(0.25초 기다림 + 0.7초 회전) 등급만큼 축하 — Lv.1~2 반짝이, Lv.3 꽃가루, Lv.4~5 폭죽
   useEffect(() => {
     resetGameEffects();
+    // 북 굴림 → "짠"이 카드가 뒤집히는 박자(0.25초 기다림 + 0.7초)에 맞는다
+    playSound("tierReveal");
     const timer = window.setTimeout(
       () =>
         celebrate(

@@ -38,6 +38,7 @@ export function BaseDiamond({ bases, size = 72 }: { bases: number; size?: number
         {spots.map((spot) => (
           <rect
             key={spot.bit}
+            className="base-spot"
             x={spot.cx - 4}
             y={spot.cy - 4}
             width="8"
