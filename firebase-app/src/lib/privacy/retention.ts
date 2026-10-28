@@ -15,5 +15,8 @@ export const ROOM_RETENTION_HOURS = 24;
 /** 월간 등수 문서(닉네임·최애 구단·포인트) — 그 달이 끝나고 이만큼 지나면 지운다(ops/monthly.mjs) */
 export const LEADERBOARD_MONTHS_KEPT = 12;
 
+/** 오늘의 공식전 문제·답(선택·답한 시각)과 정답 — 공식전 날부터 이만큼 지나면 지운다(ops/official.mjs) */
+export const OFFICIAL_RETENTION_DAYS = 40;
+
 /** 기기에 기억하는 "최근 본 문항" 수(src/lib/game/persist.ts) */
 export const SEEN_QUESTIONS_KEPT = 150;

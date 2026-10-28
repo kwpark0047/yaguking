@@ -1,0 +1,3 @@
+category_slug,difficulty,record_as_of,era_year,season_scope,stem,explanation,option_a,option_b,option_c,option_d,correct_label,source_name,source_url,verified_at,rights_note
+rules,easy,2026-11-01,,,(예시 — 실제 풀에 쓰지 마세요) 한 이닝에 공격 팀이 아웃되면 공수가 바뀌는 아웃 수는?,아웃 3개면 공수가 바뀐다.,1개,2개,3개,4개,C,KBO 공식 야구 규칙,,2026-11-01,운영자가 직접 쓴 문항
+player-stats,normal,2026-11-01,2026,2026 시즌,(예시 — 실제 풀에 쓰지 마세요) 문항 본문은 공개 보도를 사람이 확인해 직접 씁니다. 정답 열(correct_label)은 A~D 중 하나,해설은 선택. 출처 이름·주소·확인일은 꼭 적는다.,보기 A,보기 B,보기 C,보기 D,A,출처 이름,https://example.com,2026-11-01,공개 보도를 사람이 확인해 쓴 문항. 자동 수집 아님

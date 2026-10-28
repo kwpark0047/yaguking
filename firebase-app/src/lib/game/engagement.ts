@@ -64,6 +64,8 @@ function entryOf(value: Record<string, unknown>): LeaderboardEntry {
     team: typeof value.team === 'string' ? value.team : null,
     points: Number(value.points ?? 0),
     days: Number(value.days ?? 0),
+    official: Number(value.official ?? 0),
+    rounds: Number(value.rounds ?? 0),
     titles: titlesOf(value.titles),
   };
 }
@@ -110,4 +112,21 @@ export async function loadAward(uid: string, month: string): Promise<{ rank: num
 export async function saveRankingHidden(uid: string, hidden: boolean): Promise<void> {
   await updateDoc(doc(firestore(), 'users', uid), { rankingHidden: hidden, updatedAt: serverTimestamp() });
   countWrites('saveRankingHidden', 1);
+}
+
+/** 이번 달 공식 점수(날짜별) — 운영자 PC가 판정해 쓴다. 읽기 1번(앱을 쓰는 동안 기억) */
+const officialCache = new Map<string, Promise<Record<string, number>>>();
+export function loadOfficialMonth(uid: string, month: string): Promise<Record<string, number>> {
+  const key = `${uid}/${month}`;
+  const cached = officialCache.get(key);
+  if (cached) return cached;
+  const pending = getDoc(doc(firestore(), 'users', uid, 'officialMonth', month)).then((snapshot) => {
+    countReads('loadOfficialMonth', 1);
+    const days: Record<string, number> = {};
+    for (const [day, points] of Object.entries((snapshot.get('days') ?? {}) as Record<string, unknown>)) days[day] = Number(points);
+    return days;
+  });
+  officialCache.set(key, pending);
+  pending.catch(() => officialCache.delete(key));
+  return pending;
 }

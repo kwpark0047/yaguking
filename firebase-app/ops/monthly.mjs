@@ -1,7 +1,8 @@
 /**
  * 월간 등수(docs/engagement-plan.md §4) — 운영자 PC 매일 작업(ops/run-cleanup.cmd → admin-cli monthly).
  *
- * - 이번 달 출석 문서(users/{uid}/attendance/{YYYYMM})로 출석 포인트를 다시 계산해 leaderboards/{YYYYMM} **문서 하나**에 쓴다
+ * - 이번 달 출석 문서(users/{uid}/attendance/{YYYYMM})로 출석 포인트를 다시 계산하고, 오늘의 공식전 점수
+ *   (users/{uid}/officialMonth/{YYYYMM} — ops/official.mjs가 판정해 쓴 값)를 더해 leaderboards/{YYYYMM} **문서 하나**에 쓴다
  *   (상위 50·참여 인원·포인트별 인원 분포). 화면은 이 문서 하나만 읽는다. uid는 leaderboardKeys/{YYYYMM}(규칙상 아무도 못 읽음)에만
  * - "어제까지" 센다(오늘 찍은 도장은 다음 날 반영). 다음 달 첫 실행이 지난달을 **확정**하고 칭호(users/{uid}/awards/{YYYYMM})를 준다
  * - 확정된 달은 다시 쓰지 않는다. 다만 탈퇴한 회원은 매일 지운다("탈퇴한 선수"). 12달이 지난 등수는 지운다
@@ -88,6 +89,18 @@ export function rankRows(rows) {
   });
 }
 
+/** 그 달 공식 점수 합 — official.ts officialSum과 같다 */
+export function officialSum(days, month, through = 31) {
+  let points = 0;
+  let rounds = 0;
+  for (const [day, value] of Object.entries(days ?? {})) {
+    if (day.slice(0, 6) !== month || Number(day.slice(6, 8)) > through || !Number.isFinite(value)) continue;
+    points += value;
+    rounds += 1;
+  }
+  return { points, rounds };
+}
+
 export function histogramOf(ranked) {
   const histogram = {};
   for (const row of ranked) histogram[String(row.points)] = (histogram[String(row.points)] ?? 0) + 1;
@@ -111,20 +124,31 @@ async function loadMembers(db) {
   return { members, uids: new Set(snapshot.docs.map((item) => item.id)) };
 }
 
-/** 한 달 계산(쓰지 않음) */
+/** 한 달 계산(쓰지 않음) — 출석 포인트 + 공식 점수 */
 async function computeMonth(db, members, month, through, start) {
   const uids = [...members.keys()];
   const rows = [];
-  for (let i = 0; i < uids.length; i += 300) {
-    const refs = uids.slice(i, i + 300).map((uid) => db.doc(`users/${uid}/attendance/${month}`));
+  for (let i = 0; i < uids.length; i += 150) {
+    const chunk = uids.slice(i, i + 150);
+    const refs = chunk.flatMap((uid) => [db.doc(`users/${uid}/attendance/${month}`), db.doc(`users/${uid}/officialMonth/${month}`)]);
     const snapshots = refs.length > 0 ? await db.getAll(...refs) : [];
-    for (const snapshot of snapshots) {
-      if (!snapshot.exists) continue;
-      const uid = snapshot.ref.parent.parent.id;
-      const days = Array.isArray(snapshot.get('days')) ? snapshot.get('days') : [];
-      const result = attendancePoints(days, month, through, start);
-      rows.push({ uid, ...members.get(uid), ...result });
-    }
+    chunk.forEach((uid, index) => {
+      const attendanceDoc = snapshots[index * 2];
+      const officialDoc = snapshots[index * 2 + 1];
+      if (!attendanceDoc.exists && !officialDoc.exists) return;
+      const days = Array.isArray(attendanceDoc.get('days')) ? attendanceDoc.get('days') : [];
+      const attendance = attendancePoints(days, month, through, start);
+      const official = officialSum(officialDoc.exists ? officialDoc.get('days') : {}, month, through);
+      rows.push({
+        uid,
+        ...members.get(uid),
+        ...attendance,
+        attendance: attendance.points,
+        official: official.points,
+        rounds: official.rounds,
+        points: attendance.points + official.points,
+      });
+    });
   }
   return rankRows(rows);
 }
@@ -135,6 +159,8 @@ const publicEntry = (row, titles) => ({
   team: row.hidden ? null : row.team,
   points: row.points,
   days: row.days,
+  official: row.official,
+  rounds: row.rounds,
   titles,
 });
 
@@ -164,7 +190,7 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
         const titles = titlesFor(row.rank, row.perfect);
         if (titles.length === 0) continue;
         lastTitles.set(row.uid, titles);
-        batch.set(db.doc(`users/${row.uid}/awards/${last}`), { month: last, rank: row.rank, points: row.points, days: row.days, titles, at: FieldValue.serverTimestamp() });
+        batch.set(db.doc(`users/${row.uid}/awards/${last}`), { month: last, rank: row.rank, points: row.points, days: row.days, official: row.official, titles, at: FieldValue.serverTimestamp() });
         awards += 1;
       }
       const top = ranked.slice(0, RANKING_TOP);

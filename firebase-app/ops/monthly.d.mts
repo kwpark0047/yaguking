@@ -20,6 +20,7 @@ export function attendancePoints(
 ): { points: number; days: number; weeks: number; perfect: boolean };
 export function titlesFor(rank: number, perfect: boolean): string[];
 export function rankRows<T extends { points: number; days: number; nickname: string }>(rows: T[]): (T & { rank: number })[];
+export function officialSum(days: Record<string, number>, month: string, through?: number): { points: number; rounds: number };
 export function histogramOf(ranked: readonly { points: number }[]): Record<string, number>;
 export function runMonthly(options: { db: Firestore; now?: number; start?: string }): Promise<{
   month: string;

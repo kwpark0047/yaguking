@@ -1,6 +1,7 @@
 import { deleteUser, type User } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -10,6 +11,8 @@ import {
 } from 'firebase/firestore';
 import { nicknameKey } from '@/lib/data/keys';
 import { firestore } from '@/lib/firebase/db';
+import { roundIdOf } from '@/lib/game/official';
+import { OFFICIAL_RETENTION_DAYS } from '@/lib/privacy/retention';
 import { countReads, countWrites } from '@/lib/firebase/meter';
 
 export interface ProfileInput {
@@ -111,16 +114,28 @@ export async function deleteAccountAndData(user: User, nickname: string | null):
 /**
  * 한 사람의 Firestore 기록을 모두 지운다 — 경기·오답노트·누적·이번 달 연습·출석·칭호·비회원 카운터·닉네임 예약·프로필.
  * 월간 등수 문서에 남은 닉네임은 다음 날 새벽 운영자 PC 작업이 지운다(ops/monthly.mjs).
+ * 오늘의 공식전 답(officialRounds/{날짜}/attempts/{uid})은 공식 점수가 있는 날과 어제 것을 지운다. 오늘 공식전은 열려 있어
+ * 규칙이 지우기를 막는다(지우고 다시 풀기 금지) — 새벽 판정이 탈퇴한 회원의 답을 지운다(ops/official.mjs).
  * 계정 삭제(설정)와 만 14세 미만 응답이 함께 쓴다. 비회원으로 쌓은 기록도 같은 uid 아래에 있어
  * 함께 지워진다(가입은 계정 연결이라 uid가 그대로다). 하위 문서를 읽는 만큼 읽기·삭제가 든다.
  */
 export async function deleteUserRecords(uid: string, nickname: string | null): Promise<void> {
   const db = firestore();
   const refs: DocumentReference[] = [];
-  for (const name of ['games', 'wrongNotes', 'summary', 'monthly', 'attendance', 'awards', 'daily']) {
+  const officialDays = new Set<string>([roundIdOf(Date.now() - 86_400_000)]);
+  const keepFrom = roundIdOf(Date.now() - OFFICIAL_RETENTION_DAYS * 86_400_000);
+  for (const name of ['games', 'wrongNotes', 'summary', 'monthly', 'attendance', 'awards', 'officialMonth', 'daily']) {
     const snapshot = await getDocs(collection(db, 'users', uid, name));
     countReads('deleteUserRecords', Math.max(1, snapshot.size));
     refs.push(...snapshot.docs.map((item) => item.ref));
+    if (name === 'officialMonth') {
+      for (const item of snapshot.docs) for (const day of Object.keys(item.get('days') ?? {})) if (day >= keepFrom) officialDays.add(day);
+    }
+  }
+  // 공식전 답 — 문서마다 규칙이 공식전을 확인하므로 하나씩(묶음의 규칙 확인 한도를 넘지 않게)
+  for (const day of officialDays) {
+    await deleteDoc(doc(db, 'officialRounds', day, 'attempts', uid));
+    countWrites('deleteUserRecords', 1);
   }
   if (nickname) refs.push(doc(db, 'nicknames', nicknameKey(nickname)));
   refs.push(doc(db, 'users', uid));

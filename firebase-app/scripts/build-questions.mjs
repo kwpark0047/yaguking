@@ -13,7 +13,7 @@
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const DATA_DIR = fileURLToPath(new URL('../../data/', import.meta.url));
 const OUT = fileURLToPath(new URL('../src/content/questions.generated.json', import.meta.url));
@@ -151,4 +151,5 @@ function build() {
   console.log(`${questions.length}문항 → src/content/questions.generated.json (${files.length}개 CSV)`);
 }
 
-build();
+// 직접 실행할 때만 만든다 — 공식전 문항 풀(ops/official.mjs)이 파서·ID·섞기를 가져다 쓴다
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) build();

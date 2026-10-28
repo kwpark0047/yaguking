@@ -28,7 +28,8 @@ export function QuestionView({
   onAnswer,
   limitMs = LIMIT_MS,
 }: {
-  question: Question;
+  /** 화면에 보이는 부분만 — 정답은 받지 않는다(오늘의 공식전 문제에는 정답이 없다) */
+  question: Pick<Question, 'id' | 'category' | 'difficulty' | 'recordAsOf' | 'seasonScope' | 'stem' | 'options'>;
   /** choice=null이면 시간 초과 */
   onAnswer: (choice: OptionLabel | null, elapsedMs: number) => void;
   /** 제한 시간 — 찬스 이벤트 보너스(초성 정답)면 3초 길다 */

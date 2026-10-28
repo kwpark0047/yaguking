@@ -1,6 +1,12 @@
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP } from '@/lib/game/attendance';
-import { GUEST_RETENTION_DAYS, LEADERBOARD_MONTHS_KEPT, ROOM_RETENTION_HOURS, SEEN_QUESTIONS_KEPT } from '@/lib/privacy/retention';
+import {
+  GUEST_RETENTION_DAYS,
+  LEADERBOARD_MONTHS_KEPT,
+  OFFICIAL_RETENTION_DAYS,
+  ROOM_RETENTION_HOURS,
+  SEEN_QUESTIONS_KEPT,
+} from '@/lib/privacy/retention';
 
 /**
  * 개인정보처리방침 — **Firebase판 시행본**(2026-10-27 시행, 16 문서 §4 "15" 줄).
@@ -296,7 +302,7 @@ function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
   return sections.map((section) => {
     switch (section.id) {
       case 'purpose':
-        return { ...section, items: [...(section.items ?? []), '매일 출석과 월간 등수 운영 — 출석 포인트 계산, 등수·칭호 표시'] };
+        return { ...section, items: [...(section.items ?? []), '매일 출석·오늘의 공식전과 월간 등수 운영 — 출석 포인트·공식전 채점, 등수·칭호 표시'] };
       case 'items':
         return {
           ...section,
@@ -306,8 +312,8 @@ function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
               ...section.table!.rows,
               [
                 '회원 활동(출석·등수)',
-                '출석한 날짜, 이번 달 연습 점수·경기 수, 월간 출석 포인트·순위·칭호, 등수에서 닉네임 숨기기 설정',
-                '출석 도장을 찍거나 경기를 하면 자동 생성, 순위·칭호는 운영자가 매일 계산',
+                '출석한 날짜, 오늘의 공식전 답(고른 보기·답한 시각)과 날짜별 공식 점수, 이번 달 연습 점수·경기 수, 월간 포인트·순위·칭호, 등수에서 닉네임 숨기기 설정',
+                '출석 도장을 찍거나 공식전·경기를 하면 자동 생성, 공식 점수·순위·칭호는 운영자가 매일 계산',
               ],
             ],
           },
@@ -317,11 +323,15 @@ function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
           ...section,
           table: {
             ...section.table!,
-            rows: [...section.table!.rows, ['월간 등수(닉네임·최애 구단·포인트·칭호)', `그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월. 그 뒤 정리 작업으로 삭제`]],
+            rows: [
+              ...section.table!.rows,
+              ['월간 등수(닉네임·최애 구단·포인트·칭호)', `그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월. 그 뒤 정리 작업으로 삭제`],
+              ['오늘의 공식전 답(고른 보기·답한 시각)', `공식전 날부터 ${OFFICIAL_RETENTION_DAYS}일. 그 뒤 정리 작업으로 삭제`],
+            ],
           },
           paragraphs: [
             ...(section.paragraphs ?? []),
-            '회원 탈퇴 시 출석 기록·이번 달 연습 점수·칭호도 함께 삭제되며, 등수에 남은 닉네임은 다음 날 정리 작업 때 "탈퇴한 선수"로 바꿉니다.',
+            '회원 탈퇴 시 출석 기록·공식전 답과 점수·이번 달 연습 점수·칭호도 함께 삭제되며(탈퇴한 날 진행 중인 공식전의 답은 다음 날 채점 때 삭제), 등수에 남은 닉네임은 다음 날 정리 작업 때 "탈퇴한 선수"로 바꿉니다.',
           ],
         };
       case 'public':
@@ -357,7 +367,8 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
     effective: ENGAGEMENT_PRIVACY_EFFECTIVE,
     sections: amendEngagement(amend(PRIVACY_SECTIONS)),
     changes: [
-      '매일 출석과 월간 등수를 시작합니다. 회원이 출석 도장을 찍은 날짜와 이번 달 연습 점수를 기록합니다.',
+      '매일 출석·오늘의 공식전과 월간 등수를 시작합니다. 회원이 출석 도장을 찍은 날짜, 공식전 답(고른 보기·답한 시각)과 점수, 이번 달 연습 점수를 기록합니다.',
+      `오늘의 공식전 답은 공식전 날부터 ${OFFICIAL_RETENTION_DAYS}일 보관하고, 운영자가 채점해 점수를 월간 등수에 더합니다.`,
       `로그인한 이용자에게 월간 등수 상위 ${RANKING_TOP}명의 닉네임·최애 구단(1위)·출석 일수·포인트·칭호가 보입니다. 설정에서 닉네임을 숨길 수 있습니다.`,
       `월간 등수는 그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월 보관하고, 탈퇴하면 다음 날 등수에서 닉네임을 지웁니다.`,
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',

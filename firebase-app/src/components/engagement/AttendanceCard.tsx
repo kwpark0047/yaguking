@@ -16,7 +16,8 @@ import {
   streakOf,
   type Leaderboard,
 } from '@/lib/game/attendance';
-import { loadAttendance, loadLeaderboard, stampToday } from '@/lib/game/engagement';
+import { loadAttendance, loadLeaderboard, loadOfficialMonth, stampToday } from '@/lib/game/engagement';
+import { officialSum } from '@/lib/game/official';
 import { playSound } from '@/lib/sound/sound';
 import { AttendanceCalendar } from './AttendanceCalendar';
 
@@ -33,6 +34,7 @@ export default function AttendanceCard({ uid }: { uid: string }) {
   const [days, setDays] = useState<number[] | null>(null);
   const [previous, setPrevious] = useState<number[] | null>(null);
   const [board, setBoard] = useState<Leaderboard | null>(null);
+  const [official, setOfficial] = useState<Record<string, number>>({});
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState(false);
   const [stamped, setStamped] = useState(false);
@@ -42,12 +44,15 @@ export default function AttendanceCard({ uid }: { uid: string }) {
     void (async () => {
       try {
         const [current, leaderboard] = await Promise.all([loadAttendance(uid, month), loadLeaderboard(month)]);
+        // 공식전 점수는 등수가 있을 때만(내 순위 계산) 읽는다
+        const scores = leaderboard && leaderboard.participants > 0 ? await loadOfficialMonth(uid, month) : {};
         // 1일부터 이어져 있을 때만 지난달을 읽는다(달을 넘는 연속)
         const before = needsPrevious(current, today) ? await loadAttendance(uid, previousMonth(month)) : null;
         if (cancelled) return;
         setDays(current);
         setPrevious(before);
         setBoard(leaderboard);
+        setOfficial(scores);
       } catch {
         if (!cancelled) setFailed(true);
       }
@@ -80,7 +85,10 @@ export default function AttendanceCard({ uid }: { uid: string }) {
   const done = days?.includes(today) ?? false;
   const streak = days ? streakOf(days, today, previous, daysInMonth(previousMonth(month))) : 0;
   const milestone = stamped && (STREAK_MILESTONES as readonly number[]).includes(streak);
-  const mine = days && board ? rankFromHistogram(attendancePoints(days, month, board.through, engagementStart()).points, board.histogram) : null;
+  const mine =
+    days && board
+      ? rankFromHistogram(attendancePoints(days, month, board.through, engagementStart()).points + officialSum(official, month, board.through).points, board.histogram)
+      : null;
 
   return (
     <section aria-labelledby="attendance-title" className="sticker flex flex-col gap-3 p-4">
@@ -126,7 +134,7 @@ export default function AttendanceCard({ uid }: { uid: string }) {
             ? `이번 달 ${mine.rank}위 / ${mine.participants}명 (어제까지)`
             : board && board.participants > 0
               ? `이번 달 참여 ${board.participants}명 — 오늘 찍은 도장은 내일 등수에 들어가요`
-              : '등수는 매일 새벽에 어제까지의 출석으로 매겨요'}
+              : '등수는 매일 새벽에 어제까지의 출석·공식전으로 매겨요'}
         </p>
         <Link to="/ranking" className="flex min-h-11 items-center font-semibold underline">
           월간 등수 보기

@@ -280,6 +280,12 @@ service cloud.firestore {
         allow delete: if isSelf(uid);
       }
 
+      // ── 공식 점수(오늘의 공식전 판정 결과, 날짜별) — 운영자 PC만 쓴다. 본인은 읽고, 탈퇴할 때 지운다 ──
+      match /officialMonth/{month} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow delete: if isSelf(uid);
+      }
+
       // ── 오답노트 — 1·3·7·14일 복습 ───────────────────────────────────
       match /wrongNotes/{questionId} {
         allow read: if isSelf(uid) || isAdmin();
@@ -417,6 +423,63 @@ service cloud.firestore {
     }
 
     // 관리자 행동 기록(개인정보 접속기록, 2년 보관 — 법정 1년 이상) — 만들기만, 작성자·서버 시각 강제
+    // ── 오늘의 공식전(docs/engagement-plan.md §5) — 정답은 기기에 없고 운영자 PC가 판정한다 ──────────
+    // 설계·가정 확인: docs/official-xp-rp.md §4, docs/prototypes/official.rules. 공식전(roundId = KST 날짜 YYYYMMDD)과
+    // 문제는 운영자 PC(ops/official.mjs)만 만든다. 정답(officialKeys)은 규칙이 없어 아무도 못 읽는다.
+    function roundPath(roundId) {
+      return /databases/$(database)/documents/officialRounds/$(roundId);
+    }
+    function attemptPath(roundId) {
+      return /databases/$(database)/documents/officialRounds/$(roundId)/attempts/$(request.auth.uid);
+    }
+
+    match /officialRounds/{roundId} {
+      allow get: if isMember();
+
+      // 문제 하나씩 — 열려 있는 동안은 내 시도에서 앞 문제까지 답했을 때만(다음 문제 미리 보기 금지).
+      // 닫힌 뒤에는 복습용으로 회원 누구나(정답은 판정 뒤 공식전 문서의 revealed에 붙는다)
+      match /questions/{index} {
+        allow get: if isMember() && (
+          request.time >= get(roundPath(roundId)).data.closesAt
+          || (exists(attemptPath(roundId)) && get(attemptPath(roundId)).data.answers.size() >= int(index))
+        );
+      }
+
+      // 시도 — 기기가 쓰는 유일한 공식 문서. 문서 ID = 사람 ID → 하루 한 번
+      match /attempts/{uid} {
+        allow get: if isSelf(uid);
+
+        allow create: if isSelf(uid) && ageConfirmed()
+          && request.resource.data.keys().hasOnly(['startedAt', 'total', 'answers'])
+          && request.resource.data.startedAt == request.time
+          && request.time >= get(roundPath(roundId)).data.opensAt
+          && request.time < get(roundPath(roundId)).data.closesAt
+          && request.resource.data.total == get(roundPath(roundId)).data.total
+          && request.resource.data.answers == {};
+
+        // 답 하나: 키 = 지금까지 답한 수, 시각 = 서버 시각, 기한(문항당 16초 + 1초) 안, 다른 필드는 그대로
+        allow update: if isSelf(uid)
+          && request.time <= resource.data.startedAt + duration.value(resource.data.total * 16 + 1, 's')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers'])
+          && resource.data.answers.size() < resource.data.total
+          && request.resource.data.answers.diff(resource.data.answers).addedKeys()
+               == [string(resource.data.answers.size())].toSet()
+          && request.resource.data.answers.diff(resource.data.answers).changedKeys().size() == 0
+          && request.resource.data.answers.diff(resource.data.answers).removedKeys().size() == 0
+          && validAnswer(request.resource.data.answers[string(resource.data.answers.size())]);
+
+        // 탈퇴할 때 지난 공식전의 내 답을 지운다 — 닫힌 공식전만(열려 있는 동안 지우고 다시 풀기 금지)
+        allow delete: if isSelf(uid)
+          && (!exists(roundPath(roundId)) || request.time >= get(roundPath(roundId)).data.closesAt);
+
+        function validAnswer(answer) {
+          return answer.keys().hasOnly(['choice', 'at'])
+            && answer.at == request.time
+            && (answer.choice == null || answer.choice in ['A', 'B', 'C', 'D']);
+        }
+      }
+    }
+
     // ── 월간 등수 — 운영자 PC 매일 작업(ops/monthly.mjs)만 쓴다. 로그인한 누구나 읽는다 ──
     // 닉네임·최애 구단·포인트만(숨기기를 고른 회원은 "익명 선수"). uid는 leaderboardKeys(규칙 없음 = 아무도 못 읽음)에만.
     match /leaderboards/{month} {

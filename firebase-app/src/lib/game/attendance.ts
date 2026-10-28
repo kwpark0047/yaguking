@@ -156,6 +156,9 @@ export interface LeaderboardEntry {
   team: string | null;
   points: number;
   days: number;
+  /** 오늘의 공식전 점수 합·횟수(2차) */
+  official: number;
+  rounds: number;
   /** 지난달 칭호(이번 달 등수) 또는 이 달 칭호(확정된 달) */
   titles: Title[];
 }

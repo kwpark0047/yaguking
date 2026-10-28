@@ -5,6 +5,7 @@
  *   node ops/admin-cli.mjs sync --project=<id>                                   계정 사본·계정 통계 동기화
  *   node ops/admin-cli.mjs tasks --project=<id>                                  대기 중인 관리자 작업 처리
  *   node ops/admin-cli.mjs daily --project=<id> [--date=YYYY-MM-DD]              하루 통계 요약(기본: 어제, 한국 시간)
+ *   node ops/admin-cli.mjs official --project=<id> [--pool=<CSV>]                 오늘의 공식전 판정·출제·오래된 것 지우기(풀이 없으면 판정만)
  *   node ops/admin-cli.mjs monthly --project=<id>                                월간 등수 갱신·지난달 확정(docs/engagement-plan.md)
  *
  * 인증은 Application Default Credentials(정리 작업과 같음). `demo-` 프로젝트는 에뮬레이터에서만.
@@ -14,14 +15,16 @@ import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { buildDailyStats, processAdminTasks, setAdmin, syncAccounts } from './admin.mjs';
+import { existsSync, readFileSync } from 'node:fs';
 import { runMonthly } from './monthly.mjs';
+import { runOfficial } from './official.mjs';
 
 const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectId = arg('project');
 
-if (!['set-admin', 'sync', 'tasks', 'daily', 'monthly'].includes(command) || !projectId) {
-  console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|monthly> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
+if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly'].includes(command) || !projectId) {
+  console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
   process.exit(1);
 }
 const onEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST);
@@ -54,6 +57,15 @@ if (command === 'set-admin') {
     process.exit(1);
   }
   console.log(JSON.stringify(await buildDailyStats({ db, day })));
+} else if (command === 'official') {
+  // 문항 풀은 운영자 PC에만(정답이 들어 있다 — .gitignore). 출력에는 개수·날짜만(문항·정답은 찍지 않는다)
+  const pool = arg('pool');
+  if (pool && !existsSync(pool)) console.error(`문항 풀이 없습니다: ${pool} — 판정만 합니다.`);
+  const poolText = pool && existsSync(pool) ? readFileSync(pool, 'utf8') : null;
+  const report = await runOfficial({ db, poolText });
+  console.log(JSON.stringify({ ...report, problems: report.problems.length }));
+  for (const problem of report.problems) console.error(`문항 풀: ${problem}`);
+  if (report.short.length > 0) console.error(`문항이 모자라 공식전을 만들지 못한 날: ${report.short.join(', ')}`);
 } else if (command === 'monthly') {
   console.log(JSON.stringify(await runMonthly({ db })));
 } else if (command === 'sync') {

@@ -14,3 +14,7 @@ emulator-data/
 
 # 정리 작업 실행 기록(운영자 PC — 개수만, 사용자 ID 없음)
 ops/logs/
+
+# 오늘의 공식전 문항 풀 — **정답이 들어 있다.** 운영자 PC에만 둔다(공개 저장소에 올리면 공식전이 무너진다)
+ops/official/*.csv
+!ops/official/pool.example.csv

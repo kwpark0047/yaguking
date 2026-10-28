@@ -24,7 +24,8 @@ import {
   type LeaderboardEntry,
   type Title,
 } from '@/lib/game/attendance';
-import { loadAttendance, loadAward, loadLeaderboard, loadMonthlyPractice } from '@/lib/game/engagement';
+import { loadAttendance, loadAward, loadLeaderboard, loadMonthlyPractice, loadOfficialMonth } from '@/lib/game/engagement';
+import { OFFICIAL_TOTAL, officialSum } from '@/lib/game/official';
 
 const teamName = (slug: string | null) => TEAMS.find((team) => team.slug === slug)?.shortName ?? '';
 const titleColor: Record<Title, string> = { king: 'var(--hr)', allstar: 'var(--accent)', hall: 'var(--on-base)', perfect: 'var(--ink-2)' };
@@ -54,7 +55,9 @@ function Standings({ entries, label }: { entries: readonly LeaderboardEntry[]; l
           </span>
           <span className="shrink-0 text-right">
             <span className="block font-semibold">{entry.points}점</span>
-            <span className="block text-xs text-ink-2">출석 {entry.days}일</span>
+            <span className="block text-xs text-ink-2">
+              출석 {entry.days}일{entry.rounds > 0 ? ` · 공식전 ${entry.rounds}회` : ''}
+            </span>
           </span>
         </li>
       ))}
@@ -76,7 +79,12 @@ export function RankingPage() {
   const member = !!user && !isGuest && profile.status === 'ready' && profile.ageConfirmed;
   const [board, setBoard] = useState<Leaderboard | null | undefined>(undefined);
   const [lastBoard, setLastBoard] = useState<Leaderboard | null>(null);
-  const [mine, setMine] = useState<{ days: number[]; practice: { games: number; xp: number }; award: { rank: number; titles: Title[] } | null } | null>(null);
+  const [mine, setMine] = useState<{
+    days: number[];
+    official: Record<string, number>;
+    practice: { games: number; xp: number };
+    award: { rank: number; titles: Title[] } | null;
+  } | null>(null);
   const [failed, setFailed] = useState(false);
   const uid = user?.uid ?? null;
 
@@ -87,12 +95,17 @@ export function RankingPage() {
       try {
         const [current, previous] = await Promise.all([loadLeaderboard(month), loadLeaderboard(last)]);
         const personal = member
-          ? await Promise.all([loadAttendance(uid, month), loadMonthlyPractice(uid, month), previous?.final ? loadAward(uid, last) : Promise.resolve(null)])
+          ? await Promise.all([
+              loadAttendance(uid, month),
+              loadMonthlyPractice(uid, month),
+              previous?.final ? loadAward(uid, last) : Promise.resolve(null),
+              loadOfficialMonth(uid, month),
+            ])
           : null;
         if (cancelled) return;
         setBoard(current);
         setLastBoard(previous?.final ? previous : null);
-        if (personal) setMine({ days: personal[0], practice: personal[1], award: personal[2] });
+        if (personal) setMine({ days: personal[0], practice: personal[1], award: personal[2], official: personal[3] });
       } catch {
         if (!cancelled) setFailed(true);
       }
@@ -104,7 +117,11 @@ export function RankingPage() {
 
   const start = engagementStart();
   const myPoints = mine ? attendancePoints(mine.days, month, today, start) : null;
-  const myRank = mine && board ? rankFromHistogram(attendancePoints(mine.days, month, board.through, start).points, board.histogram) : null;
+  const myOfficial = mine ? officialSum(mine.official, month) : null;
+  const myRank =
+    mine && board
+      ? rankFromHistogram(attendancePoints(mine.days, month, board.through, start).points + officialSum(mine.official, month, board.through).points, board.histogram)
+      : null;
   const goals = mine ? monthGoals(mine.practice.xp, mine.practice.games) : null;
 
   return (
@@ -141,7 +158,7 @@ export function RankingPage() {
             {board !== undefined && (
               <p className="text-sm text-ink-2 break-keep">
                 {board && board.through > 0
-                  ? `${Number(month.slice(4, 6))}월 ${board.through}일까지의 출석 · 참여 ${board.participants}명 · 매일 새벽 갱신`
+                  ? `${Number(month.slice(4, 6))}월 ${board.through}일까지의 출석·공식전 · 참여 ${board.participants}명 · 매일 새벽 갱신`
                   : '아직 셀 날이 없어요. 등수는 매일 새벽에 어제까지의 출석으로 매겨요.'}
               </p>
             )}
@@ -162,6 +179,14 @@ export function RankingPage() {
                 출석 {myPoints.days}일 · 출석 포인트 <strong>{myPoints.points}점</strong>
                 {myPoints.weeks > 0 && ` (7일 연속 보너스 ${myPoints.weeks}번)`}
               </p>
+              {myOfficial && (
+                <p className="text-sm">
+                  오늘의 공식전 {myOfficial.rounds}회 · 공식 점수 <strong>{myOfficial.points}점</strong>{' '}
+                  <Link to="/official" className="underline">
+                    공식전 하러 가기
+                  </Link>
+                </p>
+              )}
               <AttendanceCalendar month={month} days={mine.days} today={today} />
               <div className="flex flex-col gap-1 text-sm">
                 <p>
@@ -212,7 +237,7 @@ export function RankingPage() {
               포인트와 칭호
             </h2>
             <p>
-              출석 하루 {POINTS.day}점, 그 달 안에서 {STREAK_WEEK}일 연속마다 +{POINTS.week}점, 개근 +{POINTS.perfect}점. 같은 포인트는 같은 순위예요.
+              포인트 = 출석 + 오늘의 공식전. 출석 하루 {POINTS.day}점, 그 달 안에서 {STREAK_WEEK}일 연속마다 +{POINTS.week}점, 개근 +{POINTS.perfect}점. 공식전은 하루 {OFFICIAL_TOTAL}문제를 새벽에 채점한 점수예요. 같은 포인트는 같은 순위예요.
             </p>
             <p>
               매달 1일 새벽에 지난달 등수를 확정해요. 1위 {TITLE_LABEL.king}, 2~3위 {TITLE_LABEL.allstar}, 4~10위 {TITLE_LABEL.hall}, 개근하면 {TITLE_LABEL.perfect}.

@@ -58,6 +58,11 @@ export function HomePage() {
                   레벨 테스트로 처음 등급 정하기
                 </Link>
               )}
+              {member && open && (
+                <Link to="/official" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                  오늘의 공식전 (5문제)
+                </Link>
+              )}
               {user && open && (
                 <Link to="/ranking" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
                   월간 등수
