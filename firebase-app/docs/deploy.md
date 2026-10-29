@@ -255,3 +255,23 @@ GitHub 결제 예산은 **$0** 그대로 두면 넘쳐도 청구되지 않고 �
 - 운영자 PC가 꺼진 날은 다음 실행이 따라잡는다: 채점은 닫힌 공식전 전부, 등수는 처음부터 다시 계산. 공식전은 그날 작업이 못 돌면
   다음 날 아침에야 만들어진다(내일 것을 하루 먼저 만들어 두므로 보통은 문제없음)
 - 등수·칭호·공식 점수는 운영자 PC 작업(Admin SDK)만 쓴다 — 기기가 계산한 연습 점수는 등수에 넣지 않는다
+
+## 11. 구글 로그인 "missing initial state" 오류 — 로그인 처리 주소를 앱 주소로(2026-10-29)
+
+증상: 구글 로그인 창에 "Unable to process request due to missing initial state…"가 뜨고 로그인이 안 된다.
+원인: 앱은 `yaguking.web.app`인데 로그인 처리(authDomain)는 `yaguking-bc25c.firebaseapp.com`이라 주소가 다르다. 사이트마다 저장소를 나누는
+브라우저(아이폰 사파리·최신 크롬·홈 화면에 추가한 앱·카카오톡 등 앱 안 브라우저)에서 로그인 상태를 넘겨받지 못한다.
+
+고친 것(코드): 이용자 앱 주소에서는 authDomain을 **앱 주소 그대로**(`src/lib/firebase/app.ts` `SAME_ORIGIN_AUTH_HOSTS`) — Hosting이 모든 사이트에
+`/__/auth/handler`를 제공한다. 홈 화면 앱(standalone)에서는 팝업 대신 **이동 방식**(`signInWithRedirect`·`linkWithRedirect`, 돌아오면
+`completeGoogleRedirect`). 미리보기 채널·관리자 사이트는 그대로.
+
+**배포 전에 운영자가 한 번(구글 클라우드 콘솔)** — 안 하면 구글이 "Access blocked: This app's request is invalid"로 막는다:
+
+1. https://console.cloud.google.com/apis/credentials?project=yaguking-bc25c
+2. OAuth 2.0 클라이언트 ID → **Web client (auto created by Google Service)**
+3. 승인된 JavaScript 원본에 `https://yaguking.web.app` 추가
+4. 승인된 리디렉션 URI에 `https://yaguking.web.app/__/auth/handler` 추가 → 저장(반영까지 몇 분~몇 시간)
+5. 확인: `node scripts/check-oauth-redirect.mjs` → `yaguking.web.app: ✓`가 나오면 앱 배포(`hosting:app`)
+
+(Firebase 콘솔 › Authentication › 설정 › 승인된 도메인에는 `yaguking.web.app`이 이미 있다 — 10-27 추가)

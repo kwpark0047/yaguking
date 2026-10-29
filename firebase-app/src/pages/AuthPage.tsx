@@ -1,7 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
-import { continueWithGoogle, signInWithEmail, signUpWithEmail } from '@/lib/auth/actions';
+import { completeGoogleRedirect, continueWithGoogle, signInWithEmail, signUpWithEmail } from '@/lib/auth/actions';
 import { authErrorMessage, emailProblem, passwordProblem, PASSWORD_MIN_LENGTH } from '@/lib/auth/messages';
 import { sanitizeReturnTo } from '@/lib/auth/returnTo';
 
@@ -49,6 +49,21 @@ export function AuthPage() {
       setPending(false);
     }
   }
+
+  // 홈 화면 앱의 구글 로그인(이동 방식)에서 돌아왔으면 결과를 받아 이어 간다
+  useEffect(() => {
+    let cancelled = false;
+    completeGoogleRedirect()
+      .then((result) => {
+        if (result && !cancelled) navigate(returnTo, { replace: true });
+      })
+      .catch((caught) => {
+        if (!cancelled) setError(authErrorMessage(caught));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, returnTo]);
 
   /** 칸 하나의 문제를 알리고 그 칸으로 초점을 옮긴다(무엇을 고칠지 바로 보이게) */
   function flag(field: Field, message: string) {

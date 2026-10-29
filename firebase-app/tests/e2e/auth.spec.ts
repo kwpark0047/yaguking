@@ -87,6 +87,33 @@ test('구글로 계속하기 — 에뮬레이터의 가짜 구글 창으로', as
   await passAgeCheckIfAsked(page);
 });
 
+test('홈 화면 앱(PWA)에서는 팝업 대신 이동 방식 — 구글에 다녀와서 로그인, 비회원이면 그 계정에 연결', async ({ browser }) => {
+  // 홈 화면 앱으로 연 것처럼(display-mode: standalone) — 팝업이 다른 창에서 열려 "missing initial state"가 나던 경우
+  const context = await browser.newContext();
+  await context.addInitScript(() => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query: string) =>
+      query.includes('display-mode: standalone') ? ({ ...original(query), matches: true, media: query } as MediaQueryList) : original(query);
+  });
+  const page = await context.newPage();
+  await becomeGuest(page);
+  const before = await accounts();
+  await page.goto('/auth?mode=signup');
+  let popups = 0;
+  context.on('page', () => (popups += 1));
+  await page.getByRole('button', { name: '구글로 계속하기' }).click();
+  // 같은 창이 에뮬레이터의 가짜 구글 화면으로 넘어간다
+  await page.waitForURL(/\/emulator\/auth\/handler/, { timeout: 15_000 });
+  await page.waitForLoadState('networkidle');
+  await page.getByText('Add new account').click();
+  await page.getByText('Auto-generate user information').click();
+  await page.getByText('Sign in with Google.com').click();
+  await passAgeCheckIfAsked(page);
+  expect(popups).toBe(0);
+  expect((await accounts()).length).toBe(before.length); // 새 계정이 아니라 비회원 계정에 연결
+  await context.close();
+});
+
 test('비밀번호 재설정은 가입 여부와 상관없이 같은 안내를 한다', async ({ page }) => {
   await page.goto('/auth/reset');
   await page.getByLabel('가입한 이메일').fill(uniqueEmail());
