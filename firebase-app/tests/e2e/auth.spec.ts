@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { SAME_ORIGIN_AUTH_ENABLED } from '@/lib/firebase/sameOrigin';
 import { accounts, becomeGuest, clearEmulators, passAgeCheckIfAsked, signUp, uniqueEmail } from './helpers';
 
 /**
@@ -88,6 +89,7 @@ test('구글로 계속하기 — 에뮬레이터의 가짜 구글 창으로', as
 });
 
 test('홈 화면 앱(PWA)에서는 팝업 대신 이동 방식 — 구글에 다녀와서 로그인, 비회원이면 그 계정에 연결', async ({ browser }) => {
+  test.skip(!SAME_ORIGIN_AUTH_ENABLED, '같은 주소 로그인을 켠 뒤에만(구글 OAuth 등록 전에는 꺼 둠 — src/lib/firebase/app.ts)');
   // 홈 화면 앱으로 연 것처럼(display-mode: standalone) — 팝업이 다른 창에서 열려 "missing initial state"가 나던 경우
   const context = await browser.newContext();
   await context.addInitScript(() => {

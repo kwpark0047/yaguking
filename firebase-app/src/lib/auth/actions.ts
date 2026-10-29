@@ -15,6 +15,7 @@ import {
   signOut,
   type AuthError,
 } from 'firebase/auth';
+import { SAME_ORIGIN_AUTH_ENABLED } from '@/lib/firebase/sameOrigin';
 import { firebaseAuth } from '@/lib/firebase/auth';
 import { isStandalone } from '@/lib/pwa/install';
 
@@ -64,7 +65,8 @@ export async function continueWithGoogle(): Promise<{ linkedGuest: boolean }> {
   const provider = new GoogleAuthProvider();
   const current = auth.currentUser;
 
-  if (isStandalone()) {
+  // 이동 방식은 같은 주소 로그인일 때만 안전하다(src/lib/firebase/app.ts SAME_ORIGIN_AUTH_ENABLED)
+  if (SAME_ORIGIN_AUTH_ENABLED && isStandalone()) {
     if (current?.isAnonymous) await linkWithRedirect(current, provider);
     else await signInWithRedirect(auth, provider);
     return new Promise(() => {}); // 구글로 넘어간다 — 돌아오면 completeGoogleRedirect
