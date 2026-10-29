@@ -255,3 +255,12 @@
 - 같은 날 이어서: 관리자 사이트가 이용자 앱과 나누어 쓰는 코드(테마·처리방침)가 바뀌어 관리자 묶음도 새로 만들어졌다 → 관리자 미리보기(`/`·`/ads`·`/news`·`/events`·`/logs` 200,
   강제 CSP·no-store 그대로, 로그인 화면·페이지 오류 0) → 실제 배포(메시지 "1b200a5 admin rebuild (shared theme/privacy code)"), 관리자 `index-iPGrD5gk.js` = 로컬 빌드.
   이로써 앱·관리자·규칙 모두 저장소 최신과 같다
+
+## 2026-10-29 — 19차 배포: 구글 로그인 "missing initial state" 고침(같은 주소 로그인 켬)
+
+- 운영자 요청으로 운영자가 로그인한 앱 안 브라우저에서 구글 클라우드 콘솔 › Web client(364923303993-g6qe6tlf…)에 **원본 `https://yaguking.web.app`·리디렉션 URI
+  `https://yaguking.web.app/__/auth/handler`를 추가·저장**(기존 원본 3개·URI 1개는 그대로). 저장 뒤 다시 열어 값 확인
+- `scripts/check-oauth-redirect.mjs`: 첫 확인에서 두 주소 모두 ✓ → `SAME_ORIGIN_AUTH_ENABLED = true`(코드 0eecdfa). 단위 915, 로그인·PWA E2E 40(이동 방식 로그인 포함)
+- 미리보기(설정값 authDomain 그대로) → 실제 배포(메시지 "0eecdfa same-origin Google login on"), 앱 `index-TNImELqn.js` = 로컬 빌드
+- 실제 사이트 확인: 구글로 계속하기 → 로그인 처리 주소가 `yaguking.web.app/__/auth/handler`, 구글이 막지 않고 로그인 첫 화면(로그인은 하지 않음)
+- 홈 화면 앱(standalone)은 이제 이동 방식 로그인. 문제가 생기면 플래그를 false로 되돌려 배포
