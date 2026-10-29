@@ -275,3 +275,5 @@ GitHub 결제 예산은 **$0** 그대로 두면 넘쳐도 청구되지 않고 �
 5. 확인: `node scripts/check-oauth-redirect.mjs` → `yaguking.web.app: ✓`가 나오면 앱 배포(`hosting:app`)
 
 (Firebase 콘솔 › Authentication › 설정 › 승인된 도메인에는 `yaguking.web.app`이 이미 있다 — 10-27 추가)
+- **2026-10-29 등록 완료**: 운영자 계정으로 로그인한 앱 안 브라우저에서 Web client에 원본·리디렉션 URI를 추가·저장(다른 값은 그대로), `check-oauth-redirect` 두 주소 모두 ✓ →
+  `SAME_ORIGIN_AUTH_ENABLED = true`(`src/lib/firebase/sameOrigin.ts`)

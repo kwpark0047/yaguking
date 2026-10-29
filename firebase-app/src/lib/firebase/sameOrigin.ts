@@ -8,11 +8,11 @@
 export const SAME_ORIGIN_AUTH_HOSTS: readonly string[] = ['yaguking.web.app'];
 
 /**
- * 같은 주소 로그인을 켤까 — **꺼 둠(2026-10-29)**: 구글 OAuth 클라이언트에 `https://yaguking.web.app/__/auth/handler`가 아직 등록되지 않아
- * 켜면 구글이 로그인을 막는다(redirect_uri_mismatch). 등록 뒤 `node scripts/check-oauth-redirect.mjs`가 통과하면 true로 바꿔 배포한다.
- * 꺼져 있으면 예전처럼: 설정값 authDomain, 홈 화면 앱도 팝업 로그인.
+ * 같은 주소 로그인 — **켬(2026-10-29)**: 구글 OAuth 클라이언트(Web client)에 원본 `https://yaguking.web.app`과 리디렉션 URI
+ * `https://yaguking.web.app/__/auth/handler`를 등록했고 `node scripts/check-oauth-redirect.mjs`가 통과했다.
+ * 문제가 생기면 false로 되돌려 배포한다(예전처럼 설정값 authDomain, 홈 화면 앱도 팝업 로그인).
  */
-export const SAME_ORIGIN_AUTH_ENABLED = false;
+export const SAME_ORIGIN_AUTH_ENABLED = true;
 
 export function authDomainFor(hostname: string, configured: string | undefined, enabled: boolean = SAME_ORIGIN_AUTH_ENABLED): string | undefined {
   return enabled && SAME_ORIGIN_AUTH_HOSTS.includes(hostname) ? hostname : configured;

@@ -16,8 +16,8 @@ describe('authDomain', () => {
       expect(authDomainFor(host, 'yaguking-bc25c.firebaseapp.com', true)).toBe('yaguking-bc25c.firebaseapp.com');
   });
 
-  it('지금(구글 OAuth 등록 전)은 꺼져 있어 예전 설정값 그대로', () => {
-    expect(SAME_ORIGIN_AUTH_ENABLED).toBe(false);
-    expect(authDomainFor('yaguking.web.app', 'yaguking-bc25c.firebaseapp.com')).toBe('yaguking-bc25c.firebaseapp.com');
+  it('구글 OAuth 등록을 마쳐 켜져 있다 — 이용자 앱 주소에서는 앱 주소로 로그인', () => {
+    expect(SAME_ORIGIN_AUTH_ENABLED).toBe(true);
+    expect(authDomainFor('yaguking.web.app', 'yaguking-bc25c.firebaseapp.com')).toBe('yaguking.web.app');
   });
 });
