@@ -8,7 +8,8 @@ import { currentMode } from '@/lib/effects/preference';
 import { playSound } from '@/lib/sound/sound';
 import { needsAgeCheck, needsProfileSetup } from '@/lib/auth/gate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
-import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
+import { onDisplayChange } from '@/lib/display/preference';
+import { teamThemeActive } from '@/lib/theme/themeSwitch';
 import { AuthPage } from '@/pages/AuthPage';
 import { HomePage } from '@/pages/HomePage';
 
@@ -60,14 +61,16 @@ function MemberGate({ requireProfile }: { requireProfile: boolean }) {
   return <Outlet />;
 }
 
-/** 최애 구단 1위의 테마를 화면 전체에 입힌다(구단 테마 스위치가 켜져 있을 때). */
+/** 최애 구단 1위의 테마를 화면 전체에 입힌다 — 구단 테마 스위치가 켜져 있고 설정 › 화면의 테마가 "내 구단"일 때만 */
 function TeamThemeSync() {
   const { user, isGuest, profile } = useAuth();
   const slug =
     user && !isGuest && profile.status === 'ready' ? (profile.data.favoriteTeams[0] ?? null) : null;
+  const [active, setActive] = useState(teamThemeActive);
+  useEffect(() => onDisplayChange(() => setActive(teamThemeActive())), []);
   useEffect(() => {
-    applyDocumentTeam(teamThemesEnabled() ? slug : null);
-  }, [slug]);
+    applyDocumentTeam(active ? slug : null);
+  }, [slug, active]);
   return null;
 }
 

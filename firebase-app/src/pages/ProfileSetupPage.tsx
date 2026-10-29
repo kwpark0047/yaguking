@@ -9,7 +9,7 @@ import { suggestNickname } from '@/lib/game/nickname';
 import { NicknameTakenError, isNicknameTaken, saveProfile } from '@/lib/profile/save';
 import { nicknameProblem, normalizePlayers, playersProblem } from '@/lib/profile/validate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
-import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
+import { teamThemeActive } from '@/lib/theme/themeSwitch';
 
 type Step = 1 | 2 | 3;
 
@@ -70,7 +70,7 @@ export function ProfileSetupPage() {
 
   function chooseTeams(next: string[]) {
     setTeams(next);
-    if (teamThemesEnabled()) applyDocumentTeam(next[0] ?? null);
+    if (teamThemeActive()) applyDocumentTeam(next[0] ?? null);
   }
 
   async function finish() {

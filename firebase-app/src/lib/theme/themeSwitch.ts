@@ -1,3 +1,5 @@
+import { readTheme } from '@/lib/display/preference';
+
 /**
  * 구단 테마 스위치.
  *
@@ -10,4 +12,12 @@
 export function teamThemesEnabled(): boolean {
   // Firebase판(Vite): 서버가 없으므로 빌드 시 환경 변수로 정한다(.env.example).
   return import.meta.env.VITE_TEAM_THEMES !== 'off';
+}
+
+/**
+ * 화면 전체를 구단색으로 칠할까 — 구단 테마 스위치가 켜져 있고, 설정 › 화면의 테마가 "내 구단"일 때만(docs/game-look-plan.md).
+ * 다른 테마(나이트 골드 등)를 고르면 구단색 대신 그 테마색이다. 구단 고르기 단추의 구단색 칩은 이와 상관없이 보인다.
+ */
+export function teamThemeActive(): boolean {
+  return teamThemesEnabled() && readTheme() === 'team';
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
+import { TextSizeToggle } from '@/components/display/DisplaySettings';
 import { QuestionView } from '@/components/game/QuestionView';
 import { loadQuestions, type OptionLabel, type Question } from '@/content/questions';
 import { celebrate } from '@/lib/effects/celebrate';
@@ -416,9 +417,12 @@ export function RoomPage() {
 function Shell({ children }: { children: ReactNode }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 px-4 py-6">
-      <Link to="/room" className="flex min-h-11 items-center self-start text-sm text-ink-2 underline">
-        ◀ 나가기
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/room" className="flex min-h-11 items-center text-sm text-ink-2 underline">
+          ◀ 나가기
+        </Link>
+        <TextSizeToggle />
+      </div>
       {children}
     </main>
   );

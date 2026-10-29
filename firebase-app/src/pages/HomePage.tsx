@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import emblem from '@/assets/brand/yaguking-emblem.webp';
+import { TextSizeSetting, ThemeSetting } from '@/components/display/DisplaySettings';
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { AdSlot } from '@/components/ads/AdSlot';
 import { HowToPlay } from '@/components/home/HowToPlay';
@@ -84,6 +85,8 @@ export function HomePage() {
               <Link to="/notices" className="flex min-h-11 items-center text-xs text-ink-2 underline">
                 공지사항
               </Link>
+              <ThemeSetting compact />
+              <TextSizeSetting compact />
               <EffectsSetting compact />
               <SoundSetting compact />
             </div>

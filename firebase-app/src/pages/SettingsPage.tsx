@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
+import { TextSizeSetting, ThemeSetting } from '@/components/display/DisplaySettings';
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { InstallActions } from '@/components/pwa/InstallGuide';
 import { PlayerInputs } from '@/components/profile/PlayerInputs';
@@ -16,7 +17,7 @@ import {
 } from '@/lib/profile/save';
 import { nicknameProblem, normalizePlayers, playersProblem } from '@/lib/profile/validate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
-import { teamThemesEnabled } from '@/lib/theme/themeSwitch';
+import { teamThemeActive } from '@/lib/theme/themeSwitch';
 
 const inputStyle = { borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' };
 
@@ -165,7 +166,7 @@ export function SettingsPage() {
           disabled={pending}
           onChange={(next) => {
             setTeams(next);
-            if (teamThemesEnabled()) applyDocumentTeam(next[0] ?? null);
+            if (teamThemeActive()) applyDocumentTeam(next[0] ?? null);
           }}
         />
         <p className="text-sm">최애 선수 (선택)</p>
@@ -204,6 +205,8 @@ export function SettingsPage() {
         <h2 id="display-title" className="font-cute text-xl">
           화면
         </h2>
+        <ThemeSetting />
+        <TextSizeSetting />
         <EffectsSetting />
         <SoundSetting />
       </section>

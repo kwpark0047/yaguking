@@ -12,9 +12,11 @@
  */
 
 export type Scheme = 'dark' | 'light';
-export type Style = 'default' | 'soft' | 'contrast';
+export type Style = 'default' | 'soft' | 'contrast' | 'gold' | 'green' | 'burgundy' | 'stone';
 
-export const STYLES: readonly Style[] = ['default', 'soft', 'contrast'];
+export const STYLES: readonly Style[] = ['default', 'soft', 'contrast', 'gold', 'green', 'burgundy', 'stone'];
+/** 게임 화면 고급화 테마(docs/game-look-plan.md) — 설정 › 화면에서 고른다(src/lib/display/preference.ts) */
+export const PREMIUM_STYLES: readonly Style[] = ['gold', 'green', 'burgundy', 'stone'];
 
 export interface BaseSurface {
   bgBase: string;
@@ -121,6 +123,130 @@ export const SURFACES: Record<Style, Record<Scheme, BaseSurface>> = {
       out: '#8f1a11',
       hr: '#7a3306',
       focus: '#003f99',
+    },
+  },
+  // 나이트 골드(기본) — 밤 야구장의 짙은 남색과 금색
+  gold: {
+    dark: {
+      bgBase: '#0a1326',
+      bgCard: '#121d36',
+      bgField: '#0d2a1c',
+      ink1: '#f4f0e4',
+      ink2: '#a9b3c6',
+      line: '#26355a',
+      accent: '#e3b54f',
+      accentInk: '#0a1326',
+      onBase: '#42c07b',
+      out: '#f0737d',
+      hr: '#ff9752',
+      focus: '#6db9ff',
+    },
+    light: {
+      bgBase: '#f6f3ec',
+      bgCard: '#ffffff',
+      bgField: '#e7f0e8',
+      ink1: '#0f1a2e',
+      ink2: '#4c586b',
+      line: '#ded6c4',
+      accent: '#7a5900',
+      accentInk: '#ffffff',
+      onBase: '#1d7744',
+      out: '#b5352a',
+      hr: '#9f450d',
+      focus: '#0b5fc4',
+    },
+  },
+  // 클래식 그린 — 옛 야구장 잔디색과 황동색
+  green: {
+    dark: {
+      bgBase: '#09180f',
+      bgCard: '#112419',
+      bgField: '#0c2c19',
+      ink1: '#f2efe2',
+      ink2: '#a6b5a8',
+      line: '#234031',
+      accent: '#d9b562',
+      accentInk: '#09180f',
+      onBase: '#5fd18f',
+      out: '#f37d84',
+      hr: '#ffa264',
+      focus: '#7cc1ff',
+    },
+    light: {
+      bgBase: '#f8f7f1',
+      bgCard: '#ffffff',
+      bgField: '#e3eee0',
+      ink1: '#132419',
+      ink2: '#4c5b4f',
+      line: '#ddd5bf',
+      accent: '#6a520e',
+      accentInk: '#ffffff',
+      onBase: '#186e3d',
+      out: '#b1352a',
+      hr: '#99420c',
+      focus: '#0b5fc4',
+    },
+  },
+  // 버건디 — 와인색 바탕과 샴페인 골드
+  burgundy: {
+    dark: {
+      bgBase: '#190b11',
+      bgCard: '#25131b',
+      bgField: '#0f2317',
+      ink1: '#f6ede7',
+      ink2: '#bea8ad',
+      line: '#45262f',
+      accent: '#eac77e',
+      accentInk: '#190b11',
+      onBase: '#55c98a',
+      out: '#ff8c94',
+      hr: '#ffa866',
+      focus: '#7cc1ff',
+    },
+    light: {
+      bgBase: '#faf6f5',
+      bgCard: '#ffffff',
+      bgField: '#e7efe5',
+      ink1: '#2a1018',
+      ink2: '#5d474e',
+      line: '#e6d3d3',
+      accent: '#861d3b',
+      accentInk: '#ffffff',
+      onBase: '#1b7240',
+      out: '#a92c25',
+      hr: '#984109',
+      focus: '#0b5fc4',
+    },
+  },
+  // 화이트 스톤 — 밝은 회백색과 짙은 남색(어둡게는 짙은 돌색)
+  stone: {
+    dark: {
+      bgBase: '#101215',
+      bgCard: '#161a1e',
+      bgField: '#12251a',
+      ink1: '#f3f2ee',
+      ink2: '#a7aaae',
+      line: '#343840',
+      accent: '#bccae8',
+      accentInk: '#101418',
+      onBase: '#48c27c',
+      out: '#ee7c86',
+      hr: '#ff9c59',
+      focus: '#6db9ff',
+    },
+    light: {
+      bgBase: '#f7f7f4',
+      bgCard: '#ffffff',
+      bgField: '#e5eee6',
+      ink1: '#141a22',
+      ink2: '#525b65',
+      line: '#d8d5ce',
+      accent: '#1d2d50',
+      accentInk: '#ffffff',
+      onBase: '#1e7a46',
+      out: '#b5352a',
+      hr: '#9f450d',
+      focus: '#0b5fc4',
     },
   },
 };

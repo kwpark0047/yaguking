@@ -39,19 +39,19 @@ export function ScoreBoard({
   const announcement = `${inning}회, 아웃 ${outs}, ${describeBases(bases)}, 득점 ${runs}`;
 
   return (
-    <div className="flex flex-col gap-1 bg-bg-field px-4 py-2 md:flex-row md:items-center md:justify-between md:gap-4">
+    <div className="g-board flex flex-col gap-1 px-4 py-2 md:flex-row md:items-center md:justify-between md:gap-4">
       {/* 스크린리더용 상태 고지. 타이머는 여기에 넣지 않는다. */}
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
 
       <div className="flex items-center justify-between gap-3 md:justify-start">
-        <span className="num-tabular text-sm font-semibold whitespace-nowrap">
+        <span className="g-num num-tabular font-semibold whitespace-nowrap">
           {inning}회
           <span className="ml-1 text-xs font-normal text-ink-2">/ {inningsTarget}</span>
         </span>
 
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm">
+        <span className="g-num flex items-center gap-1.5 whitespace-nowrap">
           <span className="text-ink-2">아웃</span>
           <span className="inline-flex items-center gap-1" aria-hidden="true">
             {[0, 1, 2].map((i) => (
@@ -67,9 +67,9 @@ export function ScoreBoard({
           </span>
         </span>
 
-        <span className="num-tabular whitespace-nowrap text-sm">
+        <span className="g-num num-tabular whitespace-nowrap">
           <span className="text-ink-2">득점</span>{' '}
-          <span className="text-lg font-bold">{runs}</span>
+          <span className="g-score font-bold">{runs}</span>
         </span>
       </div>
 

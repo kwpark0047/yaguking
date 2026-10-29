@@ -39,6 +39,7 @@ export function QuestionView({
   fresh?: boolean;
 }) {
   const startedAt = useRef(performance.now());
+  const sectionRef = useRef<HTMLElement>(null);
   const answered = useRef(false);
   const [left, setLeft] = useState(limitMs);
   /** 남은 3·2·1초 "틱"을 이미 울린 초(소리 켠 사람만) */
@@ -51,6 +52,8 @@ export function QuestionView({
     ticked.current = 4;
     setLeft(limitMs);
     playSound('pitch');
+    // 큰 글자(대)에서는 문제가 바뀌면 문제 맨 위로 — 보기가 화면 아래로 이어진다(docs/game-look-plan.md §2)
+    if (document.documentElement.dataset.text === 'l') sectionRef.current?.scrollIntoView?.({ block: 'start' });
   }, [question.id]);
 
   // 시계·키보드 처리기는 문항마다 한 번 건다. 최신 onAnswer는 ref로 본다.
@@ -95,8 +98,8 @@ export function QuestionView({
   const ratio = left / limitMs;
 
   return (
-    <section key={question.id} className="fx-pitch-in flex flex-col gap-4" aria-labelledby="question-stem">
-      <div className="flex items-center gap-3">
+    <section key={question.id} ref={sectionRef} className="g-card fx-pitch-in flex flex-col gap-4" aria-labelledby="question-stem">
+      <div className="g-timer -mx-1 flex items-center gap-3 px-1 py-1">
         <div
           aria-hidden="true"
           className="h-2 flex-1 overflow-hidden rounded-full"
@@ -111,12 +114,12 @@ export function QuestionView({
             }}
           />
         </div>
-        <span className="num-tabular w-14 text-right text-sm font-semibold">
+        <span className="g-num num-tabular shrink-0 text-right font-semibold">
           {(left / 1000).toFixed(1)}초
         </span>
       </div>
 
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-2">
+      <p className="g-meta flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-2">
         {fresh && (
           <span className="rounded-full px-2 font-semibold" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}>
             최신 경기
@@ -135,7 +138,7 @@ export function QuestionView({
         )}
       </p>
 
-      <h2 id="question-stem" className="text-[17px] leading-[1.6] font-medium break-keep">
+      <h2 id="question-stem" className="g-stem font-medium break-keep">
         {question.stem}
       </h2>
 
@@ -145,15 +148,15 @@ export function QuestionView({
             key={option.label}
             type="button"
             onClick={() => submit(option.label)}
-            className="flex min-h-14 items-center gap-3 rounded-option border-2 px-4 text-left"
+            className="g-option-button flex min-h-14 items-center gap-3 rounded-option border-2 px-3 py-2 text-left"
             style={{ borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' }}
           >
-            <span className="font-cute w-6 shrink-0 text-lg">{option.label}</span>
-            <span className="break-keep">{option.text}</span>
+            <span className="g-medal g-label font-cute">{option.label}</span>
+            <span className="g-option break-keep">{option.text}</span>
           </button>
         ))}
       </div>
-      <p className="text-xs text-ink-2">보기를 누르면 바로 제출돼요. 숫자 키 1~4 또는 A·S·D·F로도 고를 수 있어요.</p>
+      <p className="g-meta text-ink-2">보기를 누르면 바로 제출돼요. 숫자 키 1~4 또는 A·S·D·F로도 고를 수 있어요.</p>
     </section>
   );
 }

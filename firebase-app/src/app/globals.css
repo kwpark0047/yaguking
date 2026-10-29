@@ -190,6 +190,203 @@
   --focus: #003f99;
 }
 
+
+/*
+ * ── 게임 화면 고급화 테마(docs/game-look-plan.md, src/lib/display/preference.ts) ─────────────
+ * 기본·부드러운·고대비와 같은 방식: 다크 블록, 미디어 쿼리 안 라이트 블록, 명시 라이트 블록. 값은 base.ts SURFACES와 같다(테스트가 대조).
+ */
+/* 나이트 골드(기본) — 밤 야구장의 짙은 남색과 금색 */
+:root[data-style='gold'] {
+  --bg-base: #0a1326;
+  --bg-card: #121d36;
+  --bg-field: #0d2a1c;
+  --ink-1: #f4f0e4;
+  --ink-2: #a9b3c6;
+  --line: #26355a;
+  --accent: #e3b54f;
+  --accent-ink: #0a1326;
+  --on-base: #42c07b;
+  --out: #f0737d;
+  --hr: #ff9752;
+  --focus: #6db9ff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='gold']:not([data-theme='dark']) {
+    --bg-base: #f6f3ec;
+    --bg-card: #ffffff;
+    --bg-field: #e7f0e8;
+    --ink-1: #0f1a2e;
+    --ink-2: #4c586b;
+    --line: #ded6c4;
+    --accent: #7a5900;
+    --accent-ink: #ffffff;
+    --on-base: #1d7744;
+    --out: #b5352a;
+    --hr: #9f450d;
+    --focus: #0b5fc4;
+  }
+}
+
+:root[data-style='gold'][data-theme='light'] {
+  --bg-base: #f6f3ec;
+  --bg-card: #ffffff;
+  --bg-field: #e7f0e8;
+  --ink-1: #0f1a2e;
+  --ink-2: #4c586b;
+  --line: #ded6c4;
+  --accent: #7a5900;
+  --accent-ink: #ffffff;
+  --on-base: #1d7744;
+  --out: #b5352a;
+  --hr: #9f450d;
+  --focus: #0b5fc4;
+}
+
+/* 클래식 그린 — 옛 야구장 잔디색과 황동색 */
+:root[data-style='green'] {
+  --bg-base: #09180f;
+  --bg-card: #112419;
+  --bg-field: #0c2c19;
+  --ink-1: #f2efe2;
+  --ink-2: #a6b5a8;
+  --line: #234031;
+  --accent: #d9b562;
+  --accent-ink: #09180f;
+  --on-base: #5fd18f;
+  --out: #f37d84;
+  --hr: #ffa264;
+  --focus: #7cc1ff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='green']:not([data-theme='dark']) {
+    --bg-base: #f8f7f1;
+    --bg-card: #ffffff;
+    --bg-field: #e3eee0;
+    --ink-1: #132419;
+    --ink-2: #4c5b4f;
+    --line: #ddd5bf;
+    --accent: #6a520e;
+    --accent-ink: #ffffff;
+    --on-base: #186e3d;
+    --out: #b1352a;
+    --hr: #99420c;
+    --focus: #0b5fc4;
+  }
+}
+
+:root[data-style='green'][data-theme='light'] {
+  --bg-base: #f8f7f1;
+  --bg-card: #ffffff;
+  --bg-field: #e3eee0;
+  --ink-1: #132419;
+  --ink-2: #4c5b4f;
+  --line: #ddd5bf;
+  --accent: #6a520e;
+  --accent-ink: #ffffff;
+  --on-base: #186e3d;
+  --out: #b1352a;
+  --hr: #99420c;
+  --focus: #0b5fc4;
+}
+
+/* 버건디 — 와인색 바탕과 샴페인 골드 */
+:root[data-style='burgundy'] {
+  --bg-base: #190b11;
+  --bg-card: #25131b;
+  --bg-field: #0f2317;
+  --ink-1: #f6ede7;
+  --ink-2: #bea8ad;
+  --line: #45262f;
+  --accent: #eac77e;
+  --accent-ink: #190b11;
+  --on-base: #55c98a;
+  --out: #ff8c94;
+  --hr: #ffa866;
+  --focus: #7cc1ff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='burgundy']:not([data-theme='dark']) {
+    --bg-base: #faf6f5;
+    --bg-card: #ffffff;
+    --bg-field: #e7efe5;
+    --ink-1: #2a1018;
+    --ink-2: #5d474e;
+    --line: #e6d3d3;
+    --accent: #861d3b;
+    --accent-ink: #ffffff;
+    --on-base: #1b7240;
+    --out: #a92c25;
+    --hr: #984109;
+    --focus: #0b5fc4;
+  }
+}
+
+:root[data-style='burgundy'][data-theme='light'] {
+  --bg-base: #faf6f5;
+  --bg-card: #ffffff;
+  --bg-field: #e7efe5;
+  --ink-1: #2a1018;
+  --ink-2: #5d474e;
+  --line: #e6d3d3;
+  --accent: #861d3b;
+  --accent-ink: #ffffff;
+  --on-base: #1b7240;
+  --out: #a92c25;
+  --hr: #984109;
+  --focus: #0b5fc4;
+}
+
+/* 화이트 스톤 — 밝은 회백색과 짙은 남색(어둡게는 짙은 돌색) */
+:root[data-style='stone'] {
+  --bg-base: #101215;
+  --bg-card: #161a1e;
+  --bg-field: #12251a;
+  --ink-1: #f3f2ee;
+  --ink-2: #a7aaae;
+  --line: #343840;
+  --accent: #bccae8;
+  --accent-ink: #101418;
+  --on-base: #48c27c;
+  --out: #ee7c86;
+  --hr: #ff9c59;
+  --focus: #6db9ff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='stone']:not([data-theme='dark']) {
+    --bg-base: #f7f7f4;
+    --bg-card: #ffffff;
+    --bg-field: #e5eee6;
+    --ink-1: #141a22;
+    --ink-2: #525b65;
+    --line: #d8d5ce;
+    --accent: #1d2d50;
+    --accent-ink: #ffffff;
+    --on-base: #1e7a46;
+    --out: #b5352a;
+    --hr: #9f450d;
+    --focus: #0b5fc4;
+  }
+}
+
+:root[data-style='stone'][data-theme='light'] {
+  --bg-base: #f7f7f4;
+  --bg-card: #ffffff;
+  --bg-field: #e5eee6;
+  --ink-1: #141a22;
+  --ink-2: #525b65;
+  --line: #d8d5ce;
+  --accent: #1d2d50;
+  --accent-ink: #ffffff;
+  --on-base: #1e7a46;
+  --out: #b5352a;
+  --hr: #9f450d;
+  --focus: #0b5fc4;
+}
+
 /*
  * ── 구단 테마 (src/lib/theme/teams.ts) ──────────────────────────────────
  *
@@ -1235,4 +1432,101 @@ body {
   z-index: 40;
   width: min(28rem, calc(100vw - 2rem));
   transform: translateX(-50%);
+}
+
+/*
+ * ── 게임 글자 크기·고급 모양(docs/game-look-plan.md) ─────────────────────────────
+ * <html data-text="s|m|l">(src/lib/display/preference.ts) → --game-scale 1 / 1.5(기본) / 2. 게임 화면의 문제·보기·시계·점수판·판정만 곱한다.
+ * rem 기준이라 브라우저 글자 크기 설정과 함께 커진다. 작은 안내 글자는 16px에서 멈춘다.
+ */
+:root {
+  --game-scale: 1.5;
+}
+:root[data-text='s'] {
+  --game-scale: 1;
+}
+:root[data-text='m'] {
+  --game-scale: 1.5;
+}
+:root[data-text='l'] {
+  --game-scale: 2;
+}
+.g-stem {
+  font-size: calc(1.0625rem * var(--game-scale));
+  line-height: 1.5;
+}
+.g-option {
+  font-size: calc(1rem * var(--game-scale));
+  line-height: 1.35;
+}
+.g-label {
+  font-size: calc(1.125rem * var(--game-scale));
+}
+.g-num {
+  font-size: calc(0.875rem * var(--game-scale));
+}
+.g-score {
+  font-size: calc(1.125rem * var(--game-scale));
+}
+.g-verdict {
+  font-size: calc(1.25rem * var(--game-scale));
+}
+.g-meta {
+  font-size: min(calc(0.75rem * (1 + (var(--game-scale) - 1) * 0.5)), 1rem);
+}
+
+/* 문제 카드 — 얇은 강조색 테두리와 옅은 안쪽 그림자(움직임 없음) */
+.g-card {
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--accent) 25%, transparent),
+    0 6px 18px -10px color-mix(in oklab, #000 60%, transparent);
+  padding: 1rem;
+}
+/* 보기 기호 A~D — 메달 */
+.g-medal {
+  display: inline-grid;
+  place-items: center;
+  width: calc(2rem * var(--game-scale));
+  height: calc(2rem * var(--game-scale));
+  border-radius: 9999px;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-card));
+  flex-shrink: 0;
+}
+.g-option-button:hover .g-medal,
+.g-option-button:focus-visible .g-medal {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.g-option-button:hover,
+.g-option-button:focus-visible {
+  border-color: var(--accent);
+}
+/* 점수판 — 전광판처럼 짙은 판과 얇은 강조색 아래선 */
+.g-board {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg-field) 90%, var(--accent)), var(--bg-field));
+  border-bottom: 1px solid color-mix(in oklab, var(--accent) 40%, transparent);
+}
+/* 2배 크기에서 시계가 문제와 함께 내려가지 않게 위에 붙인다 */
+.g-timer {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-card);
+}
+/* 고대비·효과 끄기: 그림자·반투명 대신 굵은 선 */
+:root[data-style='contrast'] .g-card {
+  box-shadow: none;
+  border: 2px solid var(--line);
+}
+:root[data-style='contrast'] .g-board {
+  background: var(--bg-field);
+  border-bottom: 2px solid var(--line);
+}
+:root[data-effects='none'] .g-card {
+  box-shadow: none;
 }

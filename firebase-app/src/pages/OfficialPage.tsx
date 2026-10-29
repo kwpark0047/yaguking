@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
+import { TextSizeToggle } from '@/components/display/DisplaySettings';
 import { QuestionView } from '@/components/game/QuestionView';
 import { engagementOpen, kstDate } from '@/lib/game/attendance';
 import { OFFICIAL_POINTS, OFFICIAL_QUESTION_MS, OFFICIAL_TOTAL, gradeAttempt, roundIdOf } from '@/lib/game/official';
@@ -124,9 +125,12 @@ export function OfficialPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-8">
-      <Link to="/" className="flex min-h-11 items-center self-start text-sm text-ink-2 underline">
-        ← 야구왕
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/" className="flex min-h-11 items-center text-sm text-ink-2 underline">
+          ← 야구왕
+        </Link>
+        <TextSizeToggle />
+      </div>
       <h1 className="font-cute text-3xl">오늘의 공식전</h1>
 
       {!open ? (

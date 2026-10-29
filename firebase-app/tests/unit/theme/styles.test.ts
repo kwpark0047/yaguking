@@ -79,7 +79,7 @@ describe('CSS와 TS의 스타일 값이 같다', () => {
   it('스타일 라이트 블록이 미디어 쿼리 안에도 같은 값으로 있다', () => {
     // 라이트 모드에서 다크 스타일 블록이 기본 라이트 블록을 순서로 이기므로,
     // 미디어 쿼리 안의 스타일 라이트 블록이 모든 값을 다시 덮어야 한다.
-    for (const style of ['soft', 'contrast'] as const) {
+    for (const style of ['soft', 'contrast', 'gold', 'green', 'burgundy', 'stone'] as const) {
       const media = css.match(
         new RegExp(
           `:root\\[data-style='${style}'\\]:not\\(\\[data-theme='dark'\\]\\)\\s*\\{([\\s\\S]*?)\\n\\s*\\}`,

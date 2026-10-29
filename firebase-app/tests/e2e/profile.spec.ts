@@ -39,6 +39,8 @@ const strings = (field: unknown): string[] =>
   );
 
 test('가입 흐름: 닉네임(추천값) → 최애 구단 순위 → 선수 → 메인', async ({ page }) => {
+  // 구단 테마는 설정 › 화면의 테마가 "내 구단"일 때만 화면 전체에(docs/game-look-plan.md)
+  await page.addInitScript(() => localStorage.setItem('yk_theme', 'team'));
   const email = await newMemberAtProfile(page);
 
   // 닉네임은 추천값이 미리 채워져 있다
@@ -89,6 +91,7 @@ test('다른 선수가 쓰는 닉네임은 대소문자가 달라도 못 쓴다'
 });
 
 test('설정에서 닉네임을 바꾸면 옛 닉네임을 놓아준다, 구단 순위도 바뀐다', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('yk_theme', 'team'));
   await newMemberAtProfile(page);
   const before = await finishOnboarding(page, { teams: ['두산 베어스'] });
   await expect(page.locator('html')).toHaveAttribute('data-team', 'doosan');
@@ -126,6 +129,13 @@ test('계정 삭제: 닉네임을 입력해야 열리고, 계정·프로필·닉
   expect(await uidOf(email)).toBeUndefined();
   expect(await readDoc(`users/${uid}`)).toBeNull();
   expect(await readDoc(`nicknames/${nickname.toLowerCase()}`)).toBeNull();
+  await expect(page.locator('html')).not.toHaveAttribute('data-team', /.+/);
+});
+
+test('기본 테마(나이트 골드)에서는 최애 구단을 골라도 화면 전체는 테마색 그대로', async ({ page }) => {
+  await newMemberAtProfile(page);
+  await finishOnboarding(page, { teams: ['LG 트윈스'] });
+  await expect(page.locator('html')).toHaveAttribute('data-style', 'gold');
   await expect(page.locator('html')).not.toHaveAttribute('data-team', /.+/);
 });
 

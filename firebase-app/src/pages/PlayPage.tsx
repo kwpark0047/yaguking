@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/auth/AuthProvider";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { TextSizeToggle } from "@/components/display/DisplaySettings";
 import { BoxScore } from "@/components/game/BoxScore";
 import { LoadingBall, SoundToggle, useCountUp } from "@/components/effects/Effects";
 import { ChanceEvent } from "@/components/game/ChanceEvent";
@@ -315,18 +316,21 @@ export function PlayPage() {
       <header className="flex items-center justify-between gap-2 px-4 py-2">
         <Link
           to="/"
-          className="flex min-h-11 items-center text-sm text-ink-2 underline"
+          className="flex min-h-11 shrink-0 items-center text-sm whitespace-nowrap text-ink-2 underline"
         >
           ◀ 나가기
         </Link>
         <span
-          className="rounded-full px-3 py-1 text-xs font-semibold"
+          className="min-w-0 truncate rounded-full px-3 py-1 text-xs font-semibold"
           style={{ backgroundColor: "var(--bg-card)" }}
         >
           비공식 1이닝
           {isGuest && guestLeft !== null ? ` · 오늘 ${guestLeft}판 남음` : ""}
         </span>
-        <SoundToggle />
+        <span className="flex shrink-0 items-center gap-1">
+          <TextSizeToggle />
+          <SoundToggle />
+        </span>
       </header>
 
       {(phase.kind === "question" ||
@@ -477,7 +481,7 @@ function Verdict({
       <div role="status" className="flex flex-col gap-2">
         <p
           id="verdict-title"
-          className="flex items-center gap-2 text-xl font-bold"
+          className="g-verdict flex items-center gap-2 font-bold"
           style={{ color: tone }}
         >
           <span aria-hidden="true">{presentation.icon}</span>
@@ -513,7 +517,7 @@ function Verdict({
             {UPGRADE_LABEL[atBat.upgradeReason]}
           </p>
         )}
-        <p className="text-sm text-ink-2">
+        <p className="g-num text-ink-2">
           정답: {question.correct}. {correctOption?.text}
         </p>
         <p className="num-tabular text-xs text-ink-2">

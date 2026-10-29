@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router";
+import { TextSizeToggle } from "@/components/display/DisplaySettings";
 import { useAuth } from "@/auth/AuthProvider";
 import emblem from "@/assets/brand/yaguking-emblem.webp";
 import { useCountUp } from "@/components/effects/Effects";
@@ -114,12 +115,15 @@ export function LevelTestPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 px-4 py-6">
-      <Link
-        to="/"
-        className="flex min-h-11 items-center self-start text-sm text-ink-2 underline"
-      >
-        ◀ 나가기
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/"
+          className="flex min-h-11 items-center text-sm text-ink-2 underline"
+        >
+          ◀ 나가기
+        </Link>
+        <TextSizeToggle />
+      </div>
 
       {phase.kind === "error" && (
         <p role="alert" className="text-sm" style={{ color: "var(--out)" }}>
