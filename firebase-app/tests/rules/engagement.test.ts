@@ -129,6 +129,23 @@ describe.skipIf(!emulatorHost)('출석·월간 등수 규칙', () => {
       await assertSucceeds(events(admin, { doubleDays: ['2026-11-22'] }));
     });
 
+    it('최신 소식: 글(adminConfig/news)은 관리자만, 공개 문서(public/news)는 누구나 읽고 아무도 못 쓴다(운영자 PC만)', async () => {
+      const admin = env
+        .authenticatedContext('boss', { admin: true, email_verified: true, firebase: { sign_in_provider: 'google.com' as never } })
+        .firestore() as unknown as ReturnType<typeof member>;
+      const save = (db: ReturnType<typeof member>, data: object) =>
+        setDoc(doc(db, 'adminConfig/news'), { posts: [], updatedAt: serverTimestamp(), by: 'boss', ...data }, { merge: true });
+      await assertSucceeds(save(admin, { posts: [{ id: 'n1', title: '글' }] }));
+      await assertFails(save(member(env, 'alice'), {}));
+      await assertFails(getDoc(doc(member(env, 'alice'), 'adminConfig/news')));
+      await assertFails(save(admin, { posts: 'not a list' }));
+      await assertFails(save(admin, { checks: { n1: { ok: true } } })); // 확인 결과는 운영자 PC만
+      await seed('public/news', { posts: [{ id: 'n1' }] });
+      await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore() as never, 'public/news')));
+      await assertFails(setDoc(doc(admin, 'public/news'), { posts: [] }));
+      await assertFails(setDoc(doc(member(env, 'alice'), 'public/news'), { posts: [] }));
+    });
+
     it('닉네임 숨기기는 참·거짓만', async () => {
       const db = member(env, 'alice');
       await assertSucceeds(updateDoc(doc(db, 'users/alice'), { rankingHidden: true, updatedAt: serverTimestamp() }));

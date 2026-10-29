@@ -12,6 +12,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { buildPublicNotices, type Notice } from '@/lib/admin/notices';
+import type { NewsPost } from '@/lib/news/validate';
 import { firestore } from '@/lib/firebase/db';
 import { firebaseAuth } from '@/lib/firebase/auth';
 import { setNoticesView } from './views';
@@ -182,5 +183,37 @@ export async function saveDoubleDays(days: readonly string[]): Promise<void> {
   const batch = writeBatch(db);
   batch.set(doc(db, 'adminConfig', 'events'), { doubleDays: [...days], updatedAt: serverTimestamp(), by: uidNow() }, { merge: true });
   batch.set(doc(collection(db, 'adminLogs')), logEntry('set-double-days', 'events', days.join(',')));
+  await batch.commit();
+}
+
+// ── 최신 소식(docs/news.md) — 글은 adminConfig/news 한 문서(읽기 1). 매일 새벽 운영자 PC가 글마다 출처·날짜를 확인해
+// 통과한 글만 이용자 앱 공개 문서(public/news)에 올린다(ops/news.mjs) ─────────────────────
+export interface NewsCheck {
+  ok: boolean;
+  reason: string;
+  at: number;
+}
+export interface NewsConfig {
+  posts: (NewsPost & { hidden: boolean })[];
+  checks: Record<string, NewsCheck>;
+  checkedAt: number;
+}
+
+export async function loadNewsConfig(): Promise<NewsConfig> {
+  const snapshot = await getDoc(doc(firestore(), 'adminConfig', 'news'));
+  const posts = Array.isArray(snapshot.get('posts')) ? (snapshot.get('posts') as (NewsPost & { hidden?: boolean })[]) : [];
+  const checks: Record<string, NewsCheck> = {};
+  for (const [id, value] of Object.entries((snapshot.get('checks') ?? {}) as Record<string, Record<string, unknown>>)) {
+    checks[id] = { ok: value.ok === true, reason: String(value.reason ?? ''), at: ms(value.at) };
+  }
+  return { posts: posts.map((post) => ({ ...post, hidden: post.hidden === true })), checks, checkedAt: ms(snapshot.get('checkedAt')) };
+}
+
+/** 글 목록 저장 + 관리자 기록. 앱에는 다음 확인 작업(매일 새벽, 또는 운영자 PC에서 admin-cli news) 뒤에 보인다 */
+export async function saveNewsPosts(posts: readonly (NewsPost & { hidden: boolean })[], action: string, target: string): Promise<void> {
+  const db = firestore();
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'adminConfig', 'news'), { posts: posts.map((post) => ({ ...post })), updatedAt: serverTimestamp(), by: uidNow() }, { merge: true });
+  batch.set(doc(collection(db, 'adminLogs')), logEntry(action, target));
   await batch.commit();
 }

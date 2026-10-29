@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes } from 'react-router';
 import { DENIAL_MESSAGE, maskEmail, signInProblem } from '@/lib/admin/access';
 import { DashboardPage } from './pages/DashboardPage';
 import { EventsPage } from './pages/EventsPage';
+import { NewsPage } from './pages/NewsPage';
 import { GamesPage } from './pages/GamesPage';
 import { LogsPage } from './pages/LogsPage';
 import { MemberDetailPage, MembersPage } from './pages/MembersPage';
@@ -96,6 +97,7 @@ function Gate() {
           ['/rooms', '대결 방'],
           ['/notices', '공지사항'],
           ['/events', '이벤트'],
+          ['/news', '최신 소식'],
           ['/logs', '관리자 기록'],
         ].map(([to, label]) => (
           <NavLink
@@ -119,6 +121,7 @@ function Gate() {
           <Route path="/rooms" element={<RoomsPage />} />
           <Route path="/notices" element={<NoticesPage />} />
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/news" element={<NewsPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="*" element={<p className="text-sm">없는 화면이에요.</p>} />
         </Routes>

@@ -488,15 +488,26 @@ service cloud.firestore {
 
     // ── 운영 설정(docs/engagement-plan.md §6) — 출석 2배 날짜("YYYY-MM-DD" 목록). 운영자 PC는 같은 문서에 공식전 문항 현황
     // (official)을 쓴다 — 관리자 "이벤트" 화면이 문서 하나만 읽게. 날짜 모양은 화면과 등수 작업이 다시 확인한다
+    // 최신 소식 글(news) — 관리자가 쓰고, 운영자 PC가 매일 글마다 출처·날짜를 확인해 통과한 글만 public/news에 올린다
+    // (ops/news.mjs가 같은 문서에 확인 결과 checks를 쓴다). 칸 모양은 화면과 확인 작업이 검사한다
     match /adminConfig/{docId} {
       allow read: if isAdmin();
-      allow create: if isAdmin() && docId == 'events'
-        && request.resource.data.keys().hasOnly(['doubleDays', 'updatedAt', 'by'])
-        && validEvents();
-      allow update: if isAdmin() && docId == 'events'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doubleDays', 'updatedAt', 'by'])
-        && validEvents();
+      allow create: if isAdmin() && (
+        (docId == 'events' && request.resource.data.keys().hasOnly(['doubleDays', 'updatedAt', 'by']) && validEvents())
+        || (docId == 'news' && request.resource.data.keys().hasOnly(['posts', 'updatedAt', 'by']) && validNews())
+      );
+      allow update: if isAdmin() && (
+        (docId == 'events' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doubleDays', 'updatedAt', 'by']) && validEvents())
+        || (docId == 'news' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['posts', 'updatedAt', 'by']) && validNews())
+      );
       allow delete: if false;
+
+      function validNews() {
+        return request.resource.data.posts is list
+          && request.resource.data.posts.size() <= 50
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.by == request.auth.uid;
+      }
 
       function validEvents() {
         return request.resource.data.doubleDays is list

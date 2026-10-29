@@ -17,14 +17,16 @@ export interface PublicHome {
 
 const EMPTY: PublicHome = { notices: [] };
 
-function documentUrl(): string {
+/** 공개 문서(public/{name}) REST 주소 — 최신 소식(public/news)도 같은 방식으로 읽는다(lib/public/news.ts) */
+export function publicDocumentUrl(name: string): string {
   const project = usingEmulators ? 'demo-yaguking' : import.meta.env.VITE_FIREBASE_PROJECT_ID;
   const host = usingEmulators ? 'http://127.0.0.1:8080' : 'https://firestore.googleapis.com';
-  return `${host}/v1/projects/${project}/databases/(default)/documents/public/home`;
+  return `${host}/v1/projects/${project}/databases/(default)/documents/public/${name}`;
 }
+const documentUrl = () => publicDocumentUrl('home');
 
 /** Firestore REST 값 → JS 값(이 문서에 쓰는 형만) */
-type RestValue = {
+export type RestValue = {
   stringValue?: string;
   booleanValue?: boolean;
   integerValue?: string;
@@ -34,7 +36,7 @@ type RestValue = {
   mapValue?: { fields?: Record<string, RestValue> };
 };
 
-function decode(value: RestValue | undefined): unknown {
+export function decode(value: RestValue | undefined): unknown {
   if (!value) return undefined;
   if ('stringValue' in value) return value.stringValue;
   if ('booleanValue' in value) return value.booleanValue;

@@ -16,6 +16,8 @@ rem Nightly stats: yesterday's games summarized into adminDaily/YYYYMMDD (the ad
 node ops\admin-cli.mjs daily --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Official round: grade yesterday, publish today/tomorrow from the local pool (answers stay on this PC), delete rounds older than 40 days.
 node ops\admin-cli.mjs official --project=yaguking-bc25c --pool=ops\official\pool.csv >> ops\logs\cleanup.log 2>&1
+rem News: re-check every post's source link and date, publish only the ones that pass to public/news (no automatic collection).
+node ops\admin-cli.mjs news --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Monthly ranking: attendance points through yesterday into leaderboards/YYYYMM; on the 1st, finalize last month and give titles.
 node ops\admin-cli.mjs monthly --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 >> ops\logs\cleanup.log echo [%date% %time%] admin exit %errorlevel%

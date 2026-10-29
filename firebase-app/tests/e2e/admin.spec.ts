@@ -292,3 +292,39 @@ test('이벤트: 출석 2배 날을 더해 저장하면 설정 문서와 관리�
   await page.getByRole('button', { name: '새로 만들기' }).click();
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('출석 2배 날 저장');
 });
+
+test('최신 소식: 출처가 없으면 저장하지 않고, 쓴 글은 확인 전 → 새벽 확인 뒤 "앱에 올림"', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto(ADMIN);
+  const popupPromise = page.context().waitForEvent('page');
+  await page.getByRole('button', { name: '구글로 로그인' }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  await popup.locator('li', { hasNotText: 'Add new account' }).first().click();
+  await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('link', { name: '최신 소식' }).click();
+  await page.getByLabel(/^제목/).fill('관리자에서 쓴 소식');
+  await page.getByLabel(/^요약/).fill('관리자 요약');
+  await page.getByLabel(/^본문/).fill('관리자 본문');
+  await page.getByLabel('출처 이름').fill('야구왕');
+  await page.getByLabel(/^출처 주소/).fill('');
+  await page.getByRole('button', { name: '저장' }).click();
+  await expect(page.getByRole('alert')).toContainText('https://');
+  await page.getByLabel(/^출처 주소/).fill('https://yaguking.web.app/news');
+  await page.getByRole('button', { name: '저장' }).click();
+  await expect(page.getByRole('status')).toContainText('다음 새벽 확인');
+  const list = page.getByRole('list', { name: '소식 글 목록' });
+  await expect(list).toContainText('관리자에서 쓴 소식');
+  await expect(list).toContainText('아직 확인 전');
+  await axe(page, 'news');
+
+  const { runNews } = await import('../../ops/news.mjs');
+  await runNews({ db: adminDb, fetchImpl: (async () => new Response(null, { status: 200 })) as typeof fetch });
+  await page.reload();
+  await expect(page.getByRole('list', { name: '소식 글 목록' })).toContainText('앱에 올림', { timeout: 15_000 });
+
+  await page.getByRole('link', { name: '관리자 기록' }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('소식 씀');
+});
