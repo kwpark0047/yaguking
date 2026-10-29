@@ -146,6 +146,29 @@ describe.skipIf(!emulatorHost)('출석·월간 등수 규칙', () => {
       await assertFails(setDoc(doc(member(env, 'alice'), 'public/news'), { posts: [] }));
     });
 
+    it('광고: 원본은 관리자만, 공개 묶음의 광고 칸·광고 이미지 문서는 관리자만 쓰고 누구나 읽는다(모양·크기 검사)', async () => {
+      const admin = env
+        .authenticatedContext('boss', { admin: true, email_verified: true, firebase: { sign_in_provider: 'google.com' as never } })
+        .firestore() as unknown as ReturnType<typeof member>;
+      await assertSucceeds(setDoc(doc(admin, 'adminConfig/ads'), { ads: [{ id: 'a1' }], updatedAt: serverTimestamp(), by: 'boss' }));
+      await assertFails(getDoc(doc(member(env, 'alice'), 'adminConfig/ads')));
+      // 공지만 있던 공개 묶음에 광고 칸을 합쳐 쓴다(공지는 그대로)
+      await seed('public/home', { notices: [{ id: 'n1' }], updatedAt: new Date() });
+      await assertSucceeds(setDoc(doc(admin, 'public/home'), { ads: [{ id: 'a1' }], updatedAt: serverTimestamp() }, { merge: true }));
+      await assertFails(setDoc(doc(admin, 'public/home'), { ads: Array.from({ length: 11 }, (_, i) => ({ id: `a${i}` })), updatedAt: serverTimestamp() }, { merge: true }));
+      await assertFails(setDoc(doc(member(env, 'alice'), 'public/home'), { ads: [], updatedAt: serverTimestamp() }, { merge: true }));
+      const image = (data: string, extra: object = {}) => ({ data, w: 1200, h: 300, v: 1, updatedAt: serverTimestamp(), ...extra });
+      await assertSucceeds(setDoc(doc(admin, 'public/ad_a1'), image('data:image/webp;base64,UklGRg==')));
+      await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore() as never, 'public/ad_a1')));
+      await assertFails(setDoc(doc(admin, 'public/ad_a2'), image('https://evil.example/x.png')));
+      await assertFails(setDoc(doc(admin, 'public/ad_a2'), image('data:image/svg+xml;base64,PHN2Zz4=')));
+      await assertFails(setDoc(doc(admin, 'public/ad_a2'), image(`data:image/webp;base64,${'A'.repeat(160_000)}`)));
+      await assertFails(setDoc(doc(admin, 'public/ad_a2'), image('data:image/webp;base64,AAAA', { tracker: 'x' })));
+      await assertFails(setDoc(doc(member(env, 'alice'), 'public/ad_a3'), image('data:image/webp;base64,AAAA')));
+      await assertFails(setDoc(doc(admin, 'public/other'), image('data:image/webp;base64,AAAA')));
+      await assertSucceeds(deleteDoc(doc(admin, 'public/ad_a1')));
+    });
+
     it('닉네임 숨기기는 참·거짓만', async () => {
       const db = member(env, 'alice');
       await assertSucceeds(updateDoc(doc(db, 'users/alice'), { rankingHidden: true, updatedAt: serverTimestamp() }));

@@ -20,6 +20,9 @@ const ACTION_LABEL: Record<string, string> = {
   'create-news': '소식 씀',
   'update-news': '소식 고침',
   'delete-news': '소식 지움',
+  'create-ad': '광고 올림',
+  'update-ad': '광고 고침',
+  'delete-ad': '광고 지움',
 };
 
 /** 관리자 기록 — 개인정보 접속기록. 고치거나 지울 수 없다(규칙). 2년 보관. 열 때 보기 하나(읽기 1) */

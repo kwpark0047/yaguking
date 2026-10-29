@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/auth/AuthProvider";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { BoxScore } from "@/components/game/BoxScore";
 import { LoadingBall, SoundToggle, useCountUp } from "@/components/effects/Effects";
 import { ChanceEvent } from "@/components/game/ChanceEvent";
@@ -418,6 +419,11 @@ export function PlayPage() {
             canPlayAgain={!isGuest || (guestLeft ?? 0) > 0}
             onPlayAgain={() => void begin()}
           />
+        )}
+
+        {/* 광고(docs/ads-plan.md) — 문제·결과 아래, 화면에 고정하지 않음(급히 누르다 광고를 누르지 않게). 찬스 이벤트 중에는 숨김 */}
+        {(phase.kind === "question" || phase.kind === "verdict" || phase.kind === "done") && (
+          <AdSlot slot="play-bottom" className="mt-6" />
         )}
       </main>
     </div>

@@ -495,11 +495,21 @@ service cloud.firestore {
       allow create: if isAdmin() && (
         (docId == 'events' && request.resource.data.keys().hasOnly(['doubleDays', 'updatedAt', 'by']) && validEvents())
         || (docId == 'news' && request.resource.data.keys().hasOnly(['posts', 'updatedAt', 'by']) && validNews())
+        || (docId == 'ads' && request.resource.data.keys().hasOnly(['ads', 'updatedAt', 'by']) && validAds())
       );
       allow update: if isAdmin() && (
         (docId == 'events' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doubleDays', 'updatedAt', 'by']) && validEvents())
         || (docId == 'news' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['posts', 'updatedAt', 'by']) && validNews())
+        || (docId == 'ads' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ads', 'updatedAt', 'by']) && validAds())
       );
+
+      // 광고 원본(docs/ads-plan.md) — 30개까지. 칸 모양은 관리자 화면(src/lib/ads/ads.ts adProblem)이 검사한다
+      function validAds() {
+        return request.resource.data.ads is list
+          && request.resource.data.ads.size() <= 30
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.by == request.auth.uid;
+      }
       allow delete: if false;
 
       function validNews() {
@@ -593,10 +603,21 @@ service cloud.firestore {
     // 이용자 앱이 앱을 열 때 읽는 공개 묶음(지금은 공지만) — 누구나 읽고, 관리자만 쓴다
     match /public/{docId} {
       allow read: if true;
+      // 공개 묶음 — 공지와 광고(이미지 제외, docs/ads-plan.md). 공지·광고 저장이 각자 자기 칸만 합쳐 쓴다
       allow write: if isAdmin() && docId == 'home'
-        && request.resource.data.keys().hasOnly(['notices', 'updatedAt'])
-        && request.resource.data.notices is list && request.resource.data.notices.size() <= 20
+        && request.resource.data.keys().hasOnly(['notices', 'ads', 'updatedAt'])
+        && (!('notices' in request.resource.data) || (request.resource.data.notices is list && request.resource.data.notices.size() <= 20))
+        && (!('ads' in request.resource.data) || (request.resource.data.ads is list && request.resource.data.ads.size() <= 10))
         && request.resource.data.updatedAt == request.time;
+      // 광고 이미지 — 광고마다 문서 하나(ad_{ID}). 브라우저가 줄인 WebP(또는 JPEG) data URL만, 160,000자(약 120 KB)까지
+      allow create, update: if isAdmin() && docId.matches('^ad_[A-Za-z0-9_-]{1,40}$')
+        && request.resource.data.keys().hasOnly(['data', 'w', 'h', 'v', 'updatedAt'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 160000
+        && request.resource.data.data.matches('^data:image/(webp|jpeg);base64,[A-Za-z0-9+/=]+$')
+        && request.resource.data.w is int && request.resource.data.h is int && request.resource.data.v is int
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin() && docId.matches('^ad_[A-Za-z0-9_-]{1,40}$');
     }
   }
 }

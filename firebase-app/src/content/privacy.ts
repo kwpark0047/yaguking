@@ -300,6 +300,10 @@ function amend(sections: readonly PolicySection[]): PolicySection[] {
  */
 export const ENGAGEMENT_PRIVACY_EFFECTIVE = ENGAGEMENT_START;
 
+/** 광고(docs/ads-plan.md) — 2절 끝 문장을 이 문장으로 바꾼다. 이 판이 시행되는 날부터 앱이 광고 자리를 보여 준다(AdSlot) */
+export const ADS_PARAGRAPH =
+  '서비스는 이름, 생년월일, 전화번호, 성별, 결제 정보를 받지 않습니다. 외부 광고 네트워크나 방문 분석 도구는 쓰지 않습니다. 운영자가 직접 올리는 광고(자체·협찬 광고)를 보여 줄 수 있으며, 광고를 위해 개인정보를 수집하거나 다른 곳에 보내지 않습니다.';
+
 function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
   return sections.map((section) => {
     switch (section.id) {
@@ -319,6 +323,8 @@ function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
               ],
             ],
           },
+          // 자체·협찬 광고(docs/ads-plan.md) — 수집 항목은 늘지 않는다
+          paragraphs: [ADS_PARAGRAPH],
         };
       case 'retention':
         return {
@@ -374,6 +380,7 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       `오늘의 공식전 답은 공식전 날부터 ${OFFICIAL_RETENTION_DAYS}일 보관하고, 운영자가 채점해 점수를 월간 등수에 더합니다.`,
       `로그인한 이용자에게 월간 등수 상위 ${RANKING_TOP}명의 닉네임·최애 구단(1위)·출석 일수·포인트·칭호가 보입니다. 설정에서 닉네임을 숨길 수 있습니다. 구단 대항전에는 구단별 합계만(팬 ${TEAM_MIN_FANS}명 이상) 보입니다.`,
       `월간 등수는 그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월 보관하고, 탈퇴하면 다음 날 등수에서 닉네임을 지웁니다.`,
+      '운영자가 직접 올리는 광고(자체·협찬 광고)를 보여 줄 수 있습니다. 외부 광고 네트워크·방문 분석 도구는 여전히 쓰지 않고, 광고를 위해 개인정보를 모으지 않습니다.',
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },

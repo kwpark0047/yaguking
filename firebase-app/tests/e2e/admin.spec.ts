@@ -328,3 +328,90 @@ test('최신 소식: 출처가 없으면 저장하지 않고, 쓴 글은 확인 
   await page.getByRole('button', { name: '새로 만들기' }).click();
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('소식 씀');
 });
+
+test('광고: 글 광고·이미지 광고 올림 → 앱 메인 맨 위·게임 중 하단에 "광고"와 광고주, 공지는 맨 아래, 숨기면 사라짐', async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  await page.goto(ADMIN);
+  const popupPromise = page.context().waitForEvent('page');
+  await page.getByRole('button', { name: '구글로 로그인' }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  await popup.locator('li', { hasNotText: 'Add new account' }).first().click();
+  await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('link', { name: '광고', exact: true }).click();
+
+  // 1) 메인 상단 이미지 광고 — 파일을 고르면 자리 크기로 줄여 미리보기
+  await page.getByLabel(/^제목/).fill('오늘의 공식전 배너');
+  await page.getByLabel(/^이동 주소/).fill('/official');
+  await page.getByLabel('이미지 고르기', { exact: false }).setInputFiles({
+    name: 'banner.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'),
+  });
+  await expect(page.getByText(/줄인 이미지 1200×300/)).toBeVisible();
+  await page.getByRole('button', { name: '올리기' }).click();
+  await expect(page.getByRole('alert')).toContainText('대체 글');
+  await page.getByLabel(/^대체 글/).fill('오늘의 공식전 5문제에 도전하세요');
+  await page.getByRole('button', { name: '올리기' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '올렸어요' })).toBeVisible();
+  await axe(page, 'ads');
+
+  // 2) 게임 중 하단 글 광고(바깥 주소)
+  await page.getByLabel('위치').selectOption('play-bottom');
+  await page.getByLabel(/^제목/).fill('야구왕 굿즈 출시');
+  await page.getByLabel(/^문구/).fill('응원 머리띠 한정 판매');
+  await page.getByLabel(/^이동 주소/).fill('https://example.com/goods');
+  await page.getByLabel('광고주').fill('협찬사');
+  await page.getByRole('button', { name: '올리기' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '올렸어요' })).toBeVisible();
+  await expect(page.getByRole('list', { name: '광고 목록' }).getByRole('listitem')).toHaveCount(2);
+  const home = (await listDocs('public')).find((item) => item.id === 'home');
+  expect(JSON.stringify(home?.fields)).toContain('야구왕 굿즈 출시');
+  expect(JSON.stringify(home?.fields)).not.toContain('base64'); // 이미지는 공개 묶음에 넣지 않는다
+  expect((await listDocs('public')).some((item) => item.id.startsWith('ad_'))).toBe(true);
+
+  // 공지 하나(맨 아래 확인용)
+  await patchDoc('public/home', {
+    notices: { arrayValue: { values: [{ mapValue: { fields: { id: { stringValue: 'n-bottom' }, title: { stringValue: '아래로 간 공지' }, startsAt: { integerValue: '0' }, pinned: { booleanValue: true } } } }] } },
+  });
+
+  // 이용자 앱
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto('/');
+  const top = visitor.locator('[data-ad-slot="home-top"]');
+  await expect(top).toBeVisible();
+  await expect(top).toContainText('광고');
+  await expect(top).toContainText('야구왕');
+  await expect(top.getByRole('img', { name: '오늘의 공식전 5문제에 도전하세요' })).toBeVisible();
+  await expect(top.getByRole('link')).toHaveAttribute('href', '/official');
+  const order = await visitor.evaluate(() => {
+    const ad = document.querySelector('[data-ad-slot="home-top"]')!;
+    const hero = document.querySelector('main.home-hero')!;
+    const notice = document.querySelector('aside[aria-label="공지"]')!;
+    return [ad.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING, hero.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING];
+  });
+  expect(order.every(Boolean)).toBe(true); // 광고 → 히어로 → … → 공지
+  await axe(visitor, 'app-ad');
+
+  await visitor.goto('/play');
+  await expect(visitor.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
+  const bottom = visitor.locator('[data-ad-slot="play-bottom"]');
+  await expect(bottom).toContainText('야구왕 굿즈 출시');
+  await expect(bottom).toContainText('협찬사');
+  await expect(bottom.getByRole('link')).toHaveAttribute('rel', 'sponsored noopener noreferrer');
+  await expect(bottom.getByRole('link')).toHaveAttribute('target', '_blank');
+
+  // 숨기면 새로 연 앱에서 사라진다
+  await page.getByRole('list', { name: '광고 목록' }).getByRole('listitem').filter({ hasText: '야구왕 굿즈 출시' }).getByRole('button', { name: '고치기' }).click();
+  await page.getByLabel(/^숨김/).check();
+  await page.getByRole('form', { name: '광고 고치기' }).getByRole('button', { name: '고치기' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '고쳤어요' })).toBeVisible();
+  const later = await (await browser.newContext()).newPage();
+  await later.goto('/play');
+  await expect(later.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
+  await expect(later.locator('[data-ad-slot="play-bottom"]')).toHaveCount(0);
+
+  await page.getByRole('link', { name: '관리자 기록' }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('광고 올림');
+});

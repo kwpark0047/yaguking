@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import emblem from '@/assets/brand/yaguking-emblem.webp';
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
+import { AdSlot } from '@/components/ads/AdSlot';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -17,8 +18,8 @@ const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }
 const secondary = { borderColor: 'var(--line)', backgroundColor: 'var(--hero-button-bg)' };
 
 /**
- * 메인 — 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트, 이렇게 놀아요, 오늘 출석(회원 — docs/engagement-plan.md),
- * 최신 소식(운영자 PC가 글마다 출처·날짜를 확인한 글만 — docs/news.md).
+ * 메인 — 맨 위 광고 자리(docs/ads-plan.md), 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트, 이렇게 놀아요, 오늘 출석(회원 — docs/engagement-plan.md),
+ * 최신 소식(운영자 PC가 글마다 출처·날짜를 확인한 글만 — docs/news.md), 맨 아래 공지 띠.
  * 로그인하지 않았어도 "게임 시작"이면 비회원으로 바로 들어간다(첫 투구까지 한 번).
  */
 export function HomePage() {
@@ -33,7 +34,7 @@ export function HomePage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-4">
       <SiteHeader />
-      <NoticeBanner />
+      <AdSlot slot="home-top" />
       <main className="home-hero flex flex-col items-center gap-4 px-5 py-10 text-center">
         <img src={emblem} alt="야구왕" width={349} height={440} className="h-44 w-auto" />
         <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
@@ -113,6 +114,8 @@ export function HomePage() {
           </section>
         ))}
       <NewsPreview />
+      {/* 공지 띠는 맨 아래(맨 위는 광고 자리 — docs/ads-plan.md) */}
+      <NoticeBanner />
     </div>
   );
 }

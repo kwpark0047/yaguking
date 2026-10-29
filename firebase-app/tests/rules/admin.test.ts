@@ -201,7 +201,9 @@ describe.skipIf(!emulatorHost)('관리자 규칙(배포 규칙)', () => {
       await assertSucceeds(getDoc(doc(anonymous, 'public/home')));
       await assertFails(setDoc(doc(player(), 'public/home'), { notices: [], updatedAt: now() }));
       await assertFails(setDoc(doc(admin(), 'public/home'), { notices: Array.from({ length: 21 }, (_, i) => ({ id: `n${i}` })), updatedAt: now() }));
-      await assertFails(setDoc(doc(admin(), 'public/home'), { notices: [], ads: [], updatedAt: now() }));
+      // 광고 칸(ads)은 이제 받는다(docs/ads-plan.md) — 정해지지 않은 칸은 여전히 거절
+      await assertSucceeds(setDoc(doc(admin(), 'public/home'), { notices: [], ads: [], updatedAt: now() }));
+      await assertFails(setDoc(doc(admin(), 'public/home'), { notices: [], tracker: 'x', updatedAt: now() }));
       await assertFails(setDoc(doc(admin(), 'public/other'), { notices: [], updatedAt: now() }));
     });
   });

@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { buildPublicNotices, type Notice } from '@/lib/admin/notices';
 import type { NewsPost } from '@/lib/news/validate';
+import { adImageDocId, buildPublicAds, type Ad } from '@/lib/ads/ads';
 import { firestore } from '@/lib/firebase/db';
 import { firebaseAuth } from '@/lib/firebase/auth';
 import { setNoticesView } from './views';
@@ -104,7 +105,8 @@ export async function saveNotice(id: string | null, input: NoticeInput | null, e
     startsAt: Timestamp.fromMillis(notice.startsAt),
     endsAt: notice.endsAt === null ? null : Timestamp.fromMillis(notice.endsAt),
   }));
-  batch.set(doc(db, 'public', 'home'), { notices, updatedAt: serverTimestamp() });
+  // 공개 묶음에는 광고(ads)도 있다 — 공지 칸만 합쳐 쓴다(광고 저장도 광고 칸만)
+  batch.set(doc(db, 'public', 'home'), { notices, updatedAt: serverTimestamp() }, { merge: true });
   // 공지 화면은 이 보기 하나만 읽는다(읽기 1) — 원본과 같은 묶음으로 갱신
   setNoticesView(batch, next);
   batch.set(doc(collection(db, 'adminLogs')), logEntry(input ? (id ? 'update-notice' : 'create-notice') : 'delete-notice', ref.id, input?.title ?? ''));
@@ -215,5 +217,34 @@ export async function saveNewsPosts(posts: readonly (NewsPost & { hidden: boolea
   const batch = writeBatch(db);
   batch.set(doc(db, 'adminConfig', 'news'), { posts: posts.map((post) => ({ ...post })), updatedAt: serverTimestamp(), by: uidNow() }, { merge: true });
   batch.set(doc(collection(db, 'adminLogs')), logEntry(action, target));
+  await batch.commit();
+}
+
+// ── 광고(docs/ads-plan.md) — 원본은 adminConfig/ads 한 문서(화면 읽기 1). 저장하면 공개 묶음(public/home)의 광고 칸과
+// 광고 이미지 문서(public/ad_{ID})를 같은 묶음으로 고친다 ─────────────────────────────
+export async function loadAds(): Promise<Ad[]> {
+  const snapshot = await getDoc(doc(firestore(), 'adminConfig', 'ads'));
+  return (Array.isArray(snapshot.get('ads')) ? (snapshot.get('ads') as Ad[]) : []).map((ad) => ({ ...ad, hidden: ad.hidden === true }));
+}
+
+/**
+ * 광고 목록 저장. `images`: 이번에 새로 고른 이미지(광고 ID → data URL), `removedImages`: 지울 이미지 문서의 광고 ID.
+ * 묶음 하나 — 원본·공개 묶음·이미지·관리자 기록이 어긋나지 않게.
+ */
+export async function saveAds(
+  ads: readonly Ad[],
+  changes: { images?: Record<string, string>; removedImages?: readonly string[]; action: string; target: string; detail?: string },
+): Promise<void> {
+  const db = firestore();
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'adminConfig', 'ads'), { ads: ads.map((ad) => ({ ...ad })), updatedAt: serverTimestamp(), by: uidNow() }, { merge: true });
+  batch.set(doc(db, 'public', 'home'), { ads: buildPublicAds(ads, Date.now()), updatedAt: serverTimestamp() }, { merge: true });
+  for (const [id, data] of Object.entries(changes.images ?? {})) {
+    const ad = ads.find((item) => item.id === id);
+    if (!ad?.image) continue;
+    batch.set(doc(db, 'public', adImageDocId(id)), { data, w: ad.image.w, h: ad.image.h, v: ad.image.v, updatedAt: serverTimestamp() });
+  }
+  for (const id of changes.removedImages ?? []) batch.delete(doc(db, 'public', adImageDocId(id)));
+  batch.set(doc(collection(db, 'adminLogs')), logEntry(changes.action, changes.target, changes.detail ?? ''));
   await batch.commit();
 }
