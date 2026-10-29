@@ -53,10 +53,13 @@ async function measure(page: Page, action: string, run: () => Promise<void>): Pr
   return used;
 }
 
-/** 메인이 공지 묶음(public/home)을 다 읽을 때까지 — 계량기를 재기 전에(읽기가 측정 구간에 섞이지 않게) */
+/** 메인이 공지 묶음(public/home)과 최신 소식(public/news)을 다 읽을 때까지 — 계량기를 재기 전에(읽기가 측정 구간에 섞이지 않게) */
 async function waitForPublicHome(page: Page) {
   await expect
     .poll(() => page.evaluate(() => window.__ykUsage?.byLabel.publicHome?.reads ?? 0), { timeout: 15_000 })
+    .toBe(1);
+  await expect
+    .poll(() => page.evaluate(() => window.__ykUsage?.byLabel.publicNews?.reads ?? 0), { timeout: 15_000 })
     .toBe(1);
 }
 
@@ -95,7 +98,7 @@ test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 7 · 
   expect(notes.reads).toBe(count);
 });
 
-test('회원: 앱 열기 4읽기(출석 카드 포함), 출석 도장 쓰기 1, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
+test('회원: 앱 열기 5읽기(최신 소식·출석 카드 포함), 출석 도장 쓰기 1, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
   test.setTimeout(150_000);
   await signUp(page, uniqueEmail());
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
@@ -110,8 +113,8 @@ test('회원: 앱 열기 4읽기(출석 카드 포함), 출석 도장 쓰기 1, 
   // 출석 카드(docs/engagement-plan.md)가 이번 달 출석·등수를 다 읽을 때까지
   await expect(page.getByRole('button', { name: /출석 도장 찍기/ })).toBeVisible({ timeout: 15_000 });
   const open = await meter(page);
-  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음 + 출석 카드)', ...open });
-  expect(open).toEqual({ reads: 4, writes: 0 }); // 프로필 1 + 공지 묶음 1 + 이번 달 출석 1 + 등수 1
+  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음 + 최신 소식 + 출석 카드)', ...open });
+  expect(open).toEqual({ reads: 5, writes: 0 }); // 프로필 1 + 공지 묶음 1 + 최신 소식 1 + 이번 달 출석 1 + 등수 1
 
   const stamp = await measure(page, '출석 도장(하루 1번)', async () => {
     await page.getByRole('button', { name: /출석 도장 찍기/ }).click();
