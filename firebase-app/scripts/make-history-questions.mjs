@@ -21,7 +21,12 @@ const DATA_DIR = fileURLToPath(new URL('../../data/', import.meta.url));
 const FACTS = JSON.parse(readFileSync(`${DATA_DIR}facts/kbo-history-b.json`, 'utf8'));
 const OUT = `${DATA_DIR}questions.history-b.csv`;
 const VERIFIED = FACTS.verifiedAt;
-const LAST_SEASON = 2025;
+/**
+ * 마지막 시즌 = 사실 표의 가장 최근 한국시리즈. 2026 한국시리즈(11-03~11-11)가 끝나면 koreanSeries에
+ * [2026, 우승, 전적, 준우승, MVP, "끝난 날 YYYY-MM-DD"] 한 줄만 더하면 "2025 시즌까지" 문항(우승 횟수·최근 우승·진출 횟수·
+ * 우승 없는 구단·최다 우승)이 모두 "2026 시즌까지"로 다시 만들어진다. 끝난 날을 적으면 그 문항은 21일 동안 "최신 경기"로 나온다
+ */
+const LAST_SEASON = Math.max(...FACTS.koreanSeries.map((row) => row[0]));
 const RIGHTS =
   'B구간(널리 공표된 역사적 사실) — 위키백과 표를 한 건씩 대조해 고친 사실 표(data/facts/kbo-history-b.json)로 쓴 문항. 기록 데이터 자동 수집 아님, 선수별 시즌 수치 없음. 법적 검토 전 운영자 결정(2026-11-01)';
 
@@ -87,7 +92,7 @@ function nearby(rows, year, pick, exclude) {
 }
 
 const questions = [];
-function add({ key, category, score, stem, answer, pool, explanation, source, year = null, scope = null }) {
+function addQuestion({ key, category, score, stem, answer, pool, explanation, source, year = null, scope = null, asOf = null }) {
   if (EXCLUDE.some((pattern) => pattern.test(key))) return;
   const opts = options(answer, pool, stem);
   questions.push({
@@ -98,11 +103,12 @@ function add({ key, category, score, stem, answer, pool, explanation, source, ye
     explanation,
     opts,
     source: FACTS.sources[source],
-    recordAsOf: `${year ?? LAST_SEASON}-12-31`,
+    recordAsOf: asOf ?? `${year ?? LAST_SEASON}-12-31`,
     eraYear: year ?? '',
     scope: scope ?? (year ? `${year} 시즌` : `${LAST_SEASON} 시즌까지`),
   });
 }
+const add = addQuestion;
 
 /** 오래될수록 어렵다: 2025 → 0, 1982 → 약 3.6 */
 const age = (year) => (LAST_SEASON - year) / 12;
@@ -112,8 +118,10 @@ const age = (year) => (LAST_SEASON - year) / 12;
 const KS = FACTS.koreanSeries;
 const RESULTS = ['4승 0패', '4승 1패', '4승 2패', '4승 3패', '4승 1무 1패', '4승 1무 2패', '4승 1무', '4승 3무 2패'];
 const ksMvps = KS.map((row) => row[4]);
-for (const [year, winner, result, runnerUp, mvp] of KS) {
+for (const [year, winner, result, runnerUp, mvp, endedOn] of KS) {
   const teams = teamsIn(year);
+  // 끝난 날이 적힌 해(새로 더한 한국시리즈)는 그날을 기준일로 — "최신 경기"로 나온다
+  const add = (question) => addQuestion({ ...question, asOf: endedOn ?? null });
   const summary = `${year} 한국시리즈에서 ${josa(winner, '이', '가')} ${josa(runnerUp, '을', '를')} ${result}로 꺾고 우승했다. MVP는 ${mvp}.`;
   add({ key: `ks-winner-${year}`, category: 'korean-series', score: 1, year, source: 'ks',
     stem: `${year}년 한국시리즈에서 우승한 팀은?`, answer: winner, pool: teams.filter((team) => team !== runnerUp), explanation: summary });
@@ -206,12 +214,23 @@ add({ key: 'city-seoul-not', category: 'team-history', score: 0.9, source: teamS
 add({ key: 'jamsil-share', category: 'team-history', score: 1.1, source: teamSource,
   stem: '잠실야구장을 함께 홈구장으로 쓰는 두 구단은?', answer: 'LG 트윈스·두산 베어스',
   pool: ['LG 트윈스·키움 히어로즈', '두산 베어스·키움 히어로즈', 'LG 트윈스·SSG 랜더스'], explanation: 'LG 트윈스와 두산 베어스가 잠실야구장을 함께 쓴다.' });
-add({ key: 'no-title', category: 'team-history', score: 1.6, source: teamSource,
-  stem: `${LAST_SEASON} 시즌까지 한국시리즈 우승이 한 번도 없는 지금 구단은?`, answer: '키움 히어로즈',
-  pool: ['NC 다이노스', 'KT 위즈', '한화 이글스', '롯데 자이언츠'], explanation: `${LAST_SEASON} 시즌까지 10개 구단 가운데 키움 히어로즈만 한국시리즈 우승이 없다.` });
-add({ key: 'most-titles', category: 'team-history', score: 0.8, source: teamSource,
-  stem: `${LAST_SEASON} 시즌까지 한국시리즈 우승이 가장 많은 구단(전신 포함)은?`, answer: 'KIA 타이거즈',
-  pool: ['삼성 라이온즈', '두산 베어스', 'SSG 랜더스', 'LG 트윈스'], explanation: '해태 타이거즈 시절을 포함한 KIA 타이거즈가 가장 많이 우승했다.' });
+// 우승 없는 구단·최다 우승 구단은 표에서 센다(답이 하나일 때만 낸다)
+const titleCounts = current.map((franchise) => ({ name: currentName(franchise), count: titlesOf(franchise).length }));
+const noTitle = titleCounts.filter((team) => team.count === 0);
+if (noTitle.length === 1) {
+  add({ key: 'no-title', category: 'team-history', score: 1.6, source: teamSource,
+    stem: `${LAST_SEASON} 시즌까지 한국시리즈 우승이 한 번도 없는 지금 구단은?`, answer: noTitle[0].name,
+    pool: titleCounts.filter((team) => team.count > 0 && team.count <= 2).map((team) => team.name),
+    explanation: `${LAST_SEASON} 시즌까지 10개 구단 가운데 ${noTitle[0].name}만 한국시리즈 우승이 없다.` });
+}
+const most = Math.max(...titleCounts.map((team) => team.count));
+const mostTeams = titleCounts.filter((team) => team.count === most);
+if (mostTeams.length === 1) {
+  add({ key: 'most-titles', category: 'team-history', score: 0.8, source: teamSource,
+    stem: `${LAST_SEASON} 시즌까지 한국시리즈 우승이 가장 많은 구단(전신 포함)은?`, answer: mostTeams[0].name,
+    pool: [...titleCounts].sort((a, b) => b.count - a.count).slice(1, 5).map((team) => team.name),
+    explanation: `${LAST_SEASON} 시즌까지 ${mostTeams[0].name}(전신 포함)가 ${most}번으로 가장 많이 우승했다.` });
+}
 const hyundai = FACTS.franchises.find((franchise) => franchise.id === 'hyundai');
 const hyundaiTitles = titlesOf(hyundai);
 add({ key: 'hyundai-last', category: 'team-history', score: 3.3, year: 2007, source: teamSource,
