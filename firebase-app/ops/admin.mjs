@@ -55,9 +55,33 @@ export async function setAdmin({ auth, email, value = true }) {
   return { uid: user.uid, admin: value, emailVerified: user.emailVerified, providers: user.providerData.map((p) => p.providerId) };
 }
 
+/**
+ * 재방문(docs/retention-plan.md L) — 0시 작업 기준 "어제" 다시 연 비율. 계정마다 처음 온 시각과 마지막으로 연 시각
+ * (로그인·토큰 갱신 중 늦은 것 — 앱을 열면 갱신된다)만 쓰고 따로 모으지 않는다. 결과는 수만(사람을 가리키지 않는다).
+ * - D1: 그저께 처음 온 계정 가운데 어제 다시 연 수
+ * - D7: 8일 전 처음 온 계정 가운데 어제(7일째) 연 수
+ * [처음 온 수, 다시 연 수]를 회원·비회원 따로
+ */
+export function returnRates(accounts, now = Date.now()) {
+  const yesterday = kstDay(kstDay(now).start - 1);
+  const count = (daysBefore) => {
+    const start = yesterday.start - daysBefore * DAY;
+    const out = { members: [0, 0], guests: [0, 0] };
+    for (const account of accounts) {
+      if (account.createdAt < start || account.createdAt >= start + DAY) continue;
+      const bucket = account.member ? out.members : out.guests;
+      bucket[0] += 1;
+      if (account.lastActiveAt >= yesterday.start) bucket[1] += 1;
+    }
+    return out;
+  };
+  return { day: yesterday.key, d1: count(1), d7: count(7) };
+}
+
 export async function syncAccounts({ auth, db, now = Date.now() }) {
   const report = { members: 0, guests: 0, guestsActive7d: 0, guestsNew24h: 0, guestsPeakHour: 0, written: 0, removed: 0 };
   const guestCreated = [];
+  const accounts = [];
   const existing = new Map();
   for (const snapshot of (await db.collection('accountMirror').get()).docs) existing.set(snapshot.id, fromFirestore(snapshot.data()));
 
@@ -67,6 +91,8 @@ export async function syncAccounts({ auth, db, now = Date.now() }) {
   do {
     const page = await auth.listUsers(1000, pageToken);
     for (const user of page.users) {
+      const { createdAt, lastSignInAt } = mirrorOf(user);
+      accounts.push({ createdAt, lastActiveAt: lastSignInAt, member: isMemberAccount(user) });
       if (!isMemberAccount(user)) {
         report.guests += 1;
         if (mirrorOf(user).lastSignInAt >= now - 7 * DAY) report.guestsActive7d += 1;
@@ -100,6 +126,12 @@ export async function syncAccounts({ auth, db, now = Date.now() }) {
     guestsPeakHour: report.guestsPeakHour,
     syncedAt: FieldValue.serverTimestamp(),
   });
+  // 재방문은 어제의 하루 요약에 붙인다(하루 요약 작업 buildDailyStats가 다시 써도 남긴다)
+  // 셀 무리(그저께·8일 전에 처음 온 계정)가 없으면 쓰지 않는다 — 빈 하루 요약 문서를 만들지 않게
+  const rates = returnRates(accounts, now);
+  const cohortSize = [rates.d1, rates.d7].reduce((sum, cohort) => sum + cohort.members[0] + cohort.guests[0], 0);
+  if (cohortSize > 0) writer.set(db.doc(`adminDaily/${rates.day}`), { retention: { d1: rates.d1, d7: rates.d7 } }, { merge: true });
+  report.retention = rates;
   await writer.close();
   return report;
 }
@@ -182,7 +214,7 @@ export function summarizeDay(games, memberUids) {
 
 /**
  * 하루(한국 시간) 요약을 `adminDaily/{YYYYMMDD}`에 쓴다 — 관리 화면은 이 요약만 읽는다(원본 경기를 다시 읽지 않음).
- * 기본은 어제. 같은 날을 다시 돌리면 덮어쓴다. 읽기: 그날 경기 수 + 계정 사본 수, 쓰기 1.
+ * 기본은 어제. 같은 날을 다시 돌리면 덮어쓴다(재방문 칸은 남긴다). 읽기: 그날 경기 수 + 계정 사본 수 + 1, 쓰기 1.
  */
 export async function buildDailyStats({ db, now = Date.now(), day }) {
   const { start, key } = day ? kstDay(Date.parse(`${day}T00:00:00+09:00`)) : kstDay(kstDay(now).start - 1);
@@ -203,7 +235,9 @@ export async function buildDailyStats({ db, now = Date.now(), day }) {
     const created = item.get('createdAt')?.toMillis?.() ?? 0;
     return created >= start && created < end;
   }).length;
-  const summary = { day: key, ...summarizeDay(games, memberUids), signups, builtAt: FieldValue.serverTimestamp() };
+  // 계정 동기화가 먼저 붙인 재방문(retention)은 남긴다(읽기 1)
+  const retention = (await db.doc(`adminDaily/${key}`).get()).get('retention');
+  const summary = { day: key, ...summarizeDay(games, memberUids), signups, ...(retention ? { retention } : {}), builtAt: FieldValue.serverTimestamp() };
   await db.doc(`adminDaily/${key}`).set(summary);
   return { day: key, games: summary.games, players: summary.players, signups };
 }

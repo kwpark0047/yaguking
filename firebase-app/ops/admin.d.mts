@@ -28,7 +28,19 @@ export interface SyncReport {
   guestsPeakHour: number;
   written: number;
   removed: number;
+  retention: ReturnRates;
 }
+/** [처음 온 수, 다시 연 수] — 회원·비회원 따로 */
+export interface ReturnCohort {
+  members: [number, number];
+  guests: [number, number];
+}
+export interface ReturnRates {
+  day: string;
+  d1: ReturnCohort;
+  d7: ReturnCohort;
+}
+export function returnRates(accounts: readonly { createdAt: number; lastActiveAt: number; member: boolean }[], now?: number): ReturnRates;
 export function syncAccounts(options: { auth: Auth; db: Firestore; now?: number }): Promise<SyncReport>;
 export function processAdminTasks(options: { auth: Auth; db: Firestore; now?: number }): Promise<{
   processed: number;

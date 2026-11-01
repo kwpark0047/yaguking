@@ -91,6 +91,23 @@ describe.skipIf(!emulated)('관리자 운영 작업(에뮬레이터)', () => {
     expect((await buildDailyStats({ db, day: '2026-10-28' })).games).toBe(1);
   });
 
+  it('재방문: 계정 동기화가 어제의 하루 요약에 D1·D7(수만)을 붙이고, 하루 요약을 다시 만들어도 남는다', async () => {
+    await auth.createUser({ email: 'm1@example.test', password: 'yaguking-123' });
+    await auth.createUser({});
+    await auth.createUser({});
+    // 지금 만든 계정 = "오늘" 처음 온 계정. 이틀 뒤 0시에 돌리면 D1 무리(그저께 처음 온 계정)가 된다 — 그 뒤로 안 열었으니 돌아온 수 0
+    await syncAccounts({ auth, db }); // 지금 돌리면 셀 무리가 없다 → 빈 하루 요약을 만들지 않는다
+    expect((await db.collection('adminDaily').get()).size).toBe(0);
+    const later = Date.now() + 2 * 86_400_000;
+    const report = await syncAccounts({ auth, db, now: later });
+    expect(report.retention.d1).toEqual({ members: [1, 0], guests: [2, 0] });
+    expect(report.retention.d7).toEqual({ members: [0, 0], guests: [0, 0] });
+    const ref = db.doc(`adminDaily/${report.retention.day}`);
+    expect((await ref.get()).get('retention')).toEqual({ d1: report.retention.d1, d7: report.retention.d7 });
+    await buildDailyStats({ db, now: later });
+    expect((await ref.get()).data()).toMatchObject({ day: report.retention.day, games: 0, retention: { d1: { guests: [2, 0] } } });
+  });
+
   it('작업 대기열: 대기 중인 동기화 요청을 한 번만 돌리고 모두 완료로, 모르는 작업은 실패로', async () => {
     await auth.createUser({ email: 'm1@example.test' });
     await db.doc('adminTasks/a').set({ type: 'syncAccounts', status: 'pending', target: '', by: 'boss' });

@@ -172,6 +172,7 @@ describe('하루 요약 합치기(어제·최근 7일)', () => {
     homeRunRate: 0,
     signups: 0,
     hourly: [],
+    retention: null,
     ...patch,
   });
 
@@ -184,6 +185,40 @@ describe('하루 요약 합치기(어제·최근 7일)', () => {
     expect(total).toMatchObject({ games: 4, signups: 3, averageRuns: 1, correctRate: 0.8 });
     expect(total.hourly[0]).toBe(3);
   });
+
+  it('재방문: 여러 날 [처음 온 수, 다시 연 수]를 회원·비회원 따로·함께 더한다, 재방문이 안 붙은 날은 뺀다', async () => {
+    const { sumReturns } = await import('@/lib/admin/views');
+    const cohort = (members: [number, number], guests: [number, number]) => ({ members, guests });
+    const days = [
+      day({ retention: { d1: cohort([2, 1], [10, 3]), d7: cohort([1, 0], [4, 1]) } }),
+      day({ retention: { d1: cohort([0, 0], [5, 2]), d7: cohort([0, 0], [0, 0]) } }),
+      day({ retention: null }),
+    ];
+    expect(sumReturns(days, 'd1')).toEqual({ all: [17, 6], members: [2, 1], guests: [15, 5] });
+    expect(sumReturns(days, 'd7')).toEqual({ all: [5, 1], members: [1, 0], guests: [4, 1] });
+  });
+
+  it('재방문 계산(운영자 PC): D1 = 그저께 처음 온 계정 중 어제 연 수, D7 = 8일 전 처음 온 계정 중 어제 연 수', async () => {
+    const { returnRates } = await import('../../ops/admin.mjs');
+    const at = (iso: string) => Date.parse(`${iso}+09:00`);
+    const now = at('2026-11-10T00:00:30'); // 0시 작업 → "어제" = 11-09
+    const rates = returnRates(
+      [
+        { createdAt: at('2026-11-08T10:00:00'), lastActiveAt: at('2026-11-09T21:00:00'), member: false }, // D1 돌아옴
+        { createdAt: at('2026-11-08T23:59:00'), lastActiveAt: at('2026-11-08T23:59:30'), member: false }, // D1 안 옴
+        { createdAt: at('2026-11-08T12:00:00'), lastActiveAt: at('2026-11-09T00:00:00'), member: true }, // D1 돌아옴(자정)
+        { createdAt: at('2026-11-02T09:00:00'), lastActiveAt: at('2026-11-09T08:00:00'), member: true }, // D7 돌아옴
+        { createdAt: at('2026-11-02T09:00:00'), lastActiveAt: at('2026-11-05T08:00:00'), member: false }, // D7 안 옴
+        { createdAt: at('2026-11-09T09:00:00'), lastActiveAt: at('2026-11-09T09:30:00'), member: false }, // 어제 처음 — 아직 안 셈
+      ],
+      now,
+    );
+    expect(rates).toEqual({
+      day: '20261109',
+      d1: { members: [1, 1], guests: [2, 1] },
+      d7: { members: [1, 1], guests: [1, 0] },
+    });
+  }, 30_000);
 
   it('많이 틀린 문항은 여러 날 합쳐 5번 이상 나온 것만', async () => {
     const { hardestFromTallies } = await import('@/lib/admin/views');

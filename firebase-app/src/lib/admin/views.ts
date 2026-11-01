@@ -270,6 +270,29 @@ export interface DailyRow {
   homeRunRate: number;
   signups: number;
   hourly: number[];
+  /** 재방문(docs/retention-plan.md L) — [처음 온 수, 다시 연 수]. 계정 동기화가 붙이기 전 날은 null */
+  retention: { d1: ReturnCohort; d7: ReturnCohort } | null;
+}
+
+export interface ReturnCohort {
+  members: [number, number];
+  guests: [number, number];
+}
+
+/** 여러 날 재방문 합 — [처음 온 수, 다시 연 수](회원+비회원). 붙지 않은 날은 빼고 센다 */
+export function sumReturns(days: readonly Pick<DailyRow, 'retention'>[], which: 'd1' | 'd7') {
+  const total = { all: [0, 0] as [number, number], members: [0, 0] as [number, number], guests: [0, 0] as [number, number] };
+  for (const day of days) {
+    const cohort = day.retention?.[which];
+    if (!cohort) continue;
+    for (const kind of ['members', 'guests'] as const) {
+      total[kind][0] += cohort[kind][0];
+      total[kind][1] += cohort[kind][1];
+      total.all[0] += cohort[kind][0];
+      total.all[1] += cohort[kind][1];
+    }
+  }
+  return total;
 }
 
 /** 여러 날 합계 — 평균·비율은 타석·경기 수로 가중 */

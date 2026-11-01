@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { CATEGORY_TITLE, loadQuestions, type Question } from '@/content/questions';
-import { GUEST_BURST_PER_HOUR, sumDays, type DailyRow } from '@/lib/admin/views';
+import { GUEST_BURST_PER_HOUR, sumDays, sumReturns, type DailyRow } from '@/lib/admin/views';
 import { requestAccountSync } from '../data';
 import { useView, ViewBar } from '../useView';
 import { rebuildAll, type DashboardView } from '../views';
@@ -185,6 +185,30 @@ export function HourBars({ hourly }: { hourly: readonly number[] }) {
 
 type Period = 'yesterday' | 'week';
 
+/** 재방문(docs/retention-plan.md L) — 처음 온 다음 날(D1)·7일째(D7) 다시 연 비율. 운영자 PC 계정 동기화가 0시에 센다 */
+function ReturnRates({ days }: { days: readonly DailyRow[] }) {
+  const rate = ([cohort, returned]: [number, number]) => (cohort ? `${Math.round((returned / cohort) * 100)}%` : '—');
+  const pair = ([cohort, returned]: [number, number]) => `${returned}/${cohort}`;
+  return (
+    <dl className="grid grid-cols-2 gap-2 text-sm" aria-label="재방문">
+      {(['d1', 'd7'] as const).map((which) => {
+        const total = sumReturns(days, which);
+        return (
+          <div key={which}>
+            <dt className="text-ink-2">{which === 'd1' ? '다음 날 재방문(D1)' : '7일째 재방문(D7)'}</dt>
+            <dd className="num-tabular text-lg font-bold">
+              {rate(total.all)} <span className="text-xs font-normal text-ink-2">{pair(total.all)}</span>
+            </dd>
+            <dd className="text-xs text-ink-2">
+              회원 {pair(total.members)} · 비회원 {pair(total.guests)}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
 /** 어제·최근 7일 — 운영자 PC가 매일 밤 쓴 하루 요약(adminDaily). 오늘 숫자는 아래 "오늘 경기 요약" */
 function PeriodSummary({ data }: { data: DashboardView }) {
   const [period, setPeriod] = useState<Period>('yesterday');
@@ -245,6 +269,7 @@ function PeriodSummary({ data }: { data: DashboardView }) {
           </div>
         ))}
       </dl>
+      <ReturnRates days={chosen} />
       {period === 'week' ? (
         <figure className="flex flex-col gap-1">
           <figcaption className="text-xs text-ink-2">날짜별 경기 수</figcaption>
