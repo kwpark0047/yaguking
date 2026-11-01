@@ -42,9 +42,13 @@ test('폰(360×740)에서 소·중은 보기 4개가 첫 화면에, 가로 넘�
   for (const size of ['s', 'm', 'l'] as const) {
     await page.addInitScript((value) => localStorage.setItem('yk_text', value), size);
     await openGame(page);
-    const last = await page.getByRole('group', { name: '보기' }).getByRole('button').last().boundingBox();
     const viewport = page.viewportSize()!;
-    if (size !== 'l') expect(last!.y + last!.height, `${size}: 마지막 보기가 화면 안`).toBeLessThanOrEqual(viewport.height);
+    // 문제가 길면(3~4줄) 그만큼 내려 마지막 보기를 화면 안에 둔다 — 내림은 그린 다음 프레임이라 기다린다
+    const lastBottom = async () => {
+      const box = await page.getByRole('group', { name: '보기' }).getByRole('button').last().boundingBox();
+      return box!.y + box!.height;
+    };
+    if (size !== 'l') await expect.poll(lastBottom, { message: `${size}: 마지막 보기가 화면 안` }).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${size}: 가로 넘침`).toBe(true);
     if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/size-${size}-360.png` });
   }

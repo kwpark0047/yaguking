@@ -59,7 +59,19 @@ export function QuestionView({
     setLeft(limitRef.current);
     playSound('pitch');
     // 큰 글자(대)에서는 문제가 바뀌면 문제 맨 위로 — 보기가 화면 아래로 이어진다(docs/game-look-plan.md §2)
-    if (document.documentElement.dataset.text === 'l') sectionRef.current?.scrollIntoView?.({ block: 'start' });
+    if (document.documentElement.dataset.text === 'l') {
+      sectionRef.current?.scrollIntoView?.({ block: 'start' });
+      return;
+    }
+    // 소·중: 문제가 3~4줄로 길어 마지막 보기가 화면 밖이면 그만큼만 내린다(폰 360×740 — 문제 카드 위까지만)
+    const frame = requestAnimationFrame(() => {
+      const section = sectionRef.current;
+      const last = section?.querySelectorAll('.g-option-button');
+      const bottom = last?.[last.length - 1]?.getBoundingClientRect().bottom;
+      if (!section || bottom === undefined || bottom <= window.innerHeight) return;
+      window.scrollBy({ top: Math.min(bottom - window.innerHeight + 12, section.getBoundingClientRect().top) });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [question.id]);
 
   // 시계·키보드 처리기는 문항마다 한 번 건다. 최신 onAnswer는 ref로 본다.
