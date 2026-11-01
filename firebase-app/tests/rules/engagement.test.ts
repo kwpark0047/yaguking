@@ -43,7 +43,8 @@ describe.skipIf(!emulatorHost)('출석·월간 등수 규칙', () => {
       await seed(`users/alice/attendance/${month}`, { days: [otherDay], updatedAt: new Date() });
       const db = member(env, 'alice');
       await assertFails(
-        updateDoc(doc(db, `users/alice/attendance/${month}`), { days: [otherDay, otherDay === 2 ? 3 : 2], updatedAt: serverTimestamp() }),
+        // 붙이는 날은 오늘도 이전 날도 아닌 날(매달 2일에 "2"를 붙이면 맞는 도장이 된다 — 11-02 CI에서 걸림)
+        updateDoc(doc(db, `users/alice/attendance/${month}`), { days: [otherDay, [3, 4, 5].find((day) => day !== today && day !== otherDay)!], updatedAt: serverTimestamp() }),
       );
       await assertFails(updateDoc(doc(db, `users/alice/attendance/${month}`), { days: [today], updatedAt: serverTimestamp() }));
       await assertSucceeds(stamp(db));
