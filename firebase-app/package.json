@@ -9,6 +9,7 @@
     "build": "node scripts/subset-font.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "test": "vitest run",
     "emulators": "firebase emulators:start --project demo-yaguking",
     "test:rules": "firebase emulators:exec --only firestore --project demo-yaguking \"vitest run tests/rules\"",
@@ -43,11 +44,15 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "cross-env": "10.1.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "5.2.0",
     "firebase-admin": "14.5.0",
     "firebase-tools": "15.34.1",
+    "globals": "16.5.0",
     "subset-font": "2.9.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
     "vite": "8.3.5",
     "vitest": "5.0.5"
   }

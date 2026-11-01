@@ -47,13 +47,16 @@ export function QuestionView({
   const [left, setLeft] = useState(limitMs);
   /** 남은 3·2·1초 "틱"을 이미 울린 초(소리 켠 사람만) */
   const ticked = useRef(4);
+  /** 제한 시간(첫 문제 20초·보너스 +3초)은 문항과 함께 바뀐다 — 시계는 문항마다 한 번 걸고 최신 값은 ref로 본다 */
+  const limitRef = useRef(limitMs);
+  limitRef.current = limitMs;
 
   // 문항이 바뀌면 시계를 다시 맞추고 투구 소리
   useEffect(() => {
     startedAt.current = performance.now();
     answered.current = false;
     ticked.current = 4;
-    setLeft(limitMs);
+    setLeft(limitRef.current);
     playSound('pitch');
     // 큰 글자(대)에서는 문제가 바뀌면 문제 맨 위로 — 보기가 화면 아래로 이어진다(docs/game-look-plan.md §2)
     if (document.documentElement.dataset.text === 'l') sectionRef.current?.scrollIntoView?.({ block: 'start' });
@@ -68,14 +71,14 @@ export function QuestionView({
     answered.current = true;
     if (choice !== null) playSound('tap');
     const elapsed = performance.now() - startedAt.current;
-    onAnswerRef.current(choice, choice === null ? limitMs + 1 : elapsed);
+    onAnswerRef.current(choice, choice === null ? limitRef.current + 1 : elapsed);
   }
   const submitRef = useRef(submit);
   submitRef.current = submit;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const remaining = limitMs - (performance.now() - startedAt.current);
+      const remaining = limitRef.current - (performance.now() - startedAt.current);
       setLeft(Math.max(0, remaining));
       const second = Math.ceil(remaining / 1000);
       if (second >= 1 && second <= 3 && second < ticked.current && !answered.current) {
