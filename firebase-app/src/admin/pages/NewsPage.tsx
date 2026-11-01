@@ -20,7 +20,7 @@ const newId = () => `n${Date.now().toString(36)}${Math.floor(Math.random() * 1e4
 
 /**
  * 최신 소식(docs/news.md) — 야구왕 서비스 소식(업데이트·안내·이벤트)을 쓴다. 열 때 문서 하나(읽기 1).
- * 글마다 **출처(이름·https 주소)와 날짜**가 있어야 한다. 매일 새벽 운영자 PC가 글마다 출처가 열리는지·날짜가 맞는지 다시 확인해
+ * 글마다 **출처(이름·https 주소)와 날짜**가 있어야 한다. 매일 0시 운영자 PC가 글마다 출처가 열리는지·날짜가 맞는지 다시 확인해
  * 통과한 글만 이용자 앱에 올린다(미래 날짜는 그날 올라가는 예약). 리그 경기 소식은 데이터 이용 허락 전까지 쓰지 않는다.
  */
 export function NewsPage() {
@@ -63,16 +63,16 @@ export function NewsPage() {
     if (!draft.id && posts.length >= NEWS_LIMITS.posts) return setError(`글은 ${NEWS_LIMITS.posts}개까지예요. 오래된 글을 지워 주세요.`);
     const post = { ...draft, id: draft.id || newId(), title: draft.title.trim(), summary: draft.summary.trim(), body: draft.body.trim(), sourceName: draft.sourceName.trim() };
     const next = draft.id ? posts.map((item) => (item.id === draft.id ? post : item)) : [post, ...posts];
-    void save(next, draft.id ? 'update-news' : 'create-news', post.id, '저장했어요. 다음 새벽 확인(출처·날짜)을 통과하면 이용자 앱에 올라가요.');
+    void save(next, draft.id ? 'update-news' : 'create-news', post.id, '저장했어요. 다음 0시 확인(출처·날짜)을 통과하면 이용자 앱에 올라가요.');
   }
 
   function remove(post: Post) {
-    void save(posts.filter((item) => item.id !== post.id), 'delete-news', post.id, '지웠어요. 다음 새벽 확인 때 이용자 앱에서도 내려가요.');
+    void save(posts.filter((item) => item.id !== post.id), 'delete-news', post.id, '지웠어요. 다음 0시 확인 때 이용자 앱에서도 내려가요.');
   }
 
   return (
     <>
-      <PageTitle note="야구왕 서비스 소식(업데이트·안내·이벤트). 글마다 출처와 날짜를 매일 새벽 다시 확인해 통과한 글만 이용자 앱에 올립니다. 문서 하나를 읽습니다.">
+      <PageTitle note="야구왕 서비스 소식(업데이트·안내·이벤트). 글마다 출처와 날짜를 매일 0시 다시 확인해 통과한 글만 이용자 앱에 올립니다. 문서 하나를 읽습니다.">
         최신 소식
       </PageTitle>
       {error && <ErrorText>{error}</ErrorText>}
@@ -158,7 +158,7 @@ export function NewsPage() {
                     {post.date} · 출처 {post.sourceName}
                   </span>
                   <span className="text-xs font-semibold" style={{ color: check?.ok ? 'var(--on-base)' : 'var(--out)' }}>
-                    {check ? `${check.ok ? '앱에 올림' : '올리지 않음'} — ${check.reason}` : '아직 확인 전(다음 새벽)'}
+                    {check ? `${check.ok ? '앱에 올림' : '올리지 않음'} — ${check.reason}` : '아직 확인 전(다음 0시)'}
                   </span>
                   <span className="flex gap-2">
                     <button type="button" onClick={() => setDraft(post)} className="min-h-11 font-semibold underline">

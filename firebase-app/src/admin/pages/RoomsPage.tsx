@@ -54,7 +54,7 @@ export function RoomsPage() {
 
   return (
     <>
-      <PageTitle note="기기에서 채점한 비공식 대결. 24시간 지난 방은 매일 03:30 정리 작업이 지웁니다.">대결 방</PageTitle>
+      <PageTitle note="기기에서 채점한 비공식 대결. 24시간 지난 방은 매일 0시 정리 작업이 지웁니다.">대결 방</PageTitle>
       <ViewBar updatedAt={view?.updatedAt ?? null} busy={busy} error={error} onRefresh={() => void refresh()} cost="방 최대 100개와 각 방의 자리를 읽습니다" />
       {view === undefined && !error && <p className="text-sm text-ink-2">불러오는 중…</p>}
       {view && (

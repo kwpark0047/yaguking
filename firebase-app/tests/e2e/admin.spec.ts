@@ -313,7 +313,7 @@ test('최신 소식: 출처가 없으면 저장하지 않고, 쓴 글은 확인 
   await expect(page.getByRole('alert')).toContainText('https://');
   await page.getByLabel(/^출처 주소/).fill('https://yaguking.web.app/news');
   await page.getByRole('button', { name: '저장' }).click();
-  await expect(page.getByRole('status')).toContainText('다음 새벽 확인');
+  await expect(page.getByRole('status')).toContainText('다음 0시 확인');
   const list = page.getByRole('list', { name: '소식 글 목록' });
   await expect(list).toContainText('관리자에서 쓴 소식');
   await expect(list).toContainText('아직 확인 전');

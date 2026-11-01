@@ -165,8 +165,8 @@ export function RankingPage() {
             {board !== undefined && (
               <p className="text-sm text-ink-2 break-keep">
                 {board && board.through > 0
-                  ? `${Number(month.slice(4, 6))}월 ${board.through}일까지의 출석·공식전 · 참여 ${board.participants}명 · 매일 새벽 갱신`
-                  : '아직 셀 날이 없어요. 등수는 매일 새벽에 어제까지의 출석으로 매겨요.'}
+                  ? `${Number(month.slice(4, 6))}월 ${board.through}일까지의 출석·공식전 · 참여 ${board.participants}명 · 매일 0시 갱신`
+                  : '아직 셀 날이 없어요. 등수는 매일 0시에 어제까지의 출석으로 매겨요.'}
               </p>
             )}
             {myRank?.rank && (
@@ -279,7 +279,7 @@ export function RankingPage() {
               포인트와 칭호
             </h2>
             <p>
-              포인트 = 출석 + 오늘의 공식전. 출석 하루 {POINTS.day}점, 그 달 안에서 {STREAK_WEEK}일 연속마다 +{POINTS.week}점, 개근 +{POINTS.perfect}점. 공식전은 하루 {OFFICIAL_TOTAL}문제를 새벽에 채점한 점수예요. 같은 포인트는 같은 순위예요.
+              포인트 = 출석 + 오늘의 공식전. 출석 하루 {POINTS.day}점, 그 달 안에서 {STREAK_WEEK}일 연속마다 +{POINTS.week}점, 개근 +{POINTS.perfect}점. 공식전은 하루 {OFFICIAL_TOTAL}문제를 0시에 채점한 점수예요. 같은 포인트는 같은 순위예요.
             </p>
             {doubleDays.length > 0 && (
               <p className="font-semibold text-ink-1">
@@ -287,7 +287,7 @@ export function RankingPage() {
               </p>
             )}
             <p>
-              매달 1일 새벽에 지난달 등수를 확정해요. 1위 {TITLE_LABEL.king}, 2~3위 {TITLE_LABEL.allstar}, 4~10위 {TITLE_LABEL.hall}, 개근하면 {TITLE_LABEL.perfect}.
+              매달 1일 0시에 지난달 등수를 확정해요. 1위 {TITLE_LABEL.king}, 2~3위 {TITLE_LABEL.allstar}, 4~10위 {TITLE_LABEL.hall}, 개근하면 {TITLE_LABEL.perfect}.
             </p>
             <p>
               등수에는 닉네임과 최애 구단만 보여요. 설정에서 닉네임을 숨길 수 있어요(&quot;{HIDDEN_NAME}&quot;로 표시).

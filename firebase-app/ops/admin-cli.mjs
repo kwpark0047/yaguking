@@ -19,7 +19,7 @@ import { buildDailyStats, processAdminTasks, setAdmin, syncAccounts } from './ad
 import { existsSync, readFileSync } from 'node:fs';
 import { runMonthly } from './monthly.mjs';
 import { runNews, seedNews } from './news.mjs';
-import { runOfficial } from './official.mjs';
+import { answerWindowMs, runOfficial } from './official.mjs';
 
 const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -64,6 +64,13 @@ if (command === 'set-admin') {
   const pool = arg('pool');
   if (pool && !existsSync(pool)) console.error(`문항 풀이 없습니다: ${pool} — 판정만 합니다.`);
   const poolText = pool && existsSync(pool) ? readFileSync(pool, 'utf8') : null;
+  // 0시 직후에 돌면 어제 공식전의 마지막 답(최대 81초 늦게 들어옴)을 기다렸다 채점한다 — 기다리지 않으면 하루 늦게 채점된다
+  const sinceMidnight = (Date.now() + 9 * 3_600_000) % 86_400_000;
+  const wait = answerWindowMs() + 10_000 - sinceMidnight;
+  if (wait > 0) {
+    console.error(`어제 공식전의 마지막 답을 ${Math.ceil(wait / 1000)}초 기다렸다 채점합니다.`);
+    await new Promise((resolve) => setTimeout(resolve, wait));
+  }
   const report = await runOfficial({ db, poolText });
   console.log(JSON.stringify({ ...report, problems: report.problems.length }));
   for (const problem of report.problems) console.error(`문항 풀: ${problem}`);

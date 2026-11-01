@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runMonthly } from '../../ops/monthly.mjs';
-import { OFFICIAL_TOTAL, questionPoints, roundOpensAt, runOfficial } from '../../ops/official.mjs';
+import { OFFICIAL_TOTAL, answerWindowMs, questionPoints, roundOpensAt, runOfficial } from '../../ops/official.mjs';
 
 /** 오늘의 공식전(ops/official.mjs) — Firestore 에뮬레이터에서 실제로. `npm run test:ops` */
 const emulated = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
@@ -61,6 +61,9 @@ describe.skipIf(!emulated)('오늘의 공식전(에뮬레이터)', () => {
     await db.doc('officialRounds/20261105/attempts/ghost').set({ startedAt: Timestamp.fromMillis(opens), total: OFFICIAL_TOTAL, answers: {} });
 
     expect(await runOfficial({ db, now: at(2026, 11, 5) + 3_600_000, start: START, bank: new Set() })).toMatchObject({ graded: [] }); // 아직 열림
+    // 0시 30초 — 닫혔지만 마지막 답이 들어올 수 있는 동안(최대 81초)은 채점하지 않는다
+    expect(await runOfficial({ db, now: roundOpensAt('20261106') + 30_000, start: START, bank: new Set() })).toMatchObject({ graded: [] });
+    expect(answerWindowMs()).toBe(81_000);
     const report = await runOfficial({ db, now: at(2026, 11, 6), start: START, bank: new Set() });
     expect(report).toMatchObject({ graded: ['20261105'], attempts: 1, removedAttempts: 1, remaining: null });
     const expected = 4 * questionPoints(true, 3_000) + 20; // 첫 문제 틀림, 나머지 3초씩, 완주

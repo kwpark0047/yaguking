@@ -154,7 +154,7 @@ export default function AttendanceCard({ uid, team }: { uid: string; team: strin
             ? `이번 달 ${mine.rank}위 / ${mine.participants}명 (어제까지)`
             : board && board.participants > 0
               ? `이번 달 참여 ${board.participants}명 — 오늘 찍은 도장은 내일 등수에 들어가요`
-              : '등수는 매일 새벽에 어제까지의 출석·공식전으로 매겨요'}
+              : '등수는 매일 0시에 어제까지의 출석·공식전으로 매겨요'}
         </p>
         <Link to="/ranking" className="flex min-h-11 items-center font-semibold underline">
           월간 등수 보기

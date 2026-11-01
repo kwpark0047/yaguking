@@ -22,7 +22,7 @@ export function DashboardPage() {
     setSyncError(null);
     try {
       await requestAccountSync();
-      setNotice('동기화를 요청했어요. 운영자 PC 작업이 처리합니다(매일 03:30, 또는 PC에서 바로 실행).');
+      setNotice('동기화를 요청했어요. 운영자 PC 작업이 처리합니다(매일 0시, 또는 PC에서 바로 실행).');
     } catch {
       setSyncError('요청하지 못했어요.');
     }
@@ -202,7 +202,7 @@ function PeriodSummary({ data }: { data: DashboardView }) {
         <h2 id="period-title" className="font-semibold">
           어제·최근 7일
         </h2>
-        <p className="text-sm text-ink-2 break-keep">아직 하루 요약이 없어요. 운영자 PC 작업이 매일 03:30에 전날 요약을 만듭니다.</p>
+        <p className="text-sm text-ink-2 break-keep">아직 하루 요약이 없어요. 운영자 PC 작업이 매일 0시에 전날 요약을 만듭니다.</p>
       </section>
     );
   const chosen: DailyRow[] = period === 'yesterday' ? days.slice(0, 1) : days;

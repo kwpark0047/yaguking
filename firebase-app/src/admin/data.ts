@@ -38,7 +38,7 @@ export async function logAdmin(action: string, target: string, detail = ''): Pro
   await batch.commit();
 }
 
-/** 계정 동기화 요청 — 운영자 PC 작업이 처리(매일 03:30 또는 수동 실행) */
+/** 계정 동기화 요청 — 운영자 PC 작업이 처리(매일 0시 또는 수동 실행) */
 export async function requestAccountSync(): Promise<void> {
   const db = firestore();
   const batch = writeBatch(db);

@@ -9,6 +9,7 @@ export const OFFICIAL_RETENTION_DAYS: number;
 export function roundIdOf(ms: number): string;
 export function roundOpensAt(roundId: string): number;
 export function questionPoints(correct: boolean, elapsedMs: number): number;
+export function answerWindowMs(total?: number): number;
 export function gradeAttempt(
   startedAt: number,
   answers: Record<string, { choice: string | null; at: number }>,

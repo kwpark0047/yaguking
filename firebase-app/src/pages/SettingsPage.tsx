@@ -100,7 +100,7 @@ export function SettingsPage() {
     try {
       await saveRankingHidden(user!.uid, next);
       await refreshProfile();
-      setMessage({ kind: 'ok', text: next ? '숨겼어요. 내일 새벽 등수부터 반영돼요.' : '다시 보여요. 내일 새벽 등수부터 반영돼요.' });
+      setMessage({ kind: 'ok', text: next ? '숨겼어요. 내일 0시 등수부터 반영돼요.' : '다시 보여요. 내일 0시 등수부터 반영돼요.' });
     } catch {
       setHidden(!next);
       setMessage({ kind: 'error', text: '저장하지 못했어요. 다시 시도해 주세요.' });

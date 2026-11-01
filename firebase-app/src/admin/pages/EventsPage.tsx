@@ -7,7 +7,7 @@ const todayKst = () => new Date(Date.now() + 9 * 3_600_000).toISOString().slice(
 
 /**
  * 이벤트(docs/engagement-plan.md §6) — 출석 2배 날과 오늘의 공식전 문항 현황. 열 때 문서 하나(읽기 1).
- * 2배 날은 다음 새벽 등수 작업(ops/monthly.mjs)부터 등수·이용자 앱에 반영된다. 지난 날은 고를 수 없다(이미 센 포인트가 바뀜).
+ * 2배 날은 다음 0시 등수 작업(ops/monthly.mjs)부터 등수·이용자 앱에 반영된다. 지난 날은 고를 수 없다(이미 센 포인트가 바뀜).
  */
 export function EventsPage() {
   const [config, setConfig] = useState<EventsConfig | null>(null);
@@ -44,7 +44,7 @@ export function EventsPage() {
       // 지난 날은 기록으로만 남아 있으면 되므로 저장할 때 뺀다(목록이 계속 늘지 않게)
       const keep = days.filter((day) => day >= todayKst().slice(0, 8) + '01');
       await saveDoubleDays(keep);
-      setStatus('저장했어요. 다음 새벽 등수 작업부터 이용자 앱에 반영돼요.');
+      setStatus('저장했어요. 다음 0시 등수 작업부터 이용자 앱에 반영돼요.');
       refresh();
     } catch {
       setError('저장하지 못했어요.');
@@ -112,7 +112,7 @@ export function EventsPage() {
           </button>
         </div>
         <p className="text-xs text-ink-2 break-keep">
-          저장은 관리자 기록에 남아요. 이용자 앱의 "오늘은 출석 2배!"·달력 표시·포인트는 다음 새벽(03:30) 등수 작업부터 바뀌어요.
+          저장은 관리자 기록에 남아요. 이용자 앱의 "오늘은 출석 2배!"·달력 표시·포인트는 다음 0시 등수 작업부터 바뀌어요.
         </p>
       </section>
     </>

@@ -161,7 +161,7 @@ export function OfficialPage() {
                   문제마다 {OFFICIAL_QUESTION_MS / 1000}초. 맞히면 {OFFICIAL_POINTS.correct}점 + 빨리 맞힐수록 최대 {OFFICIAL_POINTS.speedMax}점, 끝까지 풀면 +{OFFICIAL_POINTS.finish}점
                 </li>
                 <li>시작하면 멈출 수 없어요. 나갔다 와도 시간은 흘러요. 다시 풀 수 없어요.</li>
-                <li>정답은 이 기기에 없어요. 새벽에 채점해 점수가 월간 등수에 들어가고, 내일 정답과 해설을 보여 드려요.</li>
+                <li>정답은 이 기기에 없어요. 0시가 지나면 채점해 점수가 월간 등수에 들어가고, 내일 정답과 해설을 보여 드려요.</li>
               </ul>
               <button type="button" onClick={() => void start(phase.round)} className="squishy font-cute min-h-14 text-xl" style={primary}>
                 공식전 시작
@@ -185,7 +185,7 @@ export function OfficialPage() {
             <p role="status" className="sticker flex flex-col gap-1 p-4 break-keep">
               <span className="font-cute text-xl">오늘 공식전 제출 완료</span>
               <span className="text-sm">
-                {phase.answered} / {phase.total}문제에 답했어요. 결과는 내일 새벽 채점 뒤에 나와요.
+                {phase.answered} / {phase.total}문제에 답했어요. 결과는 0시 채점 뒤에 나와요.
               </span>
             </p>
           )}
@@ -196,7 +196,7 @@ export function OfficialPage() {
                 어제 공식전
               </h2>
               {!past.round.revealed ? (
-                <p className="text-sm text-ink-2">채점 중이에요. 새벽 채점 뒤에 결과가 나와요.</p>
+                <p className="text-sm text-ink-2">채점 중이에요. 0시 채점 뒤에 결과가 나와요.</p>
               ) : !pastResult ? (
                 <p className="text-sm text-ink-2">어제는 참여하지 않았어요. 참여 {past.round.participants ?? 0}명.</p>
               ) : (

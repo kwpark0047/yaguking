@@ -23,6 +23,14 @@ export const OFFICIAL_GRACE_MS = 1_500;
 export const OFFICIAL_POINTS = { correct: 100, speedMax: 50, finish: 20 };
 export const OFFICIAL_RETENTION_DAYS = 40;
 
+/**
+ * 닫힌 뒤에도 답이 들어오는 시간 — 규칙은 23:59:59에 시작한 시도도 `startedAt + (문항 수 × 16 + 1)초`까지 답을 받는다.
+ * 매일 작업이 0시에 돌아도(2026-11-02부터) 이 시간이 지나야 채점한다(채점하면 다시 채점하지 않으므로 늦은 답이 빠지면 안 된다).
+ */
+export function answerWindowMs(total = OFFICIAL_TOTAL) {
+  return (total * 16 + 1) * 1000;
+}
+
 const KST = 9 * 3_600_000;
 const DAY = 86_400_000;
 
@@ -204,7 +212,7 @@ export async function runOfficial({ db, poolText = null, now = Date.now(), start
   const report = { graded: [], attempts: 0, removedAttempts: 0, published: [], short: [], remaining: null, problems: [], deletedRounds: 0 };
   const rounds = await db.collection('officialRounds').get();
   for (const round of rounds.docs) {
-    if (millis(round.get('closesAt')) > now || round.get('gradedAt')) continue;
+    if (millis(round.get('closesAt')) + answerWindowMs(round.get('total') ?? OFFICIAL_TOTAL) > now || round.get('gradedAt')) continue;
     const result = await gradeRound(db, round, now);
     report.graded.push(round.id);
     report.attempts += result.graded;
