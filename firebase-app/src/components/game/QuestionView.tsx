@@ -28,6 +28,7 @@ export function QuestionView({
   onAnswer,
   limitMs = LIMIT_MS,
   fresh = false,
+  timerNote,
 }: {
   /** 화면에 보이는 부분만 — 정답은 받지 않는다(오늘의 공식전 문제에는 정답이 없다) */
   question: Pick<Question, 'id' | 'category' | 'difficulty' | 'recordAsOf' | 'seasonScope' | 'stem' | 'options'>;
@@ -37,6 +38,8 @@ export function QuestionView({
   limitMs?: number;
   /** 최신 경기 특집 문항 — "최신 경기" 표시 */
   fresh?: boolean;
+  /** 시간 막대 옆 짧은 안내(첫 문제 20초) — 줄을 더 쓰지 않아 폰에서도 보기 4개가 첫 화면에 남는다 */
+  timerNote?: string;
 }) {
   const startedAt = useRef(performance.now());
   const sectionRef = useRef<HTMLElement>(null);
@@ -114,6 +117,7 @@ export function QuestionView({
             }}
           />
         </div>
+        {timerNote && <span className="fx-badge shrink-0 font-semibold">{timerNote}</span>}
         <span className="g-num num-tabular shrink-0 text-right font-semibold">
           {(left / 1000).toFixed(1)}초
         </span>

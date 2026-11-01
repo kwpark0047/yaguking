@@ -385,9 +385,6 @@ export function PlayPage() {
           />
         )}
 
-        {phase.kind === "question" && match.atBats.length === 0 && (
-          <p className="fx-badge self-start font-semibold">첫 문제는 20초</p>
-        )}
         {phase.kind === "question" && timeBonus && (
           <p className="fx-badge self-start font-semibold">시간 +3초</p>
         )}
@@ -397,6 +394,7 @@ export function PlayPage() {
             limitMs={LIMIT_MS + extraTimeFor(match.atBats.length, timeBonus ? TIME_BONUS_MS : 0)}
             question={phase.question}
             fresh={isFresh(phase.question, kstDate())}
+            timerNote={match.atBats.length === 0 ? "첫 문제는 20초" : undefined}
             onAnswer={(choice, elapsed) =>
               answer(phase.question, choice, elapsed)
             }

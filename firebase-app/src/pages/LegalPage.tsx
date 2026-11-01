@@ -134,7 +134,7 @@ function Section({ section }: { section: PolicySection }) {
             </thead>
             <tbody>
               {section.table.rows.map((row) => (
-                <tr key={row[0]}>
+                <tr key={row.join('|')}>
                   {row.map((cell, index) =>
                     index === 0 ? (
                       <th key={index} scope="row" className="border-b px-2 py-2 align-top font-medium break-keep" style={{ borderColor: 'var(--line)' }}>
