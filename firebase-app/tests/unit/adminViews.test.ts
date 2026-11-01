@@ -195,5 +195,5 @@ describe('하루 요약 합치기(어제·최근 7일)', () => {
     const { GUEST_BURST_PER_HOUR } = await import('@/lib/admin/views');
     const ops = await import('../../ops/admin.mjs');
     expect(GUEST_BURST_PER_HOUR).toBe(ops.GUEST_BURST_PER_HOUR);
-  });
+  }, 30_000); // ops/admin.mjs가 firebase-admin을 읽어 전체 실행 중에는 5초를 넘기기도 한다
 });

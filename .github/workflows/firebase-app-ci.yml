@@ -2,12 +2,15 @@ name: Firebase판 CI
 
 # firebase-app/ 검사만 한다(배포하지 않는다). 배포는 firebase-deploy.yml — 꺼져 있다.
 # 에뮬레이터만 쓰고 실제 Firebase 프로젝트에 닿지 않는다(demo-yaguking).
+# 저장소의 기본 브랜치가 작업 브랜치(feat/p1-one-inning)라 그 브랜치에 올릴 때도 돈다(2026-11-01 — 그전에는 main에만 걸려 한 번도 안 돌았다).
+# 공개 저장소라 GitHub Actions 사용료가 없다. 손으로 다시 돌릴 때는 Actions › Firebase판 CI › Run workflow.
 on:
   push:
-    branches: [main]
+    branches: [main, feat/p1-one-inning]
     paths: ['firebase-app/**', '.github/workflows/firebase-app-ci.yml']
   pull_request:
     paths: ['firebase-app/**', '.github/workflows/firebase-app-ci.yml']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -61,7 +64,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     needs: [static]
     steps:
       - uses: actions/checkout@v4

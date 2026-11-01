@@ -11,7 +11,7 @@
 | Hosting 설정(SPA 주소, 캐시, 보안 헤더) | `firebase.json` | 준비됨 |
 | 배포 직전 자동 점검 | `scripts/predeploy-check.mjs` (`firebase.json` predeploy) | 준비됨 — 걸리면 배포가 멈춘다 |
 | 정리 작업(방·자리·오래된 비회원) | `ops/cleanup.mjs`, `ops/cleanup-cli.mjs` | 준비됨 — 기본은 미리 보기 |
-| CI(검사만) | `.github/workflows/firebase-app-ci.yml` | 원격 저장소가 생기면 PR·main에서 돈다 |
+| CI(검사만) | `.github/workflows/firebase-app-ci.yml` | 작업 브랜치 `feat/p1-one-inning`·`main`에 올릴 때, PR, 손으로(Run workflow) |
 | 자동 배포 | `.github/workflows/firebase-deploy.yml` | **꺼짐**(손으로만 + 저장소 변수 + 승인) |
 | 예약 정리 | `.github/workflows/firebase-cleanup.yml` | **꺼짐**(예약 주석 + 저장소 변수) |
 

@@ -87,6 +87,12 @@ describe('GitHub 자동 배포·정리는 꺼져 있다', () => {
   it('CI는 검사만 — 배포 명령이 없다', () => {
     expect(workflow('firebase-app-ci.yml')).not.toMatch(/firebase deploy|hosting:channel:deploy/);
   });
+
+  it('CI는 작업 브랜치(저장소 기본 브랜치)에 올릴 때도 돈다', () => {
+    const text = workflow('firebase-app-ci.yml');
+    expect(triggers(text)).toEqual(['push', 'pull_request', 'workflow_dispatch']);
+    expect(text).toMatch(/branches: \[[^\]]*feat\/p1-one-inning[^\]]*\]/);
+  });
 });
 
 interface HostingSite {
