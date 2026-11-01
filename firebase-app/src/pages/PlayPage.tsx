@@ -34,6 +34,8 @@ import {
   rulesAllowed,
   FRESH_SLOTS,
   isFresh,
+  extraTimeFor,
+  judgedElapsed,
   XP,
   startMatch,
   xpOf,
@@ -205,9 +207,8 @@ export function PlayPage() {
     choice: OptionLabel | null,
     elapsedMs: number,
   ) {
-    // 초성 퀴즈 보너스: 3초 더 받았고, 그만큼 빨리 친 것으로 판정(시간 초과는 그대로 시간 초과)
-    const judged =
-      timeBonus && choice !== null ? Math.max(0, elapsedMs - TIME_BONUS_MS) : elapsedMs;
+    // 첫 타석 20초(5초 더)·초성 퀴즈 보너스(3초 더) — 더 받은 만큼 빨리 친 것으로 판정(시간 초과는 그대로 시간 초과)
+    const judged = judgedElapsed(elapsedMs, extraTimeFor(match.atBats.length, timeBonus ? TIME_BONUS_MS : 0), choice !== null);
     if (timeBonus) setTimeBonus(false);
     const { match: next, atBat } = answerAtBat(
       match,
@@ -384,13 +385,16 @@ export function PlayPage() {
           />
         )}
 
+        {phase.kind === "question" && match.atBats.length === 0 && (
+          <p className="fx-badge self-start font-semibold">첫 문제는 20초</p>
+        )}
         {phase.kind === "question" && timeBonus && (
           <p className="fx-badge self-start font-semibold">시간 +3초</p>
         )}
 
         {phase.kind === "question" && (
           <QuestionView
-            limitMs={timeBonus ? LIMIT_MS + TIME_BONUS_MS : LIMIT_MS}
+            limitMs={LIMIT_MS + extraTimeFor(match.atBats.length, timeBonus ? TIME_BONUS_MS : 0)}
             question={phase.question}
             fresh={isFresh(phase.question, kstDate())}
             onAnswer={(choice, elapsed) =>

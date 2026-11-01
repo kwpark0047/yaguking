@@ -129,6 +129,23 @@ export function boxScoreOf(match: Match): BoxScore {
  */
 export const XP = { answerCorrect: 10, hardCorrectBonus: 5, inningComplete: 20, chanceSuccess: 10 } as const;
 
+/**
+ * 첫 문제 여유(운영자 결정 2026-11-01) — 개인 경기마다 **첫 타석은 20초**, 두 번째부터 15초(엔진의 LIMIT_MS).
+ * 판정표(2초 안 홈런 … 15초 안 볼넷)는 15초 기준이라, 늘어난 5초는 "읽는 시간"으로 보고 걸린 시간에서 뺀다(초성 퀴즈 보너스와 같은 방식).
+ * 시간을 넘기면 그대로 삼진. 레벨 테스트·오늘의 공식전·친구 대결은 모두 같은 조건이어야 해서 15초 그대로.
+ */
+export const FIRST_AT_BAT_EXTRA_MS = 5_000;
+
+/** 이 타석에 더 주는 시간 — 첫 타석이면 5초, 초성 퀴즈 보너스가 있으면 그만큼 더 */
+export function extraTimeFor(atBatIndex: number, bonusMs = 0): number {
+  return (atBatIndex === 0 ? FIRST_AT_BAT_EXTRA_MS : 0) + bonusMs;
+}
+
+/** 판정에 쓰는 걸린 시간 — 더 준 시간만큼 빼서 15초 판정표에 맞춘다. 시간 초과(보기 없음)는 그대로 */
+export function judgedElapsed(elapsedMs: number, extraMs: number, answered: boolean): number {
+  return answered ? Math.max(0, elapsedMs - extraMs) : elapsedMs;
+}
+
 export function xpOf(atBats: readonly PlayedAtBat[], finishedInning: boolean): number {
   let xp = finishedInning ? XP.inningComplete : 0;
   for (const atBat of atBats) {

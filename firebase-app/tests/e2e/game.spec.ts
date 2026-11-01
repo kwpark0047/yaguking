@@ -81,6 +81,21 @@ test('빨리 맞히면 안타 이상, 판정·정답·출처를 보여 준다', 
   await expect(page.getByRole('button', { name: '다음 타석' })).toBeFocused();
 });
 
+test('첫 문제만 20초, 두 번째 문제부터 15초', async ({ page }) => {
+  const secondsLeft = async () => Number((await page.locator('.g-timer .g-num').textContent())?.replace('초', ''));
+  await page.goto('/play');
+  await expect(page.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('첫 문제는 20초')).toBeVisible();
+  expect(await secondsLeft()).toBeGreaterThan(15);
+  expect(await secondsLeft()).toBeLessThanOrEqual(20);
+  await answer(page, false);
+  await page.getByRole('button', { name: '다음 타석' }).click();
+  await expect(page.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('첫 문제는 20초')).toHaveCount(0);
+  expect(await secondsLeft()).toBeLessThanOrEqual(15);
+  expect(await secondsLeft()).toBeGreaterThan(10);
+});
+
 test('오답노트: 내일 복습할 문제가 쌓이고, 복습 시각이 지나면 다시 풀어 단계가 오른다', async ({ page }) => {
   test.setTimeout(60_000);
   const before = await accounts();
