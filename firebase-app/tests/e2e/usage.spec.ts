@@ -98,7 +98,7 @@ test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 7 · 
   expect(notes.reads).toBe(count);
 });
 
-test('회원: 앱 열기 5읽기(최신 소식·출석 카드 포함), 출석 도장 쓰기 1, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
+test('회원: 앱 열기 6읽기(최신 소식·출석 카드·오늘 복습 수 포함), 출석 도장 쓰기 1, 개인 경기 1읽기(누적 XP), 레벨 테스트', async ({ page }) => {
   test.setTimeout(150_000);
   await signUp(page, uniqueEmail());
   await page.getByRole('button', { name: '네, 만 14세 이상이에요' }).click();
@@ -112,12 +112,13 @@ test('회원: 앱 열기 5읽기(최신 소식·출석 카드 포함), 출석 �
   await waitForPublicHome(page);
   // 출석 카드(docs/engagement-plan.md)가 이번 달 출석·등수를 다 읽을 때까지
   await expect(page.getByRole('button', { name: /출석 도장 찍기/ })).toBeVisible({ timeout: 15_000 });
+  await expect.poll(async () => (await meter(page)).reads).toBeGreaterThanOrEqual(6);
   const open = await meter(page);
-  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음 + 최신 소식 + 출석 카드)', ...open });
-  // 프로필 1 + 공지 묶음 1 + 최신 소식 1 + 이번 달 출석 1 + 등수 1. 매달 1일에는 지난달 출석 1을 더 읽는다
-  // (1일부터 이어진 연속이 지난달에서 넘어오는지 — src/lib/game/attendance.ts needsPrevious)
+  rows.push({ action: '회원 앱 열기(프로필 + 공지 묶음 + 최신 소식 + 출석 카드 + 오늘 복습 수)', ...open });
+  // 프로필 1 + 공지 묶음 1 + 최신 소식 1 + 이번 달 출석 1 + 등수 1 + 오늘 복습할 문제 수 1(집계 — docs/retention-plan.md C).
+  // 매달 1일에는 지난달 출석 1을 더 읽는다(1일부터 이어진 연속이 지난달에서 넘어오는지 — src/lib/game/attendance.ts needsPrevious)
   const firstOfMonth = new Date(Date.now() + 9 * 3_600_000).getUTCDate() === 1;
-  expect(open).toEqual({ reads: firstOfMonth ? 6 : 5, writes: 0 });
+  expect(open).toEqual({ reads: firstOfMonth ? 7 : 6, writes: 0 });
 
   const stamp = await measure(page, '출석 도장(하루 1번)', async () => {
     await page.getByRole('button', { name: /출석 도장 찍기/ }).click();

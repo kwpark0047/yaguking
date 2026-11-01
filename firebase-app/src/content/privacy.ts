@@ -32,7 +32,7 @@ export const PRIVACY_OPERATOR = '위마켓';
 export const PRIVACY_OFFICER = { name: '박강원', phone: '010-3890-0047' } as const;
 
 /** 이 앱이 기기 저장소(localStorage)에 쓰는 키 — 단위 테스트가 코드와 대조한다 */
-export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme'] as const;
+export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily'] as const;
 
 export interface PolicyTable {
   head: readonly string[];
@@ -184,6 +184,7 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
         ['yk_text', '게임 글자 크기(소·대를 고른 경우만) — 다음에도 같은 크기', '브라우저 저장소를 지울 때까지'],
         ['yk_theme', '화면 테마(기본이 아닌 테마를 고른 경우만) — 다음에도 같은 색', '브라우저 저장소를 지울 때까지'],
         ['yk_pwa', '홈 화면에 추가(앱 설치) 권유를 "나중에"로 닫았는지·설치했는지 — 권유를 다시 띄우지 않으려고', '브라우저 저장소를 지울 때까지'],
+        ['yk_daily', '오늘의 1이닝 진행·결과와 연속 일수 — 같은 날 다시 풀지 않게, 연속을 보여 주려고(서버로 보내지 않음)', '브라우저 저장소를 지울 때까지'],
         ['yaguking-static으로 시작하는 저장소', '앱 화면 파일(스크립트·그림·아이콘)만 받아 두어 다시 빨리 열기 — 개인정보·로그인 정보·기록은 넣지 않음', '새 판이 나오거나 브라우저 저장소를 지울 때까지'],
         ['firebase로 시작하는 저장소', '로그인 상태 유지(인증 서비스)', '로그아웃할 때까지'],
         ['firestore로 시작하는 저장소', '받은 기록을 기기에 남겨 다시 읽지 않기(데이터 서비스의 오프라인 저장)', '브라우저 저장소를 지울 때까지 — 로그아웃해도 남습니다. 여러 사람이 쓰는 기기라면 사이트 데이터를 지워 주세요'],

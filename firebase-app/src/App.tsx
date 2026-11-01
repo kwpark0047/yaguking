@@ -26,6 +26,7 @@ const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
 );
 const PlayPage = lazy(() => import('@/pages/PlayPage').then((module) => ({ default: module.PlayPage })));
+const DailyPage = lazy(() => import('@/pages/DailyPage').then((module) => ({ default: module.DailyPage })));
 const LevelTestPage = lazy(() =>
   import('@/pages/LevelTestPage').then((module) => ({ default: module.LevelTestPage })),
 );
@@ -163,6 +164,7 @@ export function App() {
           <Route element={<MemberGate requireProfile />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/play" element={<Lazy><PlayPage /></Lazy>} />
+            <Route path="/daily" element={<Lazy><DailyPage /></Lazy>} />
             <Route path="/level-test" element={<Lazy><LevelTestPage /></Lazy>} />
             <Route path="/notes" element={<Lazy><NotesPage /></Lazy>} />
             <Route path="/ranking" element={<Lazy><RankingPage /></Lazy>} />

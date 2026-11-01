@@ -2,6 +2,7 @@ import {
   Timestamp,
   collection,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   increment,
@@ -10,6 +11,7 @@ import {
   query,
   serverTimestamp,
   startAfter,
+  where,
   writeBatch,
   type DocumentData,
   type QueryDocumentSnapshot,
@@ -211,6 +213,25 @@ export interface WrongNotePage {
   /** 다음 쪽을 읽을 자리. 없으면 끝 */
   cursor: QueryDocumentSnapshot | null;
 }
+
+/**
+ * 오늘 복습할 문제 수(docs/retention-plan.md C) — 복습 시각이 지난 노트를 센다. 익힌 노트는 복습 시각이 10년 뒤라 저절로 빠진다.
+ * 집계 쿼리 = 읽기 1(노트 1,000개까지).
+ */
+export function countDueNotes(uid: string, now = Date.now()): Promise<number> {
+  // 같은 화면이 곧바로 두 번 물어도(개발 모드 StrictMode·다시 그리기) 1분 안에는 한 번만 센다
+  const cached = dueCache.get(uid);
+  if (cached && now - cached.at < 60_000) return cached.count;
+  const notes = collection(firestore(), 'users', uid, 'wrongNotes');
+  const count = getCountFromServer(query(notes, where('nextReviewAt', '<=', Timestamp.fromMillis(now)))).then((snapshot) => {
+    countReads('countDueNotes', 1);
+    return snapshot.data().count;
+  });
+  dueCache.set(uid, { at: now, count });
+  count.catch(() => dueCache.delete(uid)); // 실패는 기억하지 않는다
+  return count;
+}
+const dueCache = new Map<string, { at: number; count: Promise<number> }>();
 
 /**
  * 오답노트 한 쪽 — 복습 시각 순으로 NOTES_PAGE_SIZE개(읽기 = 문서 수).

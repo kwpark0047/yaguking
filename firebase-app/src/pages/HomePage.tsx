@@ -5,6 +5,8 @@ import emblem from '@/assets/brand/yaguking-emblem.webp';
 import { TextSizeSetting, ThemeSetting } from '@/components/display/DisplaySettings';
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { AdSlot } from '@/components/ads/AdSlot';
+import { DailyLink } from '@/components/home/DailyLink';
+import { ReminderCard } from '@/components/home/ReminderCard';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -14,12 +16,14 @@ import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 
 // 출석 카드는 Firestore를 쓰므로 회원에게만, 들어갈 때 불러온다(첫 화면 묶음에 SDK를 넣지 않는다)
 const AttendanceCard = lazy(() => import('@/components/engagement/AttendanceCard'));
+// 오늘 복습할 문제 수도 Firestore 집계(읽기 1) — 경기를 한 적 있는 사람(계정이 있는 사람)만
+const ReviewDue = lazy(() => import('@/components/home/ReviewDue'));
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 const secondary = { borderColor: 'var(--line)', backgroundColor: 'var(--hero-button-bg)' };
 
 /**
- * 메인 — 맨 위 광고 자리(docs/ads-plan.md), 게임 시작, 레벨 테스트(회원, 아직 안 했으면), 오답노트, 이렇게 놀아요, 오늘 출석(회원 — docs/engagement-plan.md),
+ * 메인 — 맨 위 광고 자리(docs/ads-plan.md), 게임 시작, 오늘의 1이닝·오늘 복습·매일 알림(docs/retention-plan.md), 레벨 테스트(회원, 아직 안 했으면), 오답노트, 이렇게 놀아요, 오늘 출석(회원 — docs/engagement-plan.md),
  * 최신 소식(운영자 PC가 글마다 출처·날짜를 확인한 글만 — docs/news.md), 맨 아래 공지 띠.
  * 로그인하지 않았어도 "게임 시작"이면 비회원으로 바로 들어간다(첫 투구까지 한 번).
  */
@@ -55,6 +59,12 @@ export function HomePage() {
               <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
                 게임 시작 <span aria-hidden="true">▶</span>
               </Link>
+              <DailyLink style={secondary} />
+              {user && (
+                <Suspense fallback={null}>
+                  <ReviewDue uid={user.uid} style={secondary} />
+                </Suspense>
+              )}
               <Link to="/room" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
                 친구 대결
               </Link>
@@ -94,6 +104,7 @@ export function HomePage() {
         )}
       </main>
       <HowToPlay />
+      <ReminderCard />
       {user !== undefined &&
         (open && ready && user ? (
           <Suspense fallback={null}>
