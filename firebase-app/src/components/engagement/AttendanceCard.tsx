@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { kstDate } from '@/lib/game/attendance';
 import { celebrate } from '@/lib/effects/celebrate';
 import { currentMode } from '@/lib/effects/preference';
 import { TEAMS } from '@/content/teams';
@@ -19,6 +20,7 @@ import {
   type Leaderboard,
 } from '@/lib/game/attendance';
 import { loadAttendance, loadLeaderboard, loadOfficialMonth, stampToday } from '@/lib/game/engagement';
+import { hintsOpen } from '@/lib/game/hints';
 import { officialSum } from '@/lib/game/official';
 import { playSound } from '@/lib/sound/sound';
 import { AttendanceCalendar } from './AttendanceCalendar';
@@ -160,6 +162,7 @@ export default function AttendanceCard({ uid, team }: { uid: string; team: strin
           월간 등수 보기
         </Link>
       </div>
+      {hintsOpen(kstDate()) && <p className="text-xs text-ink-2 break-keep">출석 포인트는 힌트에도 쓸 수 있어요. 힌트를 써도 등수 포인트는 줄지 않아요.</p>}
     </section>
   );
 }

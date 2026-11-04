@@ -124,7 +124,7 @@ export async function deleteUserRecords(uid: string, nickname: string | null): P
   const refs: DocumentReference[] = [];
   const officialDays = new Set<string>([roundIdOf(Date.now() - 86_400_000)]);
   const keepFrom = roundIdOf(Date.now() - OFFICIAL_RETENTION_DAYS * 86_400_000);
-  for (const name of ['games', 'wrongNotes', 'summary', 'monthly', 'attendance', 'awards', 'officialMonth', 'daily']) {
+  for (const name of ['games', 'wrongNotes', 'summary', 'monthly', 'attendance', 'awards', 'officialMonth', 'daily', 'wallet']) {
     const snapshot = await getDocs(collection(db, 'users', uid, name));
     countReads('deleteUserRecords', Math.max(1, snapshot.size));
     refs.push(...snapshot.docs.map((item) => item.ref));

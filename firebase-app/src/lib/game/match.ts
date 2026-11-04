@@ -3,7 +3,6 @@ import {
   applyAtBat,
   buildBoxScore,
   initialState,
-  resolveAtBat,
   type AtBatResult,
   type BoxScore,
   type Difficulty,
@@ -11,6 +10,7 @@ import {
   type SessionState,
   type UpgradeReason,
 } from '@/lib/engine';
+import { hintVerdict, type HintKind } from './hints';
 
 /**
  * 개인 퀴즈 1이닝 — **기기에서 판정한다**(Firebase판, 서버 없음).
@@ -75,6 +75,8 @@ export interface PlayedAtBat {
   upgradeReason: UpgradeReason | null;
   rbi: number;
   inning: number;
+  /** 이 타석에 쓴 힌트 — 화면에만(경기 기록에는 저장하지 않는다) */
+  hint?: HintKind;
 }
 
 export interface Match {
@@ -93,9 +95,11 @@ export function answerAtBat(
   question: Question,
   choice: Question['correct'] | null,
   elapsedMs: number,
+  /** 쓴 힌트 — 반반·초성이면 2루타까지, 승급 없음(hints.ts) */
+  hint: HintKind | null = null,
 ): { match: Match; atBat: PlayedAtBat } {
   const correct = choice !== null && choice === question.correct;
-  const verdict = resolveAtBat(correct, elapsedMs, question.difficulty, match.streak);
+  const verdict = hintVerdict(correct, elapsedMs, question.difficulty, match.streak, hint);
   const inning = match.state.inning;
   const state = applyAtBat(match.state, verdict.result, PRACTICE_GOAL);
 
@@ -110,6 +114,7 @@ export function answerAtBat(
     upgradeReason: verdict.upgradeReason,
     rbi: state.rbi,
     inning,
+    ...(hint ? { hint } : {}),
   };
 
   return { match: { state, streak: verdict.streakAfter, atBats: [...match.atBats, atBat] }, atBat };

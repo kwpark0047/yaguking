@@ -10,6 +10,7 @@ export const RANKING_TOP: number;
 export const HIDDEN_NAME: string;
 export const REMOVED_NAME: string;
 export const LEADERBOARD_MONTHS_KEPT: number;
+export const HINT_START: string;
 export function kstMonthKey(ms: number): string;
 export function daysInMonth(month: string): number;
 export function previousMonth(month: string): string;
@@ -35,3 +36,4 @@ export function runMonthly(options: { db: Firestore; now?: number; start?: strin
   scrubbed: number;
   removed: number;
 }>;
+export function runWallets(options: { db: Firestore; now?: number; start?: string; hintStart?: string }): Promise<{ started: boolean; members: number; updated: number }>;

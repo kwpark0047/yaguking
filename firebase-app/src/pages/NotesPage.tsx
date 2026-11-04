@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
-import { QuestionView } from '@/components/game/QuestionView';
+import { QuestionWithHints } from '@/components/game/QuestionWithHints';
 import { loadQuestions, type OptionLabel, type Question } from '@/content/questions';
 import { LIMIT_MS } from '@/lib/engine';
 import { byId, loadWrongNotes, saveReview, type WrongNote, type WrongNotePage } from '@/lib/game/persist';
 import { dataErrorMessage } from '@/lib/firebase/errors';
+import { HINTS_PER_GAME, HINT_TIME_MS, type HintKind } from '@/lib/game/hints';
+import { judgedElapsed } from '@/lib/game/match';
 import { REVIEW_DAYS, dueNotes } from '@/lib/game/review';
 
 type Mode =
@@ -28,6 +30,8 @@ export function NotesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [bank, setBank] = useState<Map<string, Question>>(new Map());
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
+  /** 이번 복습에 쓴 힌트 수(한 번에 둘까지) */
+  const [hintsUsed, setHintsUsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   // 사람마다 한 번만 읽는다(개발 모드의 StrictMode가 효과를 두 번 돌려도 읽기는 한 번)
@@ -63,9 +67,12 @@ export function NotesPage() {
   if (user === undefined) return null;
   if (user === null) return <Navigate to="/" replace />;
 
-  async function answer(note: WrongNote, queue: WrongNote[], index: number, choice: OptionLabel | null, elapsed: number) {
+  async function answer(note: WrongNote, queue: WrongNote[], index: number, choice: OptionLabel | null, elapsed: number, hint: HintKind | null) {
     const question = bank.get(note.questionId);
-    const correct = !!question && choice === question.correct && elapsed <= LIMIT_MS;
+    if (hint) setHintsUsed((count) => count + 1);
+    // 시간 힌트로 더 받은 5초는 뺀다
+    const judged = judgedElapsed(elapsed, hint === 'time' ? HINT_TIME_MS : 0, choice !== null);
+    const correct = !!question && choice === question.correct && judged <= LIMIT_MS;
     setMode({ kind: 'reviewFeedback', queue, index, correct });
     try {
       const updated = await saveReview(user!.uid, note, correct);
@@ -105,7 +112,10 @@ export function NotesPage() {
               <button
                 type="button"
                 disabled={due.length === 0}
-                onClick={() => setMode({ kind: 'review', queue: due, index: 0 })}
+                onClick={() => {
+                  setHintsUsed(0);
+                  setMode({ kind: 'review', queue: due, index: 0 });
+                }}
                 className="squishy font-cute min-h-14 text-xl disabled:opacity-60"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
               >
@@ -147,9 +157,11 @@ export function NotesPage() {
           <p className="num-tabular text-sm text-ink-2" aria-live="polite">
             복습 {mode.index + 1} / {mode.queue.length}
           </p>
-          <QuestionView
+          <QuestionWithHints
+            key={question.id}
             question={question}
-            onAnswer={(choice, elapsed) => void answer(current, mode.queue, mode.index, choice, elapsed)}
+            hintsLeft={HINTS_PER_GAME - hintsUsed}
+            onAnswer={(choice, elapsed, hint) => void answer(current, mode.queue, mode.index, choice, elapsed, hint)}
           />
         </>
       )}

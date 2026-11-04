@@ -55,10 +55,10 @@ export function dailySummary(results: readonly AtBatResult[]): string {
   return [hits && `${hits}안타`, walks && `${walks}볼넷`, outs && `${outs}아웃`].filter(Boolean).join(' ');
 }
 
-export function shareText(date: string, results: readonly AtBatResult[], streak: number, url: string): string {
+export function shareText(date: string, results: readonly AtBatResult[], streak: number, url: string, hints = 0): string {
   return [
     `⚾ 야구왕 오늘의 1이닝 ${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`,
-    `${results.map(resultEmoji).join('')} ${dailySummary(results)}`,
+    `${results.map(resultEmoji).join('')} ${dailySummary(results)}${hints > 0 ? ` · 힌트 ${hints}` : ''}`,
     ...(streak > 1 ? [`연속 ${streak}일`] : []),
     url,
   ].join('\n');
@@ -68,13 +68,15 @@ export function shareText(date: string, results: readonly AtBatResult[], streak:
 export interface DailyRecord {
   date: string;
   results: AtBatResult[];
+  /** 오늘 쓴 힌트 수(공유 줄에 숨기지 않고 적는다) */
+  hints: number;
   /** 마지막으로 3문제를 끝낸 날과 그때까지 연속 일수 */
   lastDone: string | null;
   streak: number;
   best: number;
 }
 
-const EMPTY: DailyRecord = { date: '', results: [], lastDone: null, streak: 0, best: 0 };
+const EMPTY: DailyRecord = { date: '', results: [], hints: 0, lastDone: null, streak: 0, best: 0 };
 
 export function loadDaily(): DailyRecord {
   try {
@@ -84,6 +86,7 @@ export function loadDaily(): DailyRecord {
     return {
       date: typeof value.date === 'string' ? value.date : '',
       results: Array.isArray(value.results) ? (value.results as AtBatResult[]).slice(0, DAILY_TOTAL) : [],
+      hints: Number(value.hints) || 0,
       lastDone: typeof value.lastDone === 'string' ? value.lastDone : null,
       streak: Number(value.streak) || 0,
       best: Number(value.best) || 0,
@@ -103,7 +106,7 @@ function save(record: DailyRecord): void {
 
 /** 오늘 기록(다른 날 진행은 버리고 연속만 남긴다) */
 export function todayRecord(record: DailyRecord, today: string): DailyRecord {
-  return record.date === today ? record : { ...record, date: today, results: [] };
+  return record.date === today ? record : { ...record, date: today, results: [], hints: 0 };
 }
 
 /** 그날 연속이 이어졌나 — 어제 끝냈거나 오늘 이미 끝냈으면 이어짐 */
@@ -116,11 +119,11 @@ export function previousDate(date: string): string {
 }
 
 /** 타석 하나를 기록. 3번째면 연속을 올린다 */
-export function recordAtBat(record: DailyRecord, today: string, result: AtBatResult): DailyRecord {
+export function recordAtBat(record: DailyRecord, today: string, result: AtBatResult, hinted = false): DailyRecord {
   const current = todayRecord(record, today);
   if (current.results.length >= DAILY_TOTAL) return current;
   const results = [...current.results, result];
-  let next: DailyRecord = { ...current, results };
+  let next: DailyRecord = { ...current, results, hints: current.hints + (hinted ? 1 : 0) };
   if (results.length === DAILY_TOTAL) {
     const streak = current.lastDone === previousDate(today) ? current.streak + 1 : 1;
     next = { ...next, lastDone: today, streak, best: Math.max(current.best, streak) };

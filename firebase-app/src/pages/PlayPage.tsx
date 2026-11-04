@@ -6,7 +6,7 @@ import { TextSizeToggle } from "@/components/display/DisplaySettings";
 import { BoxScore } from "@/components/game/BoxScore";
 import { LoadingBall, SoundToggle, useCountUp } from "@/components/effects/Effects";
 import { ChanceEvent } from "@/components/game/ChanceEvent";
-import { QuestionView } from "@/components/game/QuestionView";
+import { QuestionWithHints } from "@/components/game/QuestionWithHints";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import {
   loadQuestions,
@@ -65,6 +65,7 @@ import {
   type ChanceRecord,
 } from "@/lib/game/chance";
 import { kstDate } from "@/lib/game/attendance";
+import { HINTS_PER_GAME, HINT_TIME_MS, HINT_TITLE, hintCapsResult, type HintKind } from "@/lib/game/hints";
 import { LIMIT_MS } from "@/lib/engine";
 import { gameEndSound, playSound, verdictSound } from "@/lib/sound/sound";
 import { celebrate, resetGameEffects } from "@/lib/effects/celebrate";
@@ -206,15 +207,18 @@ export function PlayPage() {
     question: Question,
     choice: OptionLabel | null,
     elapsedMs: number,
+    hint: HintKind | null,
   ) {
-    // 첫 타석 20초(5초 더)·초성 퀴즈 보너스(3초 더) — 더 받은 만큼 빨리 친 것으로 판정(시간 초과는 그대로 시간 초과)
-    const judged = judgedElapsed(elapsedMs, extraTimeFor(match.atBats.length, timeBonus ? TIME_BONUS_MS : 0), choice !== null);
+    // 첫 타석 20초(5초 더)·초성 퀴즈 보너스(3초 더)·시간 힌트(5초 더) — 더 받은 만큼 빨리 친 것으로 판정(시간 초과는 그대로 시간 초과)
+    const extra = extraTimeFor(match.atBats.length, timeBonus ? TIME_BONUS_MS : 0) + (hint === "time" ? HINT_TIME_MS : 0);
+    const judged = judgedElapsed(elapsedMs, extra, choice !== null);
     if (timeBonus) setTimeBonus(false);
     const { match: next, atBat } = answerAtBat(
       match,
       question,
       choice,
       judged,
+      hint,
     );
     setMatch(next);
     setPhase({ kind: "verdict", question, atBat });
@@ -390,13 +394,15 @@ export function PlayPage() {
         )}
 
         {phase.kind === "question" && (
-          <QuestionView
+          <QuestionWithHints
+            key={phase.question.id}
+            hintsLeft={HINTS_PER_GAME - match.atBats.filter((atBat) => atBat.hint).length}
             limitMs={LIMIT_MS + extraTimeFor(match.atBats.length, timeBonus ? TIME_BONUS_MS : 0)}
             question={phase.question}
             fresh={isFresh(phase.question, kstDate())}
             timerNote={match.atBats.length === 0 ? "첫 문제는 20초" : undefined}
-            onAnswer={(choice, elapsed) =>
-              answer(phase.question, choice, elapsed)
+            onAnswer={(choice, elapsed, hint) =>
+              answer(phase.question, choice, elapsed, hint)
             }
           />
         )}
@@ -525,6 +531,12 @@ function Verdict({
         <p className="num-tabular text-xs text-ink-2">
           응답 {timedOut ? "시간 초과" : formatElapsed(atBat.elapsedMs)}
         </p>
+        {atBat.hint && (
+          <p className="text-xs text-ink-2">
+            <span aria-hidden="true">💡 </span>
+            {HINT_TITLE[atBat.hint]} 힌트{hintCapsResult(atBat.hint) ? " — 맞혀도 2루타까지" : ""}
+          </p>
+        )}
       </div>
       {question.explanation && (
         <p className="text-sm leading-relaxed break-keep">
@@ -586,6 +598,7 @@ function Results({
       <p className="text-center text-sm text-ink-2">
         비공식 XP <span className="num-tabular font-semibold">+{xp}</span>
         {wrongSaved > 0 && ` · 틀린 ${wrongSaved}문항을 오답노트에 담았어요`}
+        {match.atBats.some((atBat) => atBat.hint) && ` · 💡 힌트 ${match.atBats.filter((atBat) => atBat.hint).length}번`}
       </p>
       {level && <LevelPanel level={level} />}
       {saveError && (

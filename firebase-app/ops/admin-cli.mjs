@@ -5,6 +5,7 @@
  *   node ops/admin-cli.mjs sync --project=<id>                                   계정 사본·계정 통계 동기화
  *   node ops/admin-cli.mjs tasks --project=<id>                                  대기 중인 관리자 작업 처리
  *   node ops/admin-cli.mjs daily --project=<id> [--date=YYYY-MM-DD]              하루 통계 요약(기본: 어제, 한국 시간)
+ *   node ops/admin-cli.mjs wallet --project=<id>                                  힌트 지갑의 모은 포인트 갱신(시작일 전에는 쓰지 않음)
  *   node ops/admin-cli.mjs official --project=<id> [--pool=<CSV>]                 오늘의 공식전 판정·출제·오래된 것 지우기(풀이 없으면 판정만)
  *   node ops/admin-cli.mjs monthly --project=<id>                                월간 등수 갱신·지난달 확정(docs/engagement-plan.md)
  *   node ops/admin-cli.mjs news --project=<id>                                   최신 소식 글마다 출처·날짜 확인 → 통과한 글만 앱에(docs/news.md)
@@ -17,7 +18,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { buildDailyStats, processAdminTasks, setAdmin, syncAccounts } from './admin.mjs';
 import { existsSync, readFileSync } from 'node:fs';
-import { runMonthly } from './monthly.mjs';
+import { runMonthly, runWallets } from './monthly.mjs';
 import { runNews, seedNews } from './news.mjs';
 import { answerWindowMs, runOfficial } from './official.mjs';
 
@@ -25,8 +26,8 @@ const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectId = arg('project');
 
-if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'news'].includes(command) || !projectId) {
-  console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly|news> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
+if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news'].includes(command) || !projectId) {
+  console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly|wallet|news> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
   process.exit(1);
 }
 const onEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST);
@@ -82,6 +83,8 @@ if (command === 'set-admin') {
   console.log(JSON.stringify(await runNews({ db })));
 } else if (command === 'monthly') {
   console.log(JSON.stringify(await runMonthly({ db })));
+} else if (command === 'wallet') {
+  console.log(JSON.stringify(await runWallets({ db })));
 } else if (command === 'sync') {
   console.log(JSON.stringify(await syncAccounts({ auth, db })));
 } else {

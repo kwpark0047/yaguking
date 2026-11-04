@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CATEGORY_TITLE, type OptionLabel, type Question } from '@/content/questions';
 import { LIMIT_MS } from '@/lib/engine';
 import { DIFFICULTY_LABEL } from '@/lib/game/labels';
 import { playSound } from '@/lib/sound/sound';
+
+const NONE: readonly OptionLabel[] = [];
 
 const KEY_TO_LABEL: Record<string, OptionLabel> = {
   '1': 'A',
@@ -29,6 +31,9 @@ export function QuestionView({
   limitMs = LIMIT_MS,
   fresh = false,
   timerNote,
+  hidden = NONE,
+  hintSlot,
+  fitKey,
 }: {
   /** 화면에 보이는 부분만 — 정답은 받지 않는다(오늘의 공식전 문제에는 정답이 없다) */
   question: Pick<Question, 'id' | 'category' | 'difficulty' | 'recordAsOf' | 'seasonScope' | 'stem' | 'options'>;
@@ -40,6 +45,12 @@ export function QuestionView({
   fresh?: boolean;
   /** 시간 막대 옆 짧은 안내(첫 문제 20초) — 줄을 더 쓰지 않아 폰에서도 보기 4개가 첫 화면에 남는다 */
   timerNote?: string;
+  /** 힌트로 지운 보기 — 누를 수도, 키보드로 고를 수도 없다 */
+  hidden?: readonly OptionLabel[];
+  /** 문제와 보기 사이의 힌트 자리(QuestionWithHints) */
+  hintSlot?: ReactNode;
+  /** 바뀌면 마지막 보기가 화면 안에 오도록 다시 맞춘다(힌트 창을 열거나 초성이 나와 보기가 밀릴 때) */
+  fitKey?: string;
 }) {
   const startedAt = useRef(performance.now());
   const sectionRef = useRef<HTMLElement>(null);
@@ -58,6 +69,9 @@ export function QuestionView({
     ticked.current = 4;
     setLeft(limitRef.current);
     playSound('pitch');
+  }, [question.id]);
+
+  useEffect(() => {
     // 큰 글자(대)에서는 문제가 바뀌면 문제 맨 위로 — 보기가 화면 아래로 이어진다(docs/game-look-plan.md §2)
     if (document.documentElement.dataset.text === 'l') {
       sectionRef.current?.scrollIntoView?.({ block: 'start' });
@@ -69,17 +83,18 @@ export function QuestionView({
       const last = section?.querySelectorAll('.g-option-button');
       const bottom = last?.[last.length - 1]?.getBoundingClientRect().bottom;
       if (!section || bottom === undefined || bottom <= window.innerHeight) return;
-      window.scrollBy({ top: Math.min(bottom - window.innerHeight + 12, section.getBoundingClientRect().top) });
+      const top = Math.min(bottom - window.innerHeight + 12, section.getBoundingClientRect().top);
+      if (top > 0) window.scrollBy({ top });
     });
     return () => cancelAnimationFrame(frame);
-  }, [question.id]);
+  }, [question.id, fitKey]);
 
   // 시계·키보드 처리기는 문항마다 한 번 건다. 최신 onAnswer는 ref로 본다.
   const onAnswerRef = useRef(onAnswer);
   onAnswerRef.current = onAnswer;
 
   function submit(choice: OptionLabel | null) {
-    if (answered.current) return;
+    if (answered.current || (choice !== null && hidden.includes(choice))) return;
     answered.current = true;
     if (choice !== null) playSound('tap');
     const elapsed = performance.now() - startedAt.current;
@@ -161,19 +176,26 @@ export function QuestionView({
         {question.stem}
       </h2>
 
+      {hintSlot}
+
       <div role="group" aria-label="보기" className="flex flex-col gap-2">
-        {question.options.map((option) => (
-          <button
-            key={option.label}
-            type="button"
-            onClick={() => submit(option.label)}
-            className="g-option-button flex min-h-14 items-center gap-3 rounded-option border-2 px-3 py-2 text-left"
-            style={{ borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' }}
-          >
-            <span className="g-medal g-label font-cute">{option.label}</span>
-            <span className="g-option break-keep">{option.text}</span>
-          </button>
-        ))}
+        {question.options.map((option) => {
+          const gone = hidden.includes(option.label);
+          return (
+            <button
+              key={option.label}
+              type="button"
+              disabled={gone}
+              onClick={() => submit(option.label)}
+              className={`g-option-button flex min-h-14 items-center gap-3 rounded-option border-2 px-3 py-2 text-left${gone ? ' opacity-40' : ''}`}
+              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' }}
+            >
+              <span className="g-medal g-label font-cute">{option.label}</span>
+              <span className={`g-option break-keep${gone ? ' line-through' : ''}`}>{option.text}</span>
+              {gone && <span className="sr-only">힌트로 지운 보기</span>}
+            </button>
+          );
+        })}
       </div>
       <p className="g-meta text-ink-2">보기를 누르면 바로 제출돼요. 숫자 키 1~4 또는 A·S·D·F로도 고를 수 있어요.</p>
     </section>

@@ -1,4 +1,5 @@
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
+import { HINT_START } from '@/lib/game/hints';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
 import {
   GUEST_RETENTION_DAYS,
@@ -362,6 +363,44 @@ function amendEngagement(sections: readonly PolicySection[]): PolicySection[] {
   });
 }
 
+/**
+ * 문제 풀이 힌트(docs/hint-plan.md) — 힌트 지갑(모은·쓴 포인트 합계). 이날부터 힌트를 열고 운영자 PC가 지갑을 쓴다
+ * (src/lib/game/hints.ts·ops/monthly.mjs HINT_START와 같은 날 — 단위 테스트). 운영자 승인 2026-11-03, 시행 7일 전 공지.
+ */
+export const HINT_PRIVACY_EFFECTIVE = HINT_START;
+
+function amendHints(sections: readonly PolicySection[]): PolicySection[] {
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return { ...section, items: [...(section.items ?? []), '문제 풀이 힌트 운영 — 출석으로 모은 포인트와 힌트에 쓴 포인트 계산'] };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              ['회원 활동(힌트)', '출석으로 모은 포인트 합계, 힌트에 쓴 포인트 합계(어떤 문제에 썼는지는 남기지 않음)', '운영자가 매일 계산하거나 힌트를 쓰면 자동 생성'],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [...section.table!.rows, ['힌트 포인트(모은·쓴 합계)', '회원 탈퇴 시까지. 탈퇴하면 바로 삭제']],
+          },
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${HINT_PRIVACY_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
 /** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
 export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
   { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
@@ -384,6 +423,15 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       `로그인한 이용자에게 월간 등수 상위 ${RANKING_TOP}명의 닉네임·최애 구단(1위)·출석 일수·포인트·칭호가 보입니다. 설정에서 닉네임을 숨길 수 있습니다. 구단 대항전에는 구단별 합계만(팬 ${TEAM_MIN_FANS}명 이상) 보입니다.`,
       `월간 등수는 그 달이 끝나고 ${LEADERBOARD_MONTHS_KEPT}개월 보관하고, 탈퇴하면 다음 날 등수에서 닉네임을 지웁니다.`,
       '운영자가 직접 올리는 광고(자체·협찬 광고)를 보여 줄 수 있습니다. 외부 광고 네트워크·방문 분석 도구는 여전히 쓰지 않고, 광고를 위해 개인정보를 모으지 않습니다.',
+      '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+  {
+    effective: HINT_PRIVACY_EFFECTIVE,
+    sections: amendHints(amendEngagement(amend(PRIVACY_SECTIONS))),
+    changes: [
+      '문제 풀이 힌트를 시작합니다. 회원이 출석으로 모은 포인트 합계와 힌트에 쓴 포인트 합계를 기록합니다(어떤 문제에 썼는지는 남기지 않습니다).',
+      '이 기록은 회원 탈퇴 시까지 보관하고, 탈퇴하면 바로 삭제합니다.',
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },

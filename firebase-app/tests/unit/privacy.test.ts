@@ -11,6 +11,7 @@ import {
   upcomingVersion,
   upcomingVersions,
   ENGAGEMENT_PRIVACY_EFFECTIVE,
+  HINT_PRIVACY_EFFECTIVE,
   versionInForce,
   PRIVACY_DRAFT,
   PRIVACY_EFFECTIVE_DATE,
@@ -100,8 +101,9 @@ describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
     expect(versionInForce('2026-11-03').effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-10-27')?.effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-11-03')?.effective).toBe(ENGAGEMENT_PRIVACY_EFFECTIVE);
-    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE]);
-    expect(upcomingVersion(ENGAGEMENT_PRIVACY_EFFECTIVE)).toBeNull();
+    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE, HINT_PRIVACY_EFFECTIVE]);
+    expect(upcomingVersion(ENGAGEMENT_PRIVACY_EFFECTIVE)?.effective).toBe(HINT_PRIVACY_EFFECTIVE);
+    expect(upcomingVersion(HINT_PRIVACY_EFFECTIVE)).toBeNull();
     expect(kstDateKey(Date.UTC(2026, 10, 2, 15))).toBe('2026-11-03'); // 한국 시간 11월 3일 0시
   });
 

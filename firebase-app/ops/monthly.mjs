@@ -21,6 +21,8 @@ export const RANKING_TOP = 50;
 export const HIDDEN_NAME = '익명 선수';
 export const REMOVED_NAME = '탈퇴한 선수';
 export const LEADERBOARD_MONTHS_KEPT = 12;
+/** 힌트 시작일 — src/lib/game/hints.ts와 같아야 한다(단위 테스트). 처리방침 판(11-11) 전에는 지갑을 쓰지 않는다 */
+export const HINT_START = '2026-11-11';
 
 const KST = 9 * 3_600_000;
 
@@ -296,6 +298,59 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
       await board.ref.update({ top: next });
       report.scrubbed += 1;
     }
+  }
+  return report;
+}
+
+/**
+ * 힌트 지갑(docs/hint-plan.md §3) — 운영자 PC 매일 작업(admin-cli wallet). users/{uid}/wallet/main의 earned = 출석을 시작한 날부터
+ * 어제까지 모은 출석 포인트 전체(달을 넘어 누적, 공식전 점수는 넣지 않는다). 기기가 쓰는 spent는 건드리지 않는다.
+ * 힌트 시작일 전에는 아무것도 쓰지 않는다. 그날 처음 돌 때 지난 출석을 한꺼번에 센다. 바뀐 사람만 쓴다.
+ * `now`·`start`·`hintStart`는 테스트용. 읽기: 회원 수 + 회원마다 지갑 1·출석 달 수, 쓰기: 바뀐 사람 수.
+ */
+export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_START, hintStart = HINT_START }) {
+  const report = { started: false, members: 0, updated: 0 };
+  const yesterday = new Date(now + KST - 86_400_000).toISOString().slice(0, 10);
+  if (new Date(now + KST).toISOString().slice(0, 10) < hintStart) return report;
+  report.started = true;
+
+  const { members } = await loadMembers(db);
+  const doubleList = (await db.doc('adminConfig/events').get()).get('doubleDays') ?? [];
+  const month = kstMonthKey(now);
+  const through = Number(new Date(now + KST).getUTCDate()) - 1;
+  const uids = [...members.keys()];
+  report.members = uids.length;
+
+  const earnedOf = async (uid) => {
+    const months = await db.collection(`users/${uid}/attendance`).get();
+    let earned = 0;
+    for (const item of months.docs) {
+      if (item.id > month) continue;
+      const days = Array.isArray(item.get('days')) ? item.get('days') : [];
+      const upTo = item.id === month ? through : daysInMonth(item.id);
+      earned += attendancePoints(days, item.id, upTo, start, doubleDaysOf(doubleList, item.id)).points;
+    }
+    return earned;
+  };
+
+  for (let i = 0; i < uids.length; i += 150) {
+    const chunk = uids.slice(i, i + 150);
+    const refs = chunk.map((uid) => db.doc(`users/${uid}/wallet/main`));
+    const [wallets, earned] = await Promise.all([db.getAll(...refs), Promise.all(chunk.map(earnedOf))]);
+    const batch = db.batch();
+    let writes = 0;
+    wallets.forEach((wallet, index) => {
+      const value = earned[index];
+      if (wallet.exists ? wallet.get('earned') === value : value === 0) return;
+      batch.set(
+        refs[index],
+        { earned: value, earnedThrough: yesterday, ...(wallet.exists ? {} : { spent: 0 }), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+      writes += 1;
+    });
+    if (writes > 0) await batch.commit();
+    report.updated += writes;
   }
   return report;
 }

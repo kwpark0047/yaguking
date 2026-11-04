@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { TextSizeToggle } from '@/components/display/DisplaySettings';
 import { LoadingBall, SoundToggle } from '@/components/effects/Effects';
-import { QuestionView } from '@/components/game/QuestionView';
+import { QuestionWithHints } from '@/components/game/QuestionWithHints';
 import { loadQuestions, type Question } from '@/content/questions';
-import { LIMIT_MS, resolveAtBat, type AtBatResult } from '@/lib/engine';
+import { LIMIT_MS, type AtBatResult } from '@/lib/engine';
 import { celebrate } from '@/lib/effects/celebrate';
 import { kstDate } from '@/lib/game/attendance';
 import {
@@ -18,6 +18,7 @@ import {
   todayRecord,
   type DailyRecord,
 } from '@/lib/game/daily';
+import { HINTS_PER_GAME, HINT_TIME_MS, hintVerdict, type HintKind } from '@/lib/game/hints';
 import { RESULT_PRESENTATION, resultLabel } from '@/lib/game/labels';
 import { extraTimeFor, judgedElapsed } from '@/lib/game/match';
 import { playSound, verdictSound } from '@/lib/sound/sound';
@@ -59,12 +60,12 @@ export function DailyPage() {
     };
   }, [today]);
 
-  function answer(question: Question, index: number, choice: string | null, elapsedMs: number) {
-    const judged = judgedElapsed(elapsedMs, extraTimeFor(index), choice !== null);
-    const verdict = resolveAtBat(choice === question.correct, judged, question.difficulty, streak.current);
+  function answer(question: Question, index: number, choice: string | null, elapsedMs: number, hint: HintKind | null) {
+    const judged = judgedElapsed(elapsedMs, extraTimeFor(index) + (hint === 'time' ? HINT_TIME_MS : 0), choice !== null);
+    const verdict = hintVerdict(choice === question.correct, judged, question.difficulty, streak.current, hint);
     streak.current = verdict.streakAfter;
     // 답하자마자 기기에 남긴다 — 다시 열어도 같은 문제를 다시 풀 수 없다
-    setRecord(recordAtBat(record, today, verdict.result));
+    setRecord(recordAtBat(record, today, verdict.result, hint !== null));
     setPhase({ kind: 'verdict', index, result: verdict.result, timedOut: choice === null });
   }
 
@@ -92,11 +93,13 @@ export function DailyPage() {
             <p className="text-sm text-ink-2" aria-live="polite">
               {phase.index + 1} / {DAILY_TOTAL}번째 공 <span aria-hidden="true">{record.results.map(resultEmoji).join('')}</span>
             </p>
-            <QuestionView
+            <QuestionWithHints
+              key={questions[phase.index]!.id}
+              hintsLeft={HINTS_PER_GAME - record.hints}
               question={questions[phase.index]!}
               limitMs={LIMIT_MS + extraTimeFor(phase.index)}
               timerNote={phase.index === 0 ? '첫 문제는 20초' : undefined}
-              onAnswer={(choice, elapsed) => answer(questions[phase.index]!, phase.index, choice, elapsed)}
+              onAnswer={(choice, elapsed, hint) => answer(questions[phase.index]!, phase.index, choice, elapsed, hint)}
             />
           </>
         )}
@@ -163,7 +166,7 @@ function DailyVerdict({
 
 function DailyResult({ today, record }: { today: string; record: DailyRecord }) {
   const [shared, setShared] = useState<string | null>(null);
-  const text = shareText(today, record.results, record.streak, `${location.origin}/daily`);
+  const text = shareText(today, record.results, record.streak, `${location.origin}/daily`, record.hints);
 
   async function share() {
     try {
@@ -187,7 +190,10 @@ function DailyResult({ today, record }: { today: string; record: DailyRecord }) 
       <p className="text-3xl" aria-label={dailySummary(record.results)}>
         {record.results.map(resultEmoji).join('')}
       </p>
-      <p className="font-semibold">{dailySummary(record.results)}</p>
+      <p className="font-semibold">
+        {dailySummary(record.results)}
+        {record.hints > 0 && ` · 💡 힌트 ${record.hints}`}
+      </p>
       <p className="text-sm text-ink-2">
         연속 {record.streak}일 · 최고 {record.best}일 · 내일 새 문제 3개가 나와요
       </p>

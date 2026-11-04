@@ -286,6 +286,18 @@ service cloud.firestore {
         allow delete: if isSelf(uid);
       }
 
+      // ── 힌트 지갑(docs/hint-plan.md) — 문서와 모은 포인트(earned)는 운영자 PC만 쓴다(기기는 못 만든다) ──
+      // 기기는 힌트를 쓸 때 쓴 포인트(spent)만, 한 번에 힌트 값(20·30)만큼 올린다. 줄일 수 없고 모은 것을 넘지 못한다.
+      match /wallet/{docId} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow update: if isSelf(uid) && ageConfirmed() && docId == 'main'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['spent', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && (request.resource.data.spent == resource.data.spent + 20 || request.resource.data.spent == resource.data.spent + 30)
+          && request.resource.data.spent <= resource.data.earned;
+        allow delete: if isSelf(uid);
+      }
+
       // ── 오답노트 — 1·3·7·14일 복습 ───────────────────────────────────
       match /wrongNotes/{questionId} {
         allow read: if isSelf(uid) || isAdmin();
