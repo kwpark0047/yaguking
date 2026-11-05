@@ -12,6 +12,9 @@ next-env.d.ts
 .env.local
 .env.*.local
 
+# Firebase 서비스 계정 키 — 민감한 인증 정보, 절대 커밋 금지
+*-firebase-adminsdk-*.json
+
 # 테스트 산출물
 coverage/
 playwright-report/
