@@ -93,8 +93,11 @@ test('하단 탭은 좁은 화면에서만 보인다', async ({ page }, testInfo
 
 test('메인: 소개·게임 시작·랭킹·소식·로그인/가입으로 가는 길이 있다', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('홈런 치자');
-  await expect(page.getByRole('link', { name: /게임 시작/ })).toHaveAttribute('href', '/play');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('홈런으로 증명해요');
+  await expect(page.getByRole('link', { name: /지금 바로 무료 한 이닝 쳐보기/ })).toHaveAttribute(
+    'href',
+    '/play',
+  );
 
   const siteNav = page.getByRole('navigation', { name: '사이트 메뉴' });
   await expect(siteNav.getByRole('link', { name: '랭킹' })).toHaveAttribute('href', '/rankings');
@@ -113,7 +116,9 @@ test('메인: 소개·게임 시작·랭킹·소식·로그인/가입으로 가�
 
 test('메인: 게임 시작 버튼이 첫 화면 안에 보인다', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: /게임 시작/ })).toBeInViewport();
+  await expect(
+    page.getByRole('link', { name: /지금 바로 무료 한 이닝 쳐보기/ }),
+  ).toBeInViewport();
 });
 
 test('메인: 터치 타깃이 규격을 지킨다', async ({ page }) => {
