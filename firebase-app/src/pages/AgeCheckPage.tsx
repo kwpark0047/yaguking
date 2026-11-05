@@ -6,6 +6,7 @@ import { needsAgeCheck } from '@/lib/auth/gate';
 import { confirmAge, deleteOwnAccount } from '@/lib/auth/profile';
 import { authErrorMessage } from '@/lib/auth/messages';
 import { sanitizeReturnTo } from '@/lib/auth/returnTo';
+import { analytics } from '@/lib/analytics';
 
 type Phase = 'ask' | 'confirmUnder14' | 'deleted';
 
@@ -42,6 +43,8 @@ export function AgeCheckPage() {
       if (over14) {
         await confirmAge(user);
         await refreshProfile();
+        await analytics.ageConfirmed(user.uid, !user.isAnonymous);
+        await analytics.signupComplete(user.uid, !user.isAnonymous, 'email', true);
         navigate(returnTo, { replace: true });
       } else {
         await deleteOwnAccount(user);

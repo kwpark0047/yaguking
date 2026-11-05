@@ -16,6 +16,7 @@ import {
 } from "@/content/questions";
 import { startAsGuest } from "@/lib/auth/actions";
 import { authErrorMessage } from "@/lib/auth/messages";
+import { analytics } from "@/lib/analytics";
 import {
   formatElapsed,
   levelChange,
@@ -163,7 +164,8 @@ export function PlayPage() {
     resetGameEffects();
     showBanner("플레이 볼!");
     setPhase({ kind: "question", question: first });
-  }, [nextQuestion]);
+    void analytics.gameStart(user?.uid ?? '', user ? !user.isAnonymous : false, 'practice');
+  }, [nextQuestion, user]);
 
   // 로그인 확인(없으면 비회원으로) → 비회원 남은 판 → 문제은행 → 시작
   useEffect(() => {
@@ -245,6 +247,15 @@ export function PlayPage() {
       });
       if (user.isAnonymous)
         setGuestLeft((left) => (left === null ? null : Math.max(0, left - 1)));
+      void analytics.gameComplete(
+        user.uid,
+        !user.isAnonymous,
+        "practice",
+        final.state.runs,
+        final.atBats.length,
+        final.atBats.filter((a) => a.correct).length,
+        chances.current.filter((c) => bonusOf(c.kind, c.outcome) === 'HR').length,
+      );
       // 비공식 레벨 승급(docs/motion-plan.md §5) — 누적 XP 읽기 1번. 못 읽으면 레벨만 빼고 결과는 보인다
       const level = await readTotalXp(user.uid)
         .then((total) => levelChange(total, gained))
@@ -429,6 +440,7 @@ export function PlayPage() {
             wrongSaved={phase.wrongSaved}
             saveError={phase.saveError}
             level={phase.level}
+            user={user ?? null}
             onRetrySave={() => void finish(match)}
             canPlayAgain={!isGuest || (guestLeft ?? 0) > 0}
             onPlayAgain={() => void begin()}
@@ -569,6 +581,7 @@ function Results({
   wrongSaved,
   saveError,
   level,
+  user,
   onRetrySave,
   canPlayAgain,
   onPlayAgain,
@@ -577,6 +590,7 @@ function Results({
   wrongSaved: number;
   saveError: string | null;
   level: LevelChange | null;
+  user: { uid: string; isAnonymous: boolean } | null;
   onRetrySave: () => void;
   canPlayAgain: boolean;
   onPlayAgain: () => void;
@@ -602,7 +616,7 @@ function Results({
         {wrongSaved > 0 && ` · 틀린 ${wrongSaved}문항을 오답노트에 담았어요`}
         {match.atBats.some((atBat) => atBat.hint) && ` · 💡 힌트 ${match.atBats.filter((atBat) => atBat.hint).length}번`}
       </p>
-      {level && <LevelPanel level={level} />}
+      {level && <LevelPanel level={level} user={user} />}
       {saveError && (
         <div
           role="alert"
@@ -649,7 +663,7 @@ function Results({
  * 비공식 레벨 — 진행 막대가 이번 경기만큼 차오르고, 레벨이 오르면 "승급!" 카드(docs/motion-plan.md §5 A안).
  * 기기에서 채점한 비공식 XP로 계산한다(공식 랭킹 아님).
  */
-function LevelPanel({ level }: { level: LevelChange }) {
+function LevelPanel({ level, user }: { level: LevelChange; user: { uid: string; isAnonymous: boolean } | null }) {
   const up = level.after > level.before;
   const [width, setWidth] = useState(() =>
     up ? 0 : levelProgress(level.before, level.xpBefore),
@@ -669,6 +683,16 @@ function LevelPanel({ level }: { level: LevelChange }) {
       window.clearTimeout(timer);
     };
   }, [level, up]);
+
+  useEffect(() => {
+    if (!up) return;
+    void analytics.levelUp(
+      user?.uid ?? '',
+      user ? !user.isAnonymous : false,
+      level.before,
+      level.after,
+    );
+  }, [up, level, user]);
 
   return (
     <section className="sticker flex flex-col gap-2 p-4" aria-labelledby="level-title">

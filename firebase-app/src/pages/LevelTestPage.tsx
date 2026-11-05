@@ -20,6 +20,7 @@ import { celebrate, resetGameEffects } from "@/lib/effects/celebrate";
 import { playSound } from "@/lib/sound/sound";
 import { dataErrorMessage } from "@/lib/firebase/errors";
 import { tierStyle, tierTheme } from "@/lib/theme/tiers";
+import { analytics } from "@/lib/analytics";
 
 type Phase =
   | { kind: "intro" }
@@ -104,6 +105,13 @@ export function LevelTestPage() {
         },
       });
       await refreshProfile();
+      await analytics.levelTestComplete(
+        user!.uid,
+        !user!.isAnonymous,
+        correct,
+        answers.current.length,
+        tierFor(correct),
+      );
       setPhase({ kind: "done", saveError: null });
     } catch (reason) {
       setPhase({

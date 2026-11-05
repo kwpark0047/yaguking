@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { completeGoogleRedirect, continueWithGoogle, signInWithEmail, signUpWithEmail } from '@/lib/auth/actions';
 import { authErrorMessage, emailProblem, passwordProblem, PASSWORD_MIN_LENGTH } from '@/lib/auth/messages';
 import { sanitizeReturnTo } from '@/lib/auth/returnTo';
+import { analytics } from '@/lib/analytics';
 
 type Mode = 'login' | 'signup';
 type Field = 'email' | 'password' | 'confirm';
@@ -23,7 +24,7 @@ export function AuthPage() {
   const mode: Mode = params.get('mode') === 'signup' ? 'signup' : 'login';
   const returnTo = sanitizeReturnTo(params.get('returnTo'));
   const navigate = useNavigate();
-  const { isGuest } = useAuth();
+  const { user, isGuest } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,6 +81,11 @@ export function AuthPage() {
     if (signup) {
       const problem = passwordProblem(password, confirm);
       if (problem) return flag(password.length < PASSWORD_MIN_LENGTH ? 'password' : 'confirm', problem);
+      void analytics.signupStart(
+        user?.uid ?? 'guest',
+        !isGuest,
+        'email',
+      );
       void run(() => signUpWithEmail(email.trim(), password));
     } else {
       if (password.length === 0) return flag('password', '비밀번호를 적어 주세요.');

@@ -7,6 +7,7 @@ import { watchEffectsMode } from './lib/effects/preference';
 import { registerServiceWorker, watchInstall } from './lib/pwa/install';
 import { watchDisplay } from './lib/display/preference';
 import { watchSound } from './lib/sound/sound';
+import { persistUtm } from './lib/utm';
 
 // 글자 크기·테마(docs/game-look-plan.md) — 효과 설정보다 먼저(고대비 테마면 효과가 차분해진다)
 watchDisplay();
@@ -15,6 +16,8 @@ watchSound();
 // 홈 화면에 추가(PWA) — 설치 이벤트는 일찍 오므로 화면보다 먼저 붙잡는다. 서비스 워커는 운영 빌드에서만
 watchInstall();
 registerServiceWorker();
+// UTM 파라미터 캡처 — 앱 진입 시 한 번 호출(세션 스토리지에 저장, 이벤트 추적에서 읽음)
+persistUtm();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

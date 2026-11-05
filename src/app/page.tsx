@@ -67,9 +67,9 @@ export default async function HomePage() {
               {member ? `${member.nickname} 선수, 다시 왔군요!` : '오늘도 한 이닝 어때요?'}
             </p>
             <h1 id="home-title" className="font-cute text-4xl leading-tight break-keep sm:text-5xl">
-              야구 상식으로
+              3분이면 내 야구 상식 실력,
               <br />
-              홈런 치자!
+              홈런으로 증명해요
             </h1>
             <p className="max-w-md text-ink-2 break-keep">
               문제는 투구, 정답 속도는 타구, 오답은 아웃. 3아웃이면 1이닝이 끝나고 나만의
@@ -82,7 +82,7 @@ export default async function HomePage() {
                 className="squishy font-cute flex min-h-16 items-center justify-center gap-2 px-8 text-2xl"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
               >
-                게임 시작
+                지금 바로 무료 한 이닝 쳐보기
                 <span aria-hidden="true">▶</span>
               </Link>
               {member && (
@@ -217,7 +217,7 @@ export default async function HomePage() {
         <p>KBO 및 각 구단의 공식 서비스가 아니며, 구단 로고·엠블럼을 사용하지 않습니다.</p>
         <nav aria-label="약관과 정책" className="flex flex-wrap gap-x-4">
           <Link href="/terms" className="flex min-h-11 items-center underline">
-            이용약관 (확정 전)
+            이용약관 (시행일 2026-11-05)
           </Link>
           <Link href="/privacy" className="flex min-h-11 items-center font-semibold underline">
             개인정보처리방침

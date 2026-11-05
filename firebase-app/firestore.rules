@@ -428,6 +428,18 @@ service cloud.firestore {
       }
     }
 
+    // ── 마케팅 이벤트 추적(analytics) ──
+    // 인증된 사용자(비회원 익명 포함)가 자신의 이벤트만 쓴다.
+    match /analytics/events/{eventId} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'name', 'uid', 'isMember', 'sessionId', 'at', 'path', 'utm', 'data'
+        ]);
+      // 읽기는 관리자만
+      allow read: if isAdmin();
+    }
+
     // ── 관리자(1차: 골격·공지·가입자 보기 — docs/admin-plan.md) ─────────────────
     // 통계: 모든 사람의 경기를 묶어 세기(count)·목록 — 관리자만
     match /{path=**}/games/{gameId} {

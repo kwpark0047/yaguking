@@ -10,6 +10,7 @@ import { NicknameTakenError, isNicknameTaken, saveProfile } from '@/lib/profile/
 import { nicknameProblem, normalizePlayers, playersProblem } from '@/lib/profile/validate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 import { teamThemeActive } from '@/lib/theme/themeSwitch';
+import { analytics } from '@/lib/analytics';
 
 type Step = 1 | 2 | 3;
 
@@ -89,6 +90,12 @@ export function ProfileSetupPage() {
         previous,
       );
       await refreshProfile();
+      await analytics.profileComplete(
+        user!.uid,
+        !user!.isAnonymous,
+        nickname.length > 0,
+        teams.length,
+      );
       // 가입이 끝난 첫 화면에서 한 번 환영(App의 WelcomeBanner, docs/motion-plan.md §2)
       navigate(returnTo, { replace: true, state: { welcome: true } });
     } catch (caught) {
