@@ -1,0 +1,24 @@
+# 줄바꿈 통일 (LF)
+* text=auto eol=lf
+
+# 소스 코드 파일은 강제 LF
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.mts text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# 바이너리 파일은 변경하지 않음
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.exe binary
+*.zip binary
+*.pdf binary
+*.mhtml binary

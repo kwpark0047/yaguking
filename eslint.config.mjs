@@ -20,7 +20,17 @@ export default tseslint.config(
       'supabase/.temp/**',
       // Firebase판은 별도 패키지다(자체 tsconfig·테스트). 이 설정으로 검사하지 않는다.
       'firebase-app/**',
+      // 작업트리 내 중복 tsconfig로 인한 파싱 오류 방지
+      '.claude/worktrees/**',
     ],
+  },
+
+  {
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
   },
 
   ...tseslint.configs.recommended,

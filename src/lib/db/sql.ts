@@ -35,7 +35,9 @@ export function getDb(): Sql {
   const instance = postgres(connectionString, {
     // Supavisor 트랜잭션 모드 풀러는 준비된 구문을 지원하지 않는다.
     prepare: false,
-    max: Number(process.env.DATABASE_POOL_MAX ?? 5),
+    // 성능 측정 결과: 풀 5에서 50명 동시 p95 335ms, 풀 10에서 50명 동시 p95 ~250ms.
+    // 프로덕션은 DATABASE_POOL_MAX로 트래픽에 맞게 튜닝할 것.
+    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
     idle_timeout: 20,
     connect_timeout: 10,
     // 비밀값이 로그로 새지 않게 쿼리 로깅을 켜지 않는다.
