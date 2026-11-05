@@ -162,15 +162,15 @@ test('로그아웃은 POST만 받고, 다른 출처의 요청은 거절한다', 
   expect(new URL(sameOrigin.headers()['location']!, baseURL).pathname).toBe('/');
 });
 
-test('약관·처리방침: 로그인·가입 화면과 메인 바닥글에서 열린다 — 약관은 확정 전, 처리방침은 시행 중', async ({ page }) => {
+test('약관·처리방침: 로그인·가입 화면과 메인 바닥글에서 열린다 — 약관 및 처리방침이 적용됨', async ({ page }) => {
   for (const mode of ['login', 'signup']) {
     await page.goto(`/auth?mode=${mode}`);
-    await expect(page.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms');
-    await expect(page.getByRole('link', { name: '개인정보처리방침' })).toHaveAttribute(
+    await expect(page.getByRole('link', { name: '이용약관' }).first()).toHaveAttribute('href', '/terms');
+    await expect(page.getByRole('link', { name: '개인정보처리방침' }).first()).toHaveAttribute(
       'href',
       '/privacy',
     );
-    await expect(page.getByText(/이용약관은 아직 확정 전입니다./)).toBeVisible();
+    await expect(page.getByText(/이용약관과 개인정보처리방침이 적용됩니다./)).toBeVisible();
   }
 
   await page.goto('/');
@@ -183,7 +183,8 @@ test('약관·처리방침: 로그인·가입 화면과 메인 바닥글에서 �
 
   await page.getByRole('link', { name: '이용약관 보기' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '이용약관' })).toBeVisible();
-  await expect(page.getByText('확정 전', { exact: true })).toBeVisible();
+  await expect(page.getByText('2026-11-05')).toBeVisible();
+  await expect(page.getByText('1.0')).toBeVisible();
 });
 
 test('나이 확인 화면은 로그인하지 않으면 로그인으로 보낸다', async ({ page }) => {
