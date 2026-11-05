@@ -12,7 +12,7 @@ function hangulInSource(dir: string, found = new Set<string>()): Set<string> {
   for (const name of readdirSync(dir)) {
     const child = join(dir, name);
     if (statSync(child).isDirectory()) {
-      if (name !== 'admin') hangulInSource(child, found); // 관리자 사이트는 제목 글꼴을 쓰지 않는다
+      if (name !== 'admin' && name !== 'toss') hangulInSource(child, found); // 관리자 사이트는 제목 글꼴을 쓰지 않는다. 미니앱판(src/toss)은 웹판 글꼴 파일을 바꾸지 않는다
     }
     else if (/\.(ts|tsx)$/.test(name) && name !== 'privacy.ts') for (const char of readFileSync(child, 'utf8')) if (/[가-힣]/.test(char)) found.add(char);
   }

@@ -24,9 +24,12 @@
     "ops:cleanup": "node ops/cleanup-cli.mjs",
     "admin:dev": "vite --config vite.admin.config.ts",
     "admin:build": "tsc --noEmit && vite build --config vite.admin.config.ts",
+    "toss:dev": "vite --config vite.toss.config.ts",
+    "toss:build": "tsc --noEmit && vite build --config vite.toss.config.ts && node scripts/toss-check.mjs && ait build",
     "ops:admin": "node ops/admin-cli.mjs"
   },
   "dependencies": {
+    "@apps-in-toss/web-framework": "3.9.0",
     "firebase": "13.1.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",

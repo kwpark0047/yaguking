@@ -21,6 +21,7 @@ import {
 import { HINTS_PER_GAME, HINT_TIME_MS, hintVerdict, type HintKind } from '@/lib/game/hints';
 import { RESULT_PRESENTATION, resultLabel } from '@/lib/game/labels';
 import { extraTimeFor, judgedElapsed } from '@/lib/game/match';
+import { appUrl, shareOrCopy } from '@/lib/platform/share';
 import { playSound, verdictSound } from '@/lib/sound/sound';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
@@ -166,20 +167,12 @@ function DailyVerdict({
 
 function DailyResult({ today, record }: { today: string; record: DailyRecord }) {
   const [shared, setShared] = useState<string | null>(null);
-  const text = shareText(today, record.results, record.streak, `${location.origin}/daily`, record.hints);
+  const text = shareText(today, record.results, record.streak, appUrl('/daily'), record.hints);
 
   async function share() {
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      setShared('결과를 복사했어요. 친구에게 붙여 넣어 보내 보세요.');
-    } catch (error) {
-      // 공유 창을 닫은 것(AbortError)은 실패가 아니다
-      if ((error as Error).name !== 'AbortError') setShared('복사하지 못했어요. 아래 글을 길게 눌러 복사해 주세요.');
-    }
+    const outcome = await shareOrCopy(text);
+    if (outcome === 'copied') setShared('결과를 복사했어요. 친구에게 붙여 넣어 보내 보세요.');
+    if (outcome === 'failed') setShared('복사하지 못했어요. 아래 글을 길게 눌러 복사해 주세요.');
   }
 
   return (

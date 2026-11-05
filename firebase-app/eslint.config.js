@@ -5,7 +5,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'dist-admin', 'node_modules', 'playwright-report', 'test-results', 'src/content/questions.generated.json'] },
+  { ignores: ['dist', 'dist-admin', 'dist-toss', 'node_modules', 'playwright-report', 'test-results', 'src/content/questions.generated.json'] },
   {
     files: ['src/**/*.{ts,tsx}', 'admin/**/*.{ts,tsx}'],
     extends: [tseslint.configs.recommended],

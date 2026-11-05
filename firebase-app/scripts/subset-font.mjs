@@ -33,7 +33,7 @@ export function hangulInSource(dir = join(root, 'src')) {
       const child = join(path, name);
       // 관리자 화면(src/admin, src/lib/admin)은 별도 사이트이고 시스템 글꼴을 쓴다
       if (statSync(child).isDirectory()) {
-        if (name !== 'admin') walk(child);
+        if (name !== 'admin' && name !== 'toss') walk(child); // 미니앱판(src/toss)은 웹판 글꼴 파일을 바꾸지 않는다
       }
       // 처리방침 본문은 제목 글꼴을 쓰지 않는다(넣으면 글꼴 파일이 커진다)
       else if (/\.(ts|tsx)$/.test(name) && name !== 'privacy.ts') for (const char of readFileSync(child, 'utf8')) if (/[가-힣]/.test(char)) found.add(char);

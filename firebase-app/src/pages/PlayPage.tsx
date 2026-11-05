@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/auth/AuthProvider";
+import { HAS_ACCOUNTS } from "@/lib/platform/features";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { TextSizeToggle } from "@/components/display/DisplaySettings";
 import { BoxScore } from "@/components/game/BoxScore";
@@ -361,21 +362,22 @@ export function PlayPage() {
             aria-labelledby="limit-title"
           >
             <h1 id="limit-title" className="font-cute text-2xl">
-              오늘 비회원 경기를 다 했어요
+              {HAS_ACCOUNTS ? "오늘 비회원 경기를 다 했어요" : "오늘 경기를 다 했어요"}
             </h1>
             <p className="text-sm text-ink-2 break-keep">
-              비회원은 하루 {GUEST_DAILY_GAMES}판까지예요. 가입하면 지금까지의
-              기록이 그대로 이어지고 제한 없이 할 수 있어요.
+              {HAS_ACCOUNTS
+                ? `비회원은 하루 ${GUEST_DAILY_GAMES}판까지예요. 가입하면 지금까지의 기록이 그대로 이어지고 제한 없이 할 수 있어요.`
+                : `개인 경기는 하루 ${GUEST_DAILY_GAMES}판까지예요. 내일 다시 만나요. 오늘의 1이닝은 따로 풀 수 있어요.`}
             </p>
             <Link
-              to="/auth?mode=signup&returnTo=%2Fplay"
+              to={HAS_ACCOUNTS ? "/auth?mode=signup&returnTo=%2Fplay" : "/daily"}
               className="squishy font-cute flex min-h-14 items-center justify-center text-xl"
               style={{
                 backgroundColor: "var(--accent)",
                 color: "var(--accent-ink)",
               }}
             >
-              가입하기
+              {HAS_ACCOUNTS ? "가입하기" : "오늘의 1이닝"}
             </Link>
           </section>
         )}

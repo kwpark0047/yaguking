@@ -1,0 +1,24 @@
+/* 앱인토스 미니앱판(docs/toss-miniapp.md) — 웹판과 다른 규칙만. Vite root가 toss/라 Tailwind가 src/를 읽도록 알려 준다(관리자 사이트와 같다) */
+@import '../app/globals.css';
+@source '..';
+
+:root {
+  color-scheme: light;
+}
+
+/* 로그인·가입은 토스 로그인만 허용되는데 서버 없이는 쓸 수 없다 — 가입 링크가 있는 공용 화면에서도 보이지 않게 */
+a[href^='/auth'] {
+  display: none !important;
+}
+
+/* 외부 링크 이동 제한 — 출처 표시는 글자로만(클릭 차단은 TossApp) */
+a[target='_blank'] {
+  color: inherit;
+  pointer-events: none;
+  text-decoration: none;
+}
+
+/* 하단 안전 영역(홈 바) */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}

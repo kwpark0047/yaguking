@@ -19,5 +19,5 @@
     "jsx": "react-jsx",
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "tests", "admin", "vite.config.ts", "vite.admin.config.ts"]
+  "include": ["src", "tests", "admin", "toss", "vite.config.ts", "vite.admin.config.ts", "vite.toss.config.ts", "apps-in-toss.config.ts"]
 }

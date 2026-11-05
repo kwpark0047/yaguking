@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { appUrl, copyText } from '@/lib/platform/share';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
@@ -180,12 +181,7 @@ export function RoomPage() {
   }
 
   async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/room/${code}`);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
+    setCopied(await copyText(appUrl(`/room/${code}`)));
   }
 
   const alerts = (

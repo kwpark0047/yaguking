@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
+import { HAS_ACCOUNTS } from '@/lib/platform/features';
 import { QuestionView } from '@/components/game/QuestionView';
 import type { OptionLabel, Question } from '@/content/questions';
 import { LIMIT_MS } from '@/lib/engine';
@@ -53,7 +54,7 @@ export function QuestionWithHints({
 
   const answer = (choice: OptionLabel | null, elapsedMs: number) => onAnswer(choice, elapsedMs, used);
   const shared = { question, fresh, timerNote, onAnswer: answer };
-  if (!hintsOpen(kstDate())) return <QuestionView {...shared} limitMs={limitMs} />;
+  if (!HAS_ACCOUNTS || !hintsOpen(kstDate())) return <QuestionView {...shared} limitMs={limitMs} />;
 
   async function openPanel() {
     setPanel((value) => !value);
