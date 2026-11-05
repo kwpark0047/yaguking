@@ -31,11 +31,11 @@ describe.skipIf(!emulated)('힌트 지갑(에뮬레이터)', () => {
     for (const [month, list] of Object.entries(days)) await db.doc(`users/${uid}/attendance/${month}`).set({ days: list, updatedAt: new Date() });
   }
   const wallet = (uid: string) => db.doc(`users/${uid}/wallet/main`).get();
-  const run = (now: number) => runWallets({ db, now, start: START });
+  const run = (now: number) => runWallets({ db, now, start: START, hintStart: '2026-11-11' });
 
   it('시작일(처리방침 판) 전에는 아무것도 쓰지 않는다', async () => {
     await memberWith('alice', { '202611': [5, 6, 7] });
-    expect(HINT_START).toBe('2026-11-11');
+    expect(HINT_START).toBe('2026-11-12');
     expect(await run(at(2026, 11, 10))).toEqual({ started: false, members: 0, updated: 0 });
     expect((await wallet('alice')).exists).toBe(false);
   });

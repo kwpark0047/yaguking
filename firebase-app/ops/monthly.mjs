@@ -21,8 +21,8 @@ export const RANKING_TOP = 50;
 export const HIDDEN_NAME = '익명 선수';
 export const REMOVED_NAME = '탈퇴한 선수';
 export const LEADERBOARD_MONTHS_KEPT = 12;
-/** 힌트 시작일 — src/lib/game/hints.ts와 같아야 한다(단위 테스트). 처리방침 판(11-11) 전에는 지갑을 쓰지 않는다 */
-export const HINT_START = '2026-11-11';
+/** 힌트 시작일 — src/lib/game/hints.ts와 같아야 한다(단위 테스트). 처리방침 판(11-12) 전에는 지갑을 쓰지 않는다 */
+export const HINT_START = '2026-11-12';
 
 const KST = 9 * 3_600_000;
 

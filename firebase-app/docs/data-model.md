@@ -45,7 +45,7 @@
 | `officialRounds/{날짜}/questions/{0~4}` | 회원 — 앞 문제에 답했을 때만(닫힌 뒤엔 누구나) | 운영자 PC만 | 본문·보기·영역·난이도·기준일. **정답 없음** |
 | `officialRounds/{날짜}/attempts/{uid}` | 본인 | 시작 1 + 답 5 | 확인 회원, 열린 동안, 하루 한 번. 답 = 차례대로 하나씩, 서버 시각, 기한(문항당 16초 + 1초). 지우기는 닫힌 공식전만 |
 | `officialKeys/{날짜}` | **아무도 못 읽음** | 운영자 PC만 | 정답·문항 ID·해설·출처 |
-| `users/{uid}/wallet/main` | 본인 읽기·지우기, 확인 회원은 `spent`만 | 운영자 PC 0시(문서·`earned`·`earnedThrough`), 힌트를 쓸 때(`spent`) | `earned` 모은 출석 포인트 합, `spent` 쓴 포인트 합(한 번에 20·30만, `earned`를 넘지 못함) — docs/hint-plan.md, 11-11부터 |
+| `users/{uid}/wallet/main` | 본인 읽기·지우기, 확인 회원은 `spent`만 | 운영자 PC 0시(문서·`earned`·`earnedThrough`), 힌트를 쓸 때(`spent`) | `earned` 모은 출석 포인트 합, `spent` 쓴 포인트 합(한 번에 20·30만, `earned`를 넘지 못함) — docs/hint-plan.md, 11-12부터 |
 | `users/{uid}/officialMonth/{YYYYMM}` | 본인 읽기·지우기 | 운영자 PC 채점 | `days.{날짜}` = 그날 공식 점수(월간 등수에 더함) |
 | `adminConfig/ads` | 관리자 | 관리자 "광고" | 광고 원본 30개까지(위치·제목·문구·단추·주소·광고주·기간·가중치·대체 글·이미지 판·숨김) — docs/ads-plan.md |
 | `public/ad_{ID}` | **누구나 읽기** | 관리자 "광고" | 광고 이미지 하나(WebP/JPEG data URL 160,000자까지, 가로·세로·판). 보이는 광고만 앱이 읽는다 |

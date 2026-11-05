@@ -107,8 +107,8 @@ describe('시작일·값이 곳곳에서 같다', () => {
     const ops = await import('../../../ops/monthly.mjs');
     expect(ops.HINT_START).toBe(HINT_START);
     expect(HINT_PRIVACY_EFFECTIVE).toBe(HINT_START);
-    expect(hintsOpen('2026-11-10', HINT_START)).toBe(false);
-    expect(hintsOpen('2026-11-11', HINT_START)).toBe(true);
+    expect(hintsOpen('2026-11-11', HINT_START)).toBe(false);
+    expect(hintsOpen('2026-11-12', HINT_START)).toBe(true);
     expect(PRIVACY_VERSIONS.map((version) => version.effective)).toContain(HINT_START);
     expect(upcomingVersions('2026-11-04').map((version) => version.effective)).toContain(HINT_START);
   }, 30_000);

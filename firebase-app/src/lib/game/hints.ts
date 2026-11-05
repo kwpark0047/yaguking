@@ -10,7 +10,7 @@ import { resolveAtBat, type AtBatResult, type AtBatVerdict, type Difficulty } fr
  */
 
 /** 처리방침 개정(7일 전 공지) 시행일에 연다 — 운영자 PC 지갑 작업(ops/monthly.mjs HINT_START)과 같아야 한다(단위 테스트) */
-export const HINT_START = '2026-11-11';
+export const HINT_START = '2026-11-12';
 
 /** 화면을 여는 시작일. 에뮬레이터 개발·E2E에서만 VITE_HINT_START로 앞당길 수 있다(engagementStart와 같은 방식) */
 export function hintStart(): string {
