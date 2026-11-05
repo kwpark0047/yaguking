@@ -3,7 +3,7 @@ import { buildBoxScore } from '@/lib/engine';
 import type { AtBatEntry, AtBatResult, Difficulty } from '@/lib/engine';
 import type { FinishDto } from '@/types/api';
 import { addBattingStats } from '@/server/stats/batting';
-import { applyXpTotals, grantXp } from '@/server/xp/grant';
+import { applyXpTotals, grantXp, grantXpBatch } from '@/server/xp/grant';
 import type { PlaySessionRow } from './sessionRow';
 
 interface ResolvedAtBatRow {
@@ -97,12 +97,36 @@ export async function finishSession(
     cells.set(key, cell);
   }
 
-  for (const cell of cells.values()) {
+  // ── 존 히트맵 집계 (P2에서 화면화, P1은 수집만) ──────────────────────
+  // 개별 INSERT(N+1)를 하나의 unnest 배치 INSERT로 축소.
+  const zoneCells = Array.from(cells.values());
+  if (zoneCells.length > 0) {
+    const zUserIds: string[] = [];
+    const zEraBands: number[] = [];
+    const zDiffBands: number[] = [];
+    const zAttempts: number[] = [];
+    const zCorrects: number[] = [];
+
+    for (const cell of zoneCells) {
+      zUserIds.push(userId);
+      zEraBands.push(cell.era);
+      zDiffBands.push(cell.diff);
+      zAttempts.push(cell.attempts);
+      zCorrects.push(cell.correct);
+    }
+
     await tx`
       insert into public.user_zone_cells (
         user_id, era_band, difficulty_band, attempts, correct
       )
-      values (${userId}, ${cell.era}, ${cell.diff}, ${cell.attempts}, ${cell.correct})
+      select u.user_id, u.era_band, u.difficulty_band, u.attempts, u.correct
+      from unnest(
+        ${zUserIds}::uuid[],
+        ${zEraBands}::smallint[],
+        ${zDiffBands}::smallint[],
+        ${zAttempts}::integer[],
+        ${zCorrects}::integer[]
+      ) as u(user_id, era_band, difficulty_band, attempts, correct)
       on conflict (user_id, era_band, difficulty_band) do update set
         attempts = user_zone_cells.attempts + excluded.attempts,
         correct = user_zone_cells.correct + excluded.correct,
@@ -111,29 +135,35 @@ export async function finishSession(
   }
 
   // ── XP ──────────────────────────────────────────────────────────────
-  let xpEarned = 0;
+  // 일일 상한이 없는 정답·어려움 보상은 하나의 INSERT로 일괄 처리(N+1 제거).
+  const batchInputs: Array<{
+    userId: string;
+    reason: string;
+    entityId: string;
+    amount: number;
+  }> = [];
 
   for (const row of rows) {
     if (!row.is_correct) continue;
 
-    const correctGrant = await grantXp(tx, {
+    batchInputs.push({
       userId,
       reason: 'answer_correct',
       entityId: row.id,
       amount: XP.answerCorrect,
     });
-    xpEarned += correctGrant.amount;
 
     if (row.difficulty === 'hard') {
-      const hardGrant = await grantXp(tx, {
+      batchInputs.push({
         userId,
         reason: 'hard_correct_bonus',
         entityId: row.id,
         amount: XP.hardCorrectBonus,
       });
-      xpEarned += hardGrant.amount;
     }
   }
+
+  let xpEarned = await grantXpBatch(tx, batchInputs);
 
   if (status === 'finished') {
     const inningGrant = await grantXp(tx, {

@@ -59,6 +59,7 @@ export function AuthForm({
   const [emailOpen, setEmailOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   const configured = isAuthConfigured();
   const providers = enabledOAuthProviders();
@@ -132,7 +133,7 @@ export function AuthForm({
           <button
             key={provider}
             type="button"
-            disabled={pending}
+            disabled={pending || (mode === 'signup' && !termsAgreed)}
             onClick={() => void signInWithProvider(provider)}
             className="min-h-14 rounded-option font-semibold disabled:opacity-60"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
@@ -167,7 +168,7 @@ export function AuthForm({
               />
               <button
                 type="button"
-                disabled={pending || email.length === 0}
+                disabled={pending || email.length === 0 || (mode === 'signup' && !termsAgreed)}
                 onClick={() => void signInWithEmail()}
                 className="min-h-14 rounded-option font-semibold disabled:opacity-60"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' }}
@@ -185,6 +186,34 @@ export function AuthForm({
         </p>
       )}
 
+      {mode === 'signup' && (
+        <div className="flex items-start gap-2 text-sm text-ink-2 break-keep">
+          <input
+            id="terms"
+            type="checkbox"
+            checked={termsAgreed}
+            onChange={() => setTermsAgreed(!termsAgreed)}
+            className="mt-1 rounded border-ink-3"
+          />
+          <label htmlFor="terms" className="cursor-pointer">
+            계속하면{' '}
+            <Link href="/terms" className="underline font-semibold" style={{ color: 'var(--ink-1)' }}>
+              이용약관
+            </Link>
+            과{' '}
+            <Link href="/privacy" className="underline font-semibold" style={{ color: 'var(--ink-1)' }}>
+              개인정보처리방침
+            </Link>
+            에 동의합니다.
+          </label>
+          {!termsAgreed && (
+            <span className="text-xs" style={{ color: 'var(--out)' }}>
+              가입을 위해 동의가 필요합니다.
+            </span>
+          )}
+        </div>
+      )}
+
       <p className="text-sm text-ink-2">
         {mode === 'signup' ? '이미 선수 등록을 했나요? ' : '야구왕이 처음인가요? '}
         <Link href={otherHref} className="font-semibold underline" style={{ color: 'var(--ink-1)' }}>
@@ -192,12 +221,8 @@ export function AuthForm({
         </Link>
       </p>
 
-      {/*
-        이용약관은 아직 확정 전이다(자리 페이지). 확정 전이라는 사실을 여기서도
-        밝힌다 — 보지 못한 문서에 동의했다고 적지 않기 위해서다. 처리방침은 시행 중이다.
-      */}
       <p className="text-xs text-ink-2 break-keep">
-        계속하면{' '}
+        로그인 시에도{' '}
         <Link href="/terms" className="underline" style={{ color: 'var(--ink-1)' }}>
           이용약관
         </Link>
@@ -205,7 +230,7 @@ export function AuthForm({
         <Link href="/privacy" className="underline" style={{ color: 'var(--ink-1)' }}>
           개인정보처리방침
         </Link>
-        에 동의하는 것으로 봅니다. 이용약관은 아직 확정 전입니다.
+        이 적용됩니다.
       </p>
     </main>
   );

@@ -31,8 +31,10 @@
     "privacy:purge": "node --env-file-if-exists=.env.local scripts/privacy-purge.mjs"
   },
   "dependencies": {
+    "@rolldown/binding-wasm32-wasi": "^1.2.16",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.118.0",
+    "lightningcss-linux-x64-gnu": "^1.32.0",
     "next": "16.4.2",
     "postgres": "3.4.9",
     "react": "19.3.1",
@@ -50,7 +52,7 @@
     "eslint": "10.13.0",
     "libpg-query": "^18.1.5",
     "prettier": "3.9.10",
-    "supabase": "2.121.0",
+    "supabase": "^3.0.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0",
