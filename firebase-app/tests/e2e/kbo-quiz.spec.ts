@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { KBO_QUIZ_START, publishAtOf } from '@/lib/kbo/set';
+import { KBO_QUIZ_START, publishAtOf, setIdDaysBefore } from '@/lib/kbo/set';
 import { accounts, clearEmulators, hasFirestore, passAgeCheckIfAsked, patchDoc, readDoc, signUp, uniqueEmail } from './helpers';
 
 /**
@@ -19,8 +19,8 @@ const question = (stem: string, texts: string[]) => ({
   },
 });
 
-async function seedSet(fields: Record<string, unknown> = {}) {
-  await patchDoc(`kboSets/${DAY}`, {
+async function seedSet(fields: Record<string, unknown> = {}, day = DAY) {
+  await patchDoc(`kboSets/${day}`, {
     kind: string('review'),
     gamesDate: string(''),
     publishAt: { timestampValue: new Date(Date.now() - 3_600_000).toISOString() },
@@ -33,7 +33,7 @@ async function seedSet(fields: Record<string, unknown> = {}) {
     ...fields,
   });
   for (const [index, correct] of ['A', 'B'].entries()) {
-    await patchDoc(`kboSets/${DAY}/keys/${index}`, {
+    await patchDoc(`kboSets/${day}/keys/${index}`, {
       correct: string(correct),
       explanation: string(`${index + 1}번 해설`),
       sourceName: string('테스트 출처'),
@@ -128,4 +128,22 @@ test('묶음이 없는 날: 준비 중 안내', async ({ page }) => {
   await page.goto('/yesterday');
   await expect(page.getByRole('status').filter({ hasText: '준비 중' })).toBeVisible({ timeout: 15_000 });
   expect(await readDoc(`kboSets/${DAY}`)).toBeNull();
+});
+
+test('오늘 묶음이 없으면 최근 7일 안의 마지막 퀴즈를 보여 준다 — 오늘은 안내뿐이어도', async ({ page }) => {
+  await seedSet({}, setIdDaysBefore(DAY, 3));
+  await seedSet({ kind: string('season-end'), questions: { arrayValue: { values: [] } } });
+  await openDay(page);
+  await page.goto('/yesterday');
+  await expect(page.getByRole('button', { name: '시작' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('2026 시즌 돌아보기')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /2026 시즌 돌아보기/ })).toBeVisible({ timeout: 15_000 });
+});
+
+test('7일보다 오래된 퀴즈는 보여 주지 않는다', async ({ page }) => {
+  await seedSet({}, setIdDaysBefore(DAY, 7));
+  await openDay(page);
+  await page.goto('/yesterday');
+  await expect(page.getByRole('status').filter({ hasText: '준비 중' })).toBeVisible({ timeout: 15_000 });
 });

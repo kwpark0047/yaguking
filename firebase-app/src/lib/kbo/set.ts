@@ -12,6 +12,8 @@ export const KBO_ATTEMPT_RETENTION_DAYS = 30;
 export const KBO_MAX_QUESTIONS = 10;
 export const KBO_MIN_QUESTIONS = 1;
 export const KBO_QUESTION_MS = 20_000;
+/** 오늘 묶음이 없거나 안내뿐이면 며칠 전까지 풀 수 있는 묶음을 찾나(비시즌에도 마지막 퀴즈가 보이게) */
+export const KBO_LOOKBACK_DAYS = 7;
 
 const KST = 9 * 3_600_000;
 const DAY = 86_400_000;
@@ -54,6 +56,17 @@ export const isPlayable = (kind: KboSetKind) => kind === 'quiz' || kind === 'rev
 /** 지금 열려 있어야 할 묶음의 ID — 묶음은 그날 06:00에 열리고 다음 날 06:00까지 간다 */
 export function currentSetId(now: number = Date.now()): string {
   return new Date(now + KST - PUBLISH_HOUR * 3_600_000).toISOString().slice(0, 10);
+}
+
+/** n일 전 묶음 ID */
+export const setIdDaysBefore = (setId: string, days: number) => new Date(Date.parse(`${setId}T00:00:00Z`) - days * DAY).toISOString().slice(0, 10);
+
+/**
+ * 보여 줄 묶음 고르기 — 오늘부터 거꾸로(sets[0] = 오늘). 풀 수 있는 묶음이 있으면 가장 최근 것,
+ * 없으면 가장 최근 안내(경기 없음·우천 취소·시즌 끝). 둘 다 없으면 null.
+ */
+export function pickLatest<T extends { kind: KboSetKind }>(sets: readonly (T | null)[]): T | null {
+  return sets.find((set): set is T => !!set && isPlayable(set.kind)) ?? sets.find((set): set is T => !!set) ?? null;
 }
 
 /** 하루 전 묶음 ID — 오늘 것이 아직 준비되지 않았을 때 보여 준다 */
