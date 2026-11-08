@@ -2,7 +2,7 @@ import { doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'fire
 import type { OptionLabel } from '@/content/questions';
 import { firestore } from '@/lib/firebase/db';
 import { countReads, countWrites } from '@/lib/firebase/meter';
-import { currentSetId, previousSetId, type KboKey, type KboQuestion, type KboSet, type KboSetKind, type KboSetState } from './set';
+import { KBO_LOOKBACK_DAYS, currentSetId, isPlayable, pickLatest, setIdDaysBefore, type KboKey, type KboQuestion, type KboSet, type KboSetKind, type KboSetState } from './set';
 
 /**
  * 어제의 KBO 퀴즈 읽고 쓰기. 정답은 이 묶음에 없고, 규칙이 "그 문제에 답을 낸 뒤에만" 정답 문서를 연다.
@@ -35,12 +35,17 @@ export async function loadSet(id: string): Promise<KboSet | null> {
   }
 }
 
-/** 지금 보여 줄 묶음 — 오늘 것, 없으면 하루 전 것(날짜를 함께 보여 준다). 읽기 1~2번 */
+/**
+ * 지금 보여 줄 묶음 — 오늘 것이 풀 수 있는 묶음이면 그것. 아니면 최근 7일(KBO_LOOKBACK_DAYS) 안에서 가장 최근의 풀 수 있는 묶음
+ * (날짜를 함께 보여 준다 — "어제"라고 쓰지 않는다). 그것도 없으면 가장 최근 안내. 읽기: 오늘 1번, 없으면 최대 7번(홈은 하루 기억)
+ */
 export async function loadLatestSet(now: number = Date.now()): Promise<{ set: KboSet | null; current: boolean }> {
   const id = currentSetId(now);
   const today = await loadSet(id);
-  if (today) return { set: today, current: true };
-  return { set: await loadSet(previousSetId(id)), current: false };
+  if (today && isPlayable(today.kind)) return { set: today, current: true };
+  const earlier = await Promise.all(Array.from({ length: KBO_LOOKBACK_DAYS - 1 }, (_, index) => loadSet(setIdDaysBefore(id, index + 1))));
+  const set = pickLatest([today, ...earlier]);
+  return { set, current: set !== null && set.id === id };
 }
 
 export interface KboAttempt {
@@ -124,8 +129,8 @@ export async function loadCard(now: number = Date.now()): Promise<KboCard | null
   const { set, current } = await loadLatestSet(now);
   const card = set ? { setId: set.id, kind: set.kind, gamesDate: set.gamesDate, total: set.questions.length - set.withdrawn.length } : null;
   try {
-    // 오늘 묶음이 아니면 10분 뒤 다시 본다(그동안은 하루 전 묶음을 날짜와 함께 보여 준다)
-    localStorage.setItem(CARD_KEY, JSON.stringify({ day: currentSetId(now), at: now, current, card }));
+    // 찾은 묶음은 그날 내내 기억한다(지난 묶음이어도 — 7일을 다시 읽지 않게). 못 찾았으면 10분 뒤 다시 본다
+    localStorage.setItem(CARD_KEY, JSON.stringify({ day: currentSetId(now), at: now, current: current || card !== null, card }));
   } catch {
     // 저장소가 막혀 있으면 다음에 다시 읽는다
   }

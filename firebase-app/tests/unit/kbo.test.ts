@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KBO_ATTEMPT_RETENTION_DAYS as OPS_RETENTION, KBO_TEAMS, addDays, candidatesOf, checkGame, dedupeGames, difficultyPlan, documentProblem, gameHash, generateSet, normalizeGame, summarizeAttempts } from '../../ops/kbo.mjs';
 import { KBO_PRIVACY_EFFECTIVE, PRIVACY_VERSIONS, versionInForce } from '@/content/privacy';
-import { KBO_ATTEMPT_RETENTION_DAYS, KBO_QUIZ_START, currentSetId, dateLabel, headlineOf, kboQuestionProblem, nextSetId, previousSetId, publishAtOf } from '@/lib/kbo/set';
+import { KBO_ATTEMPT_RETENTION_DAYS, KBO_QUIZ_START, pickLatest, setIdDaysBefore, currentSetId, dateLabel, headlineOf, kboQuestionProblem, nextSetId, previousSetId, publishAtOf } from '@/lib/kbo/set';
 import { TEAMS } from '@/content/teams';
 import { finalGame } from '../fixtures/kboGames';
 
@@ -258,5 +258,22 @@ describe('집계', () => {
     expect(summary.questions[0]).toEqual({ index: 0, answered: 3, correct: 1 });
     expect(summary.questions[1]).toEqual({ index: 1, answered: 0, correct: 0 });
     expect(JSON.stringify(summary)).not.toMatch(/"a"|"uid"/);
+  });
+});
+
+describe('최근 7일 묶음 고르기', () => {
+  const set = (id: string, kind: 'quiz' | 'review' | 'news' | 'no-game' | 'rainout' | 'season-end') => ({ id, kind });
+
+  it('오늘 것이 풀 수 있으면 오늘, 아니면 가장 최근의 풀 수 있는 묶음, 그것도 없으면 가장 최근 안내', () => {
+    expect(pickLatest([set('d0', 'quiz'), set('d1', 'review')])?.id).toBe('d0');
+    expect(pickLatest([null, null, set('d2', 'review'), set('d3', 'quiz')])?.id).toBe('d2');
+    expect(pickLatest([set('d0', 'season-end'), null, set('d2', 'review')])?.id).toBe('d2');
+    expect(pickLatest([set('d0', 'no-game'), set('d1', 'rainout')])?.id).toBe('d0');
+    expect(pickLatest([null, null, null])).toBeNull();
+  });
+
+  it('날짜 거꾸로 세기', () => {
+    expect(setIdDaysBefore('2026-12-01', 1)).toBe('2026-11-30');
+    expect(setIdDaysBefore('2026-11-20', 6)).toBe('2026-11-14');
   });
 });
