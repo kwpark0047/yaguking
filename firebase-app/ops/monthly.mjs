@@ -23,6 +23,9 @@ export const REMOVED_NAME = '탈퇴한 선수';
 export const LEADERBOARD_MONTHS_KEPT = 12;
 /** 힌트 시작일 — src/lib/game/hints.ts와 같아야 한다(단위 테스트). 처리방침 판(11-12) 전에는 지갑을 쓰지 않는다 */
 export const HINT_START = '2026-11-12';
+/** 가입 축하 포인트(docs/signup-boost.md S2) — src/lib/game/welcome.ts와 같아야 한다(단위 테스트). 처리방침 개정판 시행일과 같은 날 */
+export const WELCOME_BONUS_START = '2026-11-20';
+export const WELCOME_BONUS_POINTS = 50;
 
 const KST = 9 * 3_600_000;
 
@@ -308,7 +311,7 @@ export async function runMonthly({ db, now = Date.now(), start = ENGAGEMENT_STAR
  * 힌트 시작일 전에는 아무것도 쓰지 않는다. 그날 처음 돌 때 지난 출석을 한꺼번에 센다. 바뀐 사람만 쓴다.
  * `now`·`start`·`hintStart`는 테스트용. 읽기: 회원 수 + 회원마다 지갑 1·출석 달 수, 쓰기: 바뀐 사람 수.
  */
-export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_START, hintStart = HINT_START }) {
+export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_START, hintStart = HINT_START, welcomeStart = WELCOME_BONUS_START }) {
   const report = { started: false, members: 0, updated: 0 };
   const yesterday = new Date(now + KST - 86_400_000).toISOString().slice(0, 10);
   if (new Date(now + KST).toISOString().slice(0, 10) < hintStart) return report;
@@ -320,6 +323,8 @@ export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_STAR
   const through = Number(new Date(now + KST).getUTCDate()) - 1;
   const uids = [...members.keys()];
   report.members = uids.length;
+  // 가입 축하 — 닉네임까지 마친 회원 모두에게 한 번(모은 포인트에 늘 더해 계산하므로 두 번 들어가지 않는다)
+  const welcome = new Date(now + KST).toISOString().slice(0, 10) >= welcomeStart ? WELCOME_BONUS_POINTS : 0;
 
   const earnedOf = async (uid) => {
     const months = await db.collection(`users/${uid}/attendance`).get();
@@ -340,7 +345,7 @@ export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_STAR
     const batch = db.batch();
     let writes = 0;
     wallets.forEach((wallet, index) => {
-      const value = earned[index];
+      const value = earned[index] + welcome;
       if (wallet.exists ? wallet.get('earned') === value : value === 0) return;
       batch.set(
         refs[index],

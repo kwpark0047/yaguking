@@ -15,6 +15,13 @@ import {
   type Question,
 } from "@/content/questions";
 import { startAsGuest } from "@/lib/auth/actions";
+import { SignupNudge } from "@/components/game/SignupNudge";
+import { ResultCardButton } from "@/components/share/ResultCardButton";
+import { resultEmoji } from "@/lib/game/daily";
+import { worthKeeping } from "@/lib/game/welcome";
+import { dateLabel } from "@/lib/kbo/set";
+import { appUrl } from "@/lib/platform/share";
+import { cardSummary } from "@/lib/share/resultCard";
 import { authErrorMessage } from "@/lib/auth/messages";
 import {
   formatElapsed,
@@ -431,6 +438,7 @@ export function PlayPage() {
             level={phase.level}
             onRetrySave={() => void finish(match)}
             canPlayAgain={!isGuest || (guestLeft ?? 0) > 0}
+            isGuest={isGuest}
             onPlayAgain={() => void begin()}
           />
         )}
@@ -572,6 +580,7 @@ function Results({
   onRetrySave,
   canPlayAgain,
   onPlayAgain,
+  isGuest,
 }: {
   match: Match;
   wrongSaved: number;
@@ -580,6 +589,7 @@ function Results({
   onRetrySave: () => void;
   canPlayAgain: boolean;
   onPlayAgain: () => void;
+  isGuest: boolean;
 }) {
   const box = boxScoreOf(match);
   const xp = xpOf(match.atBats, match.state.finished);
@@ -603,6 +613,7 @@ function Results({
         {match.atBats.some((atBat) => atBat.hint) && ` · 💡 힌트 ${match.atBats.filter((atBat) => atBat.hint).length}번`}
       </p>
       {level && <LevelPanel level={level} />}
+      {isGuest && worthKeeping(box.h, box.hr) && <SignupNudge summary={`${runs}득점 ${cardSummary(box)}`} />}
       {saveError && (
         <div
           role="alert"
@@ -640,6 +651,18 @@ function Results({
         >
           오답노트
         </Link>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <ResultCardButton
+          fileName="yaguking-result.png"
+          card={{
+            headline: `${runs}득점`,
+            summary: cardSummary(box),
+            emoji: match.atBats.map((atBat) => resultEmoji(atBat.result)).join(""),
+            label: `개인 경기 · ${dateLabel(kstDate())}`,
+            url: appUrl("/").replace(/^https?:\/\//, ""),
+          }}
+        />
       </div>
     </section>
   );

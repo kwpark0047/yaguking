@@ -1,5 +1,6 @@
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 import { KBO_ATTEMPT_RETENTION_DAYS, KBO_QUIZ_START } from '@/lib/kbo/set';
+import { WELCOME_BONUS_POINTS } from '@/lib/game/welcome';
 import { HINT_START } from '@/lib/game/hints';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
 import {
@@ -413,7 +414,14 @@ function amendKboQuiz(sections: readonly PolicySection[]): PolicySection[] {
   return sections.map((section) => {
     switch (section.id) {
       case 'purpose':
-        return { ...section, items: [...(section.items ?? []), '어제의 KBO 퀴즈 진행 — 낸 답을 저장해 정답을 보여 주고, 풀이 수·정답률 같은 숫자로 서비스를 개선'] };
+        return {
+          ...section,
+          items: [
+            ...(section.items ?? []),
+            '어제의 KBO 퀴즈 진행 — 낸 답을 저장해 정답을 보여 주고, 풀이 수·정답률 같은 숫자로 서비스를 개선',
+            `가입 축하 포인트 — 회원의 힌트 포인트(모은 포인트 합계)에 한 번 ${WELCOME_BONUS_POINTS}P를 더함`,
+          ],
+        };
       case 'items':
         return {
           ...section,
@@ -482,6 +490,7 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       '어제의 KBO 퀴즈를 시작합니다. 비회원과 회원이 퀴즈를 연 시각, 고른 답과 그 시각, 가입 단추를 누른 시각을 저장합니다.',
       `이 기록은 퀴즈 날부터 ${KBO_ATTEMPT_RETENTION_DAYS}일 보관하고 그 뒤 지웁니다. 탈퇴하면 바로 삭제합니다. 공식 등수와 포인트에는 쓰지 않습니다.`,
       '외부 분석 도구는 쓰지 않습니다. 이 기록으로 만든 숫자(풀이 수, 정답률)에는 개인을 알아볼 값이 없습니다.',
+      `가입 축하 포인트를 시작합니다. 회원의 힌트 포인트(모은 포인트 합계)에 한 번 ${WELCOME_BONUS_POINTS}P를 더합니다. 새로 모으는 정보는 없고, 등수 포인트에는 들어가지 않습니다.`,
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },

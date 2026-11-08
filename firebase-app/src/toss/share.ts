@@ -48,3 +48,12 @@ export async function shareOrCopy(text: string): Promise<ShareOutcome> {
     return (await copyText(text)) ? 'copied' : 'failed';
   }
 }
+
+/** 미니앱판은 이미지 공유를 쓰지 않는다(공유는 토스 메시지 글만) */
+export function canShareImage(): boolean {
+  return false;
+}
+
+export async function shareImage(_blob: Blob, _fileName: string, _text: string): Promise<ShareOutcome | 'downloaded'> {
+  return 'failed';
+}

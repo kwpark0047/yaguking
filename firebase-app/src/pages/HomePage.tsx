@@ -7,6 +7,7 @@ import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { AdSlot } from '@/components/ads/AdSlot';
 import { DailyLink } from '@/components/home/DailyLink';
 import { KboQuizCard } from '@/components/home/KboQuizCard';
+import { MemberPerks } from '@/components/home/MemberPerks';
 import { ReminderCard } from '@/components/home/ReminderCard';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
@@ -91,6 +92,7 @@ export function HomePage() {
                 </Link>
               )}
             </div>
+            {(!user || isGuest) && <MemberPerks signedIn={!!user} />}
             {!user && <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 비회원은 하루 {GUEST_DAILY_GAMES}판이에요.</p>}
             <p className="text-xs text-ink-2">점수는 기기에서 채점하는 비공식 기록이에요.</p>
             <div className="flex flex-wrap items-center justify-center gap-x-4">
