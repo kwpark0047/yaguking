@@ -1,0 +1,143 @@
+# 야구왕(YaguKing) 로컬 개발용 Supabase + 앱 Docker Compose
+#
+# 사전 준비:
+#   1. Docker Desktop 설치 및 WSL2 연동 활성화
+#   2. .env.example을 .env.local로 복사하고 환경 변수 설정
+#   3. `supabase start` 또는 `docker compose up`으로 실행
+#
+# 실행 방법:
+#   docker compose up -d          # Supabase + 앱 컨테이너 실행
+#   docker compose down           # 중지 및 컨테이너 제거
+#   docker compose logs -f        # 로그 실시간 확인
+
+services:
+  # ── Supabase 스택 ─────────────────────────────────────────────────────
+  supabase-db:
+    image: supabase/postgres:0.146.0
+    container_name: yaguking-db
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - yaguking
+
+  supabase-kong:
+    image: supabase/kong:2.3.0
+    container_name: yaguking-kong
+    ports:
+      - "54321:8000"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PLUGINS: request-transformer,cors
+    volumes:
+      - ./supabase/kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - yaguking
+
+  supabase-api:
+    image: supabase/postgrest-v13:1.0.0
+    container_name: yaguking-api
+    ports:
+      - "54320:3000"
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@supabase-db:5432/postgres
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: supabase-auth-jwt-secret
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - yaguking
+
+  supabase-auth:
+    image: supabase/gotrue:v2.121.0
+    container_name: yaguking-auth
+    ports:
+      - "54319:8000"
+    environment:
+      GOTRUE_API_HOST: http://localhost:54319
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@supabase-db:5432/postgres
+      GOTRUE_JWT_SECRET: supabase-auth-jwt-secret
+      GOTRUE_JWT_EXPIRY: 3600
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URL: http://localhost:54319
+      GOTRUE_OPERATOR_TOKEN: supabase-operator-token
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "false"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - yaguking
+
+  supabase-studio:
+    image: supabase/studio:20240415-20501-0d8c650
+    container_name: yaguking-studio
+    ports:
+      - "54323:3000"
+    environment:
+      STUDIO_PG_META_URL: http://supabase-meta:8080
+      POSTGRES_PASSWORD: postgres
+      SUPABASE_PUBLIC_URL: http://localhost:54323
+      SUPABASE_SECRET_KEY: supabase-operator-token
+      SUPABASE_DB_PASSWORD: postgres
+    depends_on:
+      supabase-meta:
+        condition: service_healthy
+    networks:
+      - yaguking
+
+  supabase-meta:
+    image: supabase/postgres-meta:v0.103.0
+    container_name: yaguking-meta
+    ports:
+      - "54328:8080"
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_URL: postgres://postgres:postgres@supabase-db:5432/postgres
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - yaguking
+
+  # ── 앱 (Next.js) ──────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: yaguking-app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    depends_on:
+      supabase-api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      DATABASE_URL: postgresql://postgres:postgres@supabase-db:5432/postgres
+    networks:
+      - yaguking
+
+volumes:
+  supabase_db_data:
+
+networks:
+  yaguking:
+    driver: bridge

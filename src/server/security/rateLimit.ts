@@ -49,10 +49,13 @@ export const CLAIM_GUEST_RULE: RateLimitRule = {
   windowSeconds: 60,
 };
 
-/** 만료된 윈도를 지우는 확률. 전용 스케줄러 없이 테이블을 유지한다. */
-const CLEANUP_PROBABILITY = 0.02;
+/** 만료된 윈도를 지우는 최소 간격(ms). 전용 스케줄러 없이 테이블을 유지한다. */
+const CLEANUP_INTERVAL_MS = 60_000;
 /** 이보다 오래된 윈도는 어떤 규칙에서도 쓰이지 않는다. */
 const CLEANUP_AFTER_SECONDS = 3600;
+
+/** 마지막 cleanup 실행 시각. 모듈 수준에서 유지(서버 프로세스 단위). */
+let lastCleanupAt = 0;
 
 function windowStart(windowSeconds: number, now = Date.now()): Date {
   const size = windowSeconds * 1000;
@@ -146,7 +149,9 @@ export async function enforceRateLimit(
     return;
   }
 
-  if (Math.random() < CLEANUP_PROBABILITY) {
+  const nowMs = Date.now();
+  if (nowMs - lastCleanupAt >= CLEANUP_INTERVAL_MS) {
+    lastCleanupAt = nowMs;
     void db`
       delete from public.rate_limit_counters
        where window_start < now() - ${`${CLEANUP_AFTER_SECONDS} seconds`}::interval

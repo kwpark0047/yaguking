@@ -57,6 +57,39 @@ export async function grantXp(
   return { granted: true, amount: input.amount, reason: 'ok' };
 }
 
+/** 여러 XP 지급을 하나의 INSERT로 일괄 처리한다. 일일 상한이 없는 사유(answer_correct, hard_correct_bonus 등)에만 사용한다. */
+export async function grantXpBatch(
+  tx: Queryable,
+  inputs: Array<{
+    userId: string;
+    reason: string;
+    entityId: string;
+    amount: number;
+  }>,
+): Promise<number> {
+  if (inputs.length === 0) return 0;
+
+  const userIds = inputs.map((i) => i.userId);
+  const amounts = inputs.map((i) => i.amount);
+  const reasons = inputs.map((i) => i.reason);
+  const keys = inputs.map((i) => `${i.reason}:${i.entityId}:${i.userId}`);
+
+  const rows = await tx<{ amount: number }[]>`
+    insert into public.xp_transactions (user_id, amount, reason, idempotency_key)
+    select u.user_id, u.amount, u.reason, u.idempotency_key
+    from unnest(
+      ${userIds}::text[],
+      ${amounts}::bigint[],
+      ${reasons}::text[],
+      ${keys}::text[]
+    ) as u(user_id, amount, reason, idempotency_key)
+    on conflict (idempotency_key) do nothing
+    returning amount
+  `;
+
+  return rows.reduce((sum, row) => sum + Number(row.amount), 0);
+}
+
 /** 누적 XP와 레벨을 갱신한다. 레벨 임계값은 DB 함수가 단일 출처다. */
 export async function applyXpTotals(
   tx: Queryable,
