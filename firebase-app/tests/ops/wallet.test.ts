@@ -1,7 +1,7 @@
 import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { HINT_START, runWallets } from '../../ops/monthly.mjs';
+import { HINT_START, WELCOME_BONUS_POINTS, WELCOME_BONUS_START, runWallets } from '../../ops/monthly.mjs';
 
 /** 힌트 지갑(ops/monthly.mjs runWallets) — Firestore 에뮬레이터에서 실제로. `npm run test:ops` */
 const emulated = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
@@ -31,7 +31,8 @@ describe.skipIf(!emulated)('힌트 지갑(에뮬레이터)', () => {
     for (const [month, list] of Object.entries(days)) await db.doc(`users/${uid}/attendance/${month}`).set({ days: list, updatedAt: new Date() });
   }
   const wallet = (uid: string) => db.doc(`users/${uid}/wallet/main`).get();
-  const run = (now: number) => runWallets({ db, now, start: START, hintStart: '2026-11-11' });
+  // 가입 축하 포인트는 아래 테스트에서만 켠다(다른 테스트의 숫자를 흔들지 않게)
+  const run = (now: number, welcomeStart = '2099-01-01') => runWallets({ db, now, start: START, hintStart: '2026-11-11', welcomeStart });
 
   it('시작일(처리방침 판) 전에는 아무것도 쓰지 않는다', async () => {
     await memberWith('alice', { '202611': [5, 6, 7] });
@@ -74,5 +75,22 @@ describe.skipIf(!emulated)('힌트 지갑(에뮬레이터)', () => {
     await memberWith('alice', { '202611': [5], '202612': [1] });
     await run(at(2026, 12, 1));
     expect((await wallet('alice')).get('earned')).toBe(10);
+  });
+
+  it('가입 축하: 시작일부터 닉네임까지 마친 회원 모두에게 50P를 한 번 — 다시 돌려도 두 번 들어가지 않는다', async () => {
+    expect(WELCOME_BONUS_POINTS).toBe(50);
+    await memberWith('alice', { '202611': [5] });
+    await memberWith('bob', {});
+    await db.doc('users/nonick').set({ ageConfirmedAt: new Date() });
+    await run(at(2026, 11, 19), '2026-11-20');
+    expect((await wallet('alice')).get('earned')).toBe(10);
+    expect((await wallet('bob')).exists).toBe(false);
+    await run(at(2026, 11, 20), '2026-11-20');
+    await run(at(2026, 11, 20), '2026-11-20');
+    expect((await wallet('alice')).get('earned')).toBe(60);
+    expect((await wallet('bob')).get('earned')).toBe(50);
+    expect((await wallet('bob')).get('spent')).toBe(0);
+    expect((await wallet('nonick')).exists).toBe(false);
+    expect(WELCOME_BONUS_START).toBe('2026-11-20');
   });
 });

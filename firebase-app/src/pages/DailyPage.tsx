@@ -22,6 +22,11 @@ import { HINTS_PER_GAME, HINT_TIME_MS, hintVerdict, type HintKind } from '@/lib/
 import { RESULT_PRESENTATION, resultLabel } from '@/lib/game/labels';
 import { extraTimeFor, judgedElapsed } from '@/lib/game/match';
 import { appUrl, shareOrCopy } from '@/lib/platform/share';
+import { useAuth } from '@/auth/AuthProvider';
+import { SignupNudge } from '@/components/game/SignupNudge';
+import { ResultCardButton } from '@/components/share/ResultCardButton';
+import { worthKeeping } from '@/lib/game/welcome';
+import { dateLabel } from '@/lib/kbo/set';
 import { playSound, verdictSound } from '@/lib/sound/sound';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
@@ -166,6 +171,8 @@ function DailyVerdict({
 }
 
 function DailyResult({ today, record }: { today: string; record: DailyRecord }) {
+  const { user, isGuest } = useAuth();
+  const member = !!user && !isGuest;
   const [shared, setShared] = useState<string | null>(null);
   const text = shareText(today, record.results, record.streak, appUrl('/daily'), record.hints);
 
@@ -197,6 +204,21 @@ function DailyResult({ today, record }: { today: string; record: DailyRecord }) 
         결과 공유하기
       </button>
       {shared && <p role="status" className="text-sm">{shared}</p>}
+      <div className="flex flex-wrap gap-2">
+        <ResultCardButton
+          fileName={`yaguking-daily-${today}.png`}
+          card={{
+            headline: '오늘의 1이닝',
+            summary: dailySummary(record.results) || '기록 없음',
+            emoji: record.results.map(resultEmoji).join(''),
+            label: `${dateLabel(today)} · 연속 ${record.streak}일`,
+            url: appUrl('/daily').replace(/^https?:\/\//, ''),
+          }}
+        />
+      </div>
+      {!member && worthKeeping(record.results.filter((result) => result !== 'K' && result !== 'BB').length, record.results.filter((result) => result === 'HR').length) && (
+        <SignupNudge summary={dailySummary(record.results)} />
+      )}
       <div className="flex flex-col gap-2">
         <Link to="/play" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
           1이닝 경기 하러 가기

@@ -7,6 +7,7 @@ import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { AdSlot } from '@/components/ads/AdSlot';
 import { DailyLink } from '@/components/home/DailyLink';
 import { KboQuizCard } from '@/components/home/KboQuizCard';
+import { MemberPerks } from '@/components/home/MemberPerks';
 import { ReminderCard } from '@/components/home/ReminderCard';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
@@ -105,6 +106,8 @@ export function HomePage() {
           </>
         )}
       </main>
+      {/* 회원 전용 미리보기(docs/signup-boost.md S3) — 첫 영역(어두운 배경) 밖에 둔다(카드 글자 대비) */}
+      {user !== undefined && (!user || isGuest) && <MemberPerks signedIn={!!user} />}
       <HowToPlay />
       <ReminderCard />
       {user !== undefined &&

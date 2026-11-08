@@ -30,3 +30,34 @@ export async function shareOrCopy(text: string): Promise<ShareOutcome> {
   }
   return (await copyText(text)) ? 'copied' : 'failed';
 }
+
+/** 이미지 공유를 쓰는 판인가(웹판은 공유 창이 없으면 내려받기로) */
+export function canShareImage(): boolean {
+  return typeof document !== 'undefined';
+}
+
+/** 이미지 한 장 공유 — 공유 창이 파일을 받으면 공유, 아니면 내려받는다 */
+export async function shareImage(blob: Blob, fileName: string, text: string): Promise<ShareOutcome | 'downloaded'> {
+  const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text });
+      return 'shared';
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') return 'cancelled';
+    }
+  }
+  try {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    return 'downloaded';
+  } catch {
+    return 'failed';
+  }
+}
