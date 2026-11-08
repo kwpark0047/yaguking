@@ -277,3 +277,25 @@ GitHub 결제 예산은 **$0** 그대로 두면 넘쳐도 청구되지 않고 �
 (Firebase 콘솔 › Authentication › 설정 › 승인된 도메인에는 `yaguking.web.app`이 이미 있다 — 10-27 추가)
 - **2026-10-29 등록 완료**: 운영자 계정으로 로그인한 앱 안 브라우저에서 Web client에 원본·리디렉션 URI를 추가·저장(다른 값은 그대로), `check-oauth-redirect` 두 주소 모두 ✓ →
   `SAME_ORIGIN_AUTH_ENABLED = true`(`src/lib/firebase/sameOrigin.ts`)
+
+## 12. 운영 폴더(2026-11-08부터) — 0시 작업은 개발 폴더가 아니라 여기서 돈다
+
+개발 폴더(`C:\kbo261023`)는 브랜치를 바꾸거나 작업 중인 파일이 있어 배포한 코드와 어긋날 수 있다(11-08 실제로 어긋남:
+메인 폴더가 `main` 브랜치라 소식 가져오기·어제의 퀴즈 집계·가입 축하 포인트가 0시 작업에 없었다). 그래서 운영 작업만
+도는 폴더를 따로 둔다.
+
+| 항목 | 값 |
+|---|---|
+| 운영 폴더 | `C:\kbo261023-ops` — 같은 저장소의 git worktree, `feat/p1-one-inning`(배포한 브랜치). **여기서 고치지 않는다** |
+| git 밖 파일 | `firebase-app/ops/official/pool.csv`(공식전 문항 풀, 정답 포함)·`make-pool.local.mjs`·`ops/logs/` — **운영 폴더 것이 원본**. 문항을 더할 때도 여기 `pool.csv`에 |
+| 예약 작업 | "YaguKing cleanup" 동작 = `C:\kbo261023-ops\firebase-app\ops\run-cleanup.cmd`, "사용자의 로그온 여부에 관계없이 실행" + "암호를 저장하지 않음"(창이 뜨지 않아 닫혀 끊기지 않는다) |
+| 절전 | 전원 옵션 › 고급 › 절전 › "절전 모드 해제 타이머 허용" = 사용(꺼져 있으면 예약 작업의 깨우기가 듣지 않는다) |
+
+**배포할 때마다**(배포한 브랜치가 원격에 올라간 뒤) 운영 폴더를 맞춘다. 원격 주소가 SSH라 이 PC에서는 HTTPS 주소로 받는다:
+
+```bash
+git -C C:/kbo261023-ops pull --ff-only https://github.com/kwpark0047/yaguking.git feat/p1-one-inning
+```
+
+패키지가 바뀐 배포면 `C:\kbo261023-ops\firebase-app`에서 `npm ci`도 한다. 매일 자동으로 받지 않는다(검증 안 된 코드가 밤에 바로 돌지 않게).
+확인: `node ops\cleanup-cli.mjs --project=yaguking-bc25c`(미리 보기, 지우지 않음).
