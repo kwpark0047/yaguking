@@ -21,7 +21,7 @@ import {
 import { ErrorText, PageTitle, field, fmtTime, line, primary } from '../ui';
 
 const STATE_LABEL = { draft: '초안', approved: '승인', held: '보류' } as const;
-const KIND_LABEL: Record<KboSetKind, string> = { quiz: '경기 퀴즈', review: '시즌 돌아보기', 'no-game': '경기 없음', rainout: '우천 취소', 'season-end': '시즌 끝' };
+const KIND_LABEL: Record<KboSetKind, string> = { quiz: '경기 퀴즈', review: '시즌 돌아보기', news: '소식 퀴즈', 'no-game': '경기 없음', rainout: '우천 취소', 'season-end': '시즌 끝' };
 const STATUS_LABEL: Record<string, string> = {
   ok: '문항 생성',
   'fetch-failed': '받기 실패',

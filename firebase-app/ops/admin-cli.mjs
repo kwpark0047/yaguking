@@ -10,6 +10,7 @@
  *   node ops/admin-cli.mjs monthly --project=<id>                                월간 등수 갱신·지난달 확정(docs/engagement-plan.md)
  *   node ops/admin-cli.mjs kbo-stats --project=<id>                              어제의 KBO 퀴즈 집계·보관 기간 지난 답 지우기
  *   node ops/admin-cli.mjs kbo --project=demo-… --fixture=<JSON> [--date=YYYY-MM-DD]  테스트 데이터로 생성(실제 수집 없음, demo 전용)
+ *   node ops/admin-cli.mjs news-feed --project=<id>                              이용 조건을 확인한 언론사 RSS에서 제목·링크·요약 가져오기
  *   node ops/admin-cli.mjs news --project=<id>                                   최신 소식 글마다 출처·날짜 확인 → 통과한 글만 앱에(docs/news.md)
  *
  * 인증은 Application Default Credentials(정리 작업과 같음). `demo-` 프로젝트는 에뮬레이터에서만.
@@ -23,13 +24,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { runMonthly, runWallets } from './monthly.mjs';
 import { fixtureAdapter, runKboPipeline, runKboStats } from './kbo.mjs';
 import { runNews, seedNews } from './news.mjs';
+import { runNewsFeed } from './newsFeed.mjs';
 import { answerWindowMs, runOfficial } from './official.mjs';
 
 const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectId = arg('project');
 
-if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'kbo', 'kbo-stats'].includes(command) || !projectId) {
+if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'news-feed', 'kbo', 'kbo-stats'].includes(command) || !projectId) {
   console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly|wallet|news> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
   process.exit(1);
 }
@@ -88,6 +90,9 @@ if (command === 'set-admin') {
   console.log(JSON.stringify(await runMonthly({ db })));
 } else if (command === 'wallet') {
   console.log(JSON.stringify(await runWallets({ db })));
+} else if (command === 'news-feed') {
+  const report = await runNewsFeed({ db });
+  console.log(JSON.stringify({ added: report.added, removed: report.removed, feeds: report.feeds.map((feed) => `${feed.name}:${feed.status}`) }));
 } else if (command === 'kbo-stats') {
   console.log(JSON.stringify(await runKboStats({ db, auth })));
 } else if (command === 'kbo') {

@@ -499,6 +499,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // 소식 가져오기(docs/daily-kbo-quiz/05-news-feed.md) — 운영자 PC가 언론사 RSS에서 제목·링크·요약만. 관리자만 본다
+    match /newsItems/{itemId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     function kboSetPath(day) {
       return /databases/$(database)/documents/kboSets/$(day);
     }
@@ -530,7 +536,7 @@ service cloud.firestore {
 
       function validKboSet() {
         return request.resource.data.keys().hasOnly(['kind', 'gamesDate', 'publishAt', 'questions', 'state', 'withdrawn', 'isTest', 'updatedAt', 'by'])
-          && request.resource.data.kind in ['quiz', 'review', 'no-game', 'rainout', 'season-end']
+          && request.resource.data.kind in ['quiz', 'review', 'news', 'no-game', 'rainout', 'season-end']
           && request.resource.data.state in ['draft', 'approved', 'held']
           && request.resource.data.gamesDate is string
           && request.resource.data.publishAt is timestamp
@@ -571,7 +577,7 @@ service cloud.firestore {
           && request.resource.data.answers == {}
           && request.resource.data.viewedAt == request.time
           && kboPublic(get(kboSetPath(day)).data)
-          && get(kboSetPath(day)).data.kind in ['quiz', 'review']
+          && get(kboSetPath(day)).data.kind in ['quiz', 'review', 'news']
           && request.resource.data.total == get(kboSetPath(day)).data.questions.size();
 
         allow update: if isSelf(uid) && (kboAnswerAdded() || kboSignupClicked());
@@ -621,13 +627,23 @@ service cloud.firestore {
         || (docId == 'news' && request.resource.data.keys().hasOnly(['posts', 'updatedAt', 'by']) && validNews())
         || (docId == 'ads' && request.resource.data.keys().hasOnly(['ads', 'updatedAt', 'by']) && validAds())
         || (docId == 'kboQuiz' && request.resource.data.keys().hasOnly(['questionCount', 'updatedAt', 'by']) && validKboQuiz())
+        || (docId == 'newsFeeds' && request.resource.data.keys().hasOnly(['feeds', 'updatedAt', 'by']) && validNewsFeeds())
       );
       allow update: if isAdmin() && (
         (docId == 'events' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doubleDays', 'updatedAt', 'by']) && validEvents())
         || (docId == 'news' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['posts', 'updatedAt', 'by']) && validNews())
         || (docId == 'ads' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ads', 'updatedAt', 'by']) && validAds())
         || (docId == 'kboQuiz' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['questionCount', 'updatedAt', 'by']) && validKboQuiz())
+        || (docId == 'newsFeeds' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feeds', 'updatedAt', 'by']) && validNewsFeeds())
       );
+
+      // 소식 피드 목록 — 20개까지. 주소·이용 조건 확인은 관리자 화면(src/lib/news/feeds.ts)과 운영자 PC가 다시 검사한다
+      function validNewsFeeds() {
+        return request.resource.data.feeds is list
+          && request.resource.data.feeds.size() <= 20
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.by == request.auth.uid;
+      }
 
       // 어제의 KBO 퀴즈 문제 수 — 운영자 PC가 다음 생성부터 쓴다
       function validKboQuiz() {

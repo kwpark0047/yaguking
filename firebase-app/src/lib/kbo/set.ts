@@ -17,7 +17,7 @@ const KST = 9 * 3_600_000;
 const DAY = 86_400_000;
 const PUBLISH_HOUR = 6;
 
-export type KboSetKind = 'quiz' | 'review' | 'no-game' | 'rainout' | 'season-end';
+export type KboSetKind = 'quiz' | 'review' | 'news' | 'no-game' | 'rainout' | 'season-end';
 export type KboSetState = 'draft' | 'approved' | 'held';
 
 export interface KboQuestion {
@@ -49,7 +49,7 @@ export interface KboSet {
 }
 
 export const kboQuizOpen = (today: string) => today >= KBO_QUIZ_START;
-export const isPlayable = (kind: KboSetKind) => kind === 'quiz' || kind === 'review';
+export const isPlayable = (kind: KboSetKind) => kind === 'quiz' || kind === 'review' || kind === 'news';
 
 /** 지금 열려 있어야 할 묶음의 ID — 묶음은 그날 06:00에 열리고 다음 날 06:00까지 간다 */
 export function currentSetId(now: number = Date.now()): string {
@@ -80,6 +80,8 @@ export function headlineOf(set: Pick<KboSet, 'kind' | 'gamesDate'>, now: number 
       return `${dateLabel(set.gamesDate)} 경기 퀴즈`;
     case 'review':
       return '2026 시즌 돌아보기';
+    case 'news':
+      return '야구 소식 퀴즈';
     case 'no-game':
       return `${day}${isYesterday ? '는' : '은'} 경기가 없었어요`;
     case 'rainout':

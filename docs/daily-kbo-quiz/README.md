@@ -8,6 +8,7 @@
 | [02-data-source-report.md](02-data-source-report.md) | 수집 방식·이용 조건·출처·갱신 주기·장애 대응 보고와 권장안 |
 | [03-design.md](03-design.md) | 데이터, 정답 보호, 검증, 화면, 관리자, 지표, 비용, 테스트 |
 | [04-implementation.md](04-implementation.md) | 만든 것, 설계에서 바뀐 점, 검증 결과, 남은 문제, 배포 전 확인 |
+| [05-news-feed.md](05-news-feed.md) | 언론사 RSS 가져오기와 소식 → 문제 초안(2026-11-08 운영자 결정) |
 
 ## 요약
 

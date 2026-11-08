@@ -49,6 +49,8 @@
 | `kboSets/{날}/keys/{번호}` | 관리자, **그 문제에 답을 낸 본인** | 관리자(공개 전) | 정답·해설·출처 |
 | `kboSets/{날}/attempts/{uid}` | 본인 | 본인: 진입 1 + 답 문제 수 + 가입 단추 1 | 비회원도 쓴다. 답은 순서대로, 고칠 수 없다. 공식 점수 아님. 30일 뒤 삭제 |
 | `kboSets/{날}/stats/summary` | 관리자 | 운영자 PC | 숫자만(진입·시작·완료·가입·문제별 정답률) |
+| `newsItems/{링크 해시}` | 관리자 | 운영자 PC만 | 언론사 RSS의 제목·링크·발행 시각·요약(200자). 14일 뒤 삭제 |
+| `adminConfig/newsFeeds`, `adminConfig/newsFeedRuns` | 관리자 | 피드 목록은 관리자, 기록은 운영자 PC | 이용 조건 확인 표시가 있는 피드만 읽는다 |
 | `adminConfig/kboQuiz`, `adminConfig/kboRuns` | 관리자 | 문제 수는 관리자, 실행 기록은 운영자 PC | |
 | `officialKeys/{날짜}` | **아무도 못 읽음** | 운영자 PC만 | 정답·문항 ID·해설·출처 |
 | `users/{uid}/wallet/main` | 본인 읽기·지우기, 확인 회원은 `spent`만 | 운영자 PC 0시(문서·`earned`·`earnedThrough`), 힌트를 쓸 때(`spent`) | `earned` 모은 출석 포인트 합, `spent` 쓴 포인트 합(한 번에 20·30만, `earned`를 넘지 못함) — docs/hint-plan.md, 11-12부터 |
