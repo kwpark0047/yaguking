@@ -170,5 +170,12 @@ describe.skipIf(!emulated)('어제의 KBO 퀴즈 운영 작업', () => {
     await db.doc('kboSets/2026-11-20').update({ state: 'approved' });
     expect(await importReviewSet({ db, setId: '2026-11-20', questions: [question(9)] })).toMatchObject({ written: false });
     expect((await db.doc('kboSets/2026-11-20').get()).get('questions')).toHaveLength(2);
+    // --replace: 공개 전 승인 묶음은 바꾸고 다시 초안으로, 공개 시각이 지난 묶음은 그대로
+    const replaced = await importReviewSet({ db, setId: '2026-11-20', questions: [question(9)], replace: true, now: Date.parse('2026-11-19T12:00:00+09:00') });
+    expect(replaced).toMatchObject({ written: true, replaced: 'review/approved' });
+    expect((await db.doc('kboSets/2026-11-20').get()).get('state')).toBe('draft');
+    expect((await db.doc('kboSets/2026-11-20/keys/1').get()).exists).toBe(false);
+    await db.doc('kboSets/2026-11-20').update({ state: 'approved' });
+    expect(await importReviewSet({ db, setId: '2026-11-20', questions: [question(8)], replace: true, now: Date.parse('2026-11-20T07:00:00+09:00') })).toMatchObject({ written: false });
   });
 });

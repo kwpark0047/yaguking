@@ -8,7 +8,7 @@
  *   node ops/admin-cli.mjs wallet --project=<id>                                  힌트 지갑의 모은 포인트 갱신(시작일 전에는 쓰지 않음)
  *   node ops/admin-cli.mjs official --project=<id> [--pool=<CSV>]                 오늘의 공식전 판정·출제·오래된 것 지우기(풀이 없으면 판정만)
  *   node ops/admin-cli.mjs monthly --project=<id>                                월간 등수 갱신·지난달 확정(docs/engagement-plan.md)
- *   node ops/admin-cli.mjs kbo-review --project=<id> --file=<CSV> --date=YYYY-MM-DD  사람이 쓴 돌아보기 문항을 어제의 퀴즈 초안으로(승인은 관리자 화면)
+ *   node ops/admin-cli.mjs kbo-review --project=<id> --file=<CSV> --date=YYYY-MM-DD [--replace]  사람이 쓴 돌아보기 문항을 어제의 퀴즈 초안으로(승인은 관리자 화면, --replace는 공개 전 승인 묶음만)
  *   node ops/admin-cli.mjs kbo-stats --project=<id>                              어제의 KBO 퀴즈 집계·보관 기간 지난 답 지우기
  *   node ops/admin-cli.mjs kbo --project=demo-… --fixture=<JSON> [--date=YYYY-MM-DD]  테스트 데이터로 생성(실제 수집 없음, demo 전용)
  *   node ops/admin-cli.mjs news-feed --project=<id>                              이용 조건을 확인한 언론사 RSS에서 제목·링크·요약 가져오기
@@ -104,7 +104,7 @@ if (command === 'set-admin') {
   const { questions, problems } = parsePool(readFileSync(file, 'utf8'), bankIds());
   for (const problem of problems) console.error(`문항: ${problem}`);
   if (problems.length > 0) process.exit(1);
-  console.log(JSON.stringify(await importReviewSet({ db, setId: arg('date'), questions })));
+  console.log(JSON.stringify(await importReviewSet({ db, setId: arg('date'), questions, replace: process.argv.includes('--replace') })));
 } else if (command === 'kbo-stats') {
   console.log(JSON.stringify(await runKboStats({ db, auth })));
 } else if (command === 'kbo') {

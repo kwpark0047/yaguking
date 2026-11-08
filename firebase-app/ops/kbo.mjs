@@ -537,12 +537,17 @@ export async function runKboStats({ db, auth, now = Date.now() }) {
  * 관리자가 관리자 사이트 "어제의 퀴즈"에서 정답·출처를 확인하고 승인해야 열린다. 승인된 묶음은 덮어쓰지 않는다.
  * 문항 확인·보기 섞기는 공식전 풀과 같은 parsePool(앱 문제은행과 같은 본문은 거절 — 정답이 이미 공개됨).
  */
-export async function importReviewSet({ db, setId, questions, kind = 'review', now = Date.now() }) {
+export async function importReviewSet({ db, setId, questions, kind = 'review', replace = false, now = Date.now() }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(setId)) throw new Error('--date=YYYY-MM-DD');
   if (questions.length === 0 || questions.length > 10) throw new Error('문항은 1~10개');
   const ref = db.doc(`kboSets/${setId}`);
   const existing = await ref.get();
-  if (existing.exists && existing.get('state') !== 'draft') return { setId, written: false, reason: `이미 ${existing.get('state')} 상태 — 덮어쓰지 않음` };
+  // 승인·보류된 묶음은 덮어쓰지 않는다. --replace는 **아직 공개 전**(공개 시각 전)인 것만 — 이미 누가 풀었을 수 있는 묶음은 바꾸지 않는다
+  if (existing.exists && existing.get('state') !== 'draft') {
+    const opened = (existing.get('publishAt')?.toMillis?.() ?? 0) <= now;
+    if (!replace) return { setId, written: false, reason: `이미 ${existing.get('state')} 상태 — 덮어쓰지 않음(공개 전이면 --replace)` };
+    if (opened) return { setId, written: false, reason: '이미 공개 시각이 지난 묶음 — 바꾸지 않음' };
+  }
   const batch = db.batch();
   const oldKeys = await ref.collection('keys').get();
   for (const item of oldKeys.docs) if (Number(item.id) >= questions.length) batch.delete(item.ref);
@@ -576,5 +581,5 @@ export async function importReviewSet({ db, setId, questions, kind = 'review', n
     });
   });
   await batch.commit();
-  return { setId, written: true, questions: questions.length, at: now };
+  return { setId, written: true, questions: questions.length, replaced: existing.exists ? `${existing.get('kind')}/${existing.get('state')}` : null, at: now };
 }

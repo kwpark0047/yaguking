@@ -60,4 +60,4 @@ export function summarizeAttempts(options: {
   signedUpUids?: Set<string>;
 }): KboSummary;
 export function runKboStats(options: { db: Firestore; auth?: Auth; now?: number }): Promise<{ setId: string; counted: boolean; views?: number; attemptsDeleted: number }>;
-export function importReviewSet(options: { db: Firestore; setId: string; questions: { stem: string; options: { label: string; text: string }[]; difficulty: string; category: string; recordAsOf: string; seasonScope: string; correct: string; explanation: string; source: string }[]; kind?: string; now?: number }): Promise<{ setId: string; written: boolean; reason?: string; questions?: number }>;
+export function importReviewSet(options: { db: Firestore; setId: string; questions: { stem: string; options: { label: string; text: string }[]; difficulty: string; category: string; recordAsOf: string; seasonScope: string; correct: string; explanation: string; source: string }[]; kind?: string; replace?: boolean; now?: number }): Promise<{ setId: string; written: boolean; reason?: string; questions?: number; replaced?: string | null }>;
