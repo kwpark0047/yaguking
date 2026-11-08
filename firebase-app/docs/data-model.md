@@ -44,6 +44,12 @@
 | `officialRounds/{YYYYMMDD}` | 회원 읽기 | 운영자 PC만(출제·채점 뒤 정답 공개) | 열림·닫힘 시각, 문항 수, 채점 뒤 `revealed`(정답·해설·출처)·참여 인원 |
 | `officialRounds/{날짜}/questions/{0~4}` | 회원 — 앞 문제에 답했을 때만(닫힌 뒤엔 누구나) | 운영자 PC만 | 본문·보기·영역·난이도·기준일. **정답 없음** |
 | `officialRounds/{날짜}/attempts/{uid}` | 본인 | 시작 1 + 답 5 | 확인 회원, 열린 동안, 하루 한 번. 답 = 차례대로 하나씩, 서버 시각, 기한(문항당 16초 + 1초). 지우기는 닫힌 공식전만 |
+| `kboGames/{경기ID}` | 관리자 | 운영자 PC만 | 어제의 KBO 퀴즈 경기 원자료. 이용 권한 전에는 테스트 데이터뿐(`isTest`) |
+| `kboSets/{여는 날}` | 승인 + 공개 시각 뒤 + 테스트 아님이면 누구나. 나머지는 관리자 | 관리자, 운영자 PC | 문항(정답 없음), 공개 시각 06:00. 공개 뒤에는 상태·철회 목록만 바꾼다 |
+| `kboSets/{날}/keys/{번호}` | 관리자, **그 문제에 답을 낸 본인** | 관리자(공개 전) | 정답·해설·출처 |
+| `kboSets/{날}/attempts/{uid}` | 본인 | 본인: 진입 1 + 답 문제 수 + 가입 단추 1 | 비회원도 쓴다. 답은 순서대로, 고칠 수 없다. 공식 점수 아님. 30일 뒤 삭제 |
+| `kboSets/{날}/stats/summary` | 관리자 | 운영자 PC | 숫자만(진입·시작·완료·가입·문제별 정답률) |
+| `adminConfig/kboQuiz`, `adminConfig/kboRuns` | 관리자 | 문제 수는 관리자, 실행 기록은 운영자 PC | |
 | `officialKeys/{날짜}` | **아무도 못 읽음** | 운영자 PC만 | 정답·문항 ID·해설·출처 |
 | `users/{uid}/wallet/main` | 본인 읽기·지우기, 확인 회원은 `spent`만 | 운영자 PC 0시(문서·`earned`·`earnedThrough`), 힌트를 쓸 때(`spent`) | `earned` 모은 출석 포인트 합, `spent` 쓴 포인트 합(한 번에 20·30만, `earned`를 넘지 못함) — docs/hint-plan.md, 11-12부터 |
 | `users/{uid}/officialMonth/{YYYYMM}` | 본인 읽기·지우기 | 운영자 PC 채점 | `days.{날짜}` = 그날 공식 점수(월간 등수에 더함) |

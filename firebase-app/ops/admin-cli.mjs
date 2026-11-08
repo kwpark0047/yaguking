@@ -8,6 +8,8 @@
  *   node ops/admin-cli.mjs wallet --project=<id>                                  힌트 지갑의 모은 포인트 갱신(시작일 전에는 쓰지 않음)
  *   node ops/admin-cli.mjs official --project=<id> [--pool=<CSV>]                 오늘의 공식전 판정·출제·오래된 것 지우기(풀이 없으면 판정만)
  *   node ops/admin-cli.mjs monthly --project=<id>                                월간 등수 갱신·지난달 확정(docs/engagement-plan.md)
+ *   node ops/admin-cli.mjs kbo-stats --project=<id>                              어제의 KBO 퀴즈 집계·보관 기간 지난 답 지우기
+ *   node ops/admin-cli.mjs kbo --project=demo-… --fixture=<JSON> [--date=YYYY-MM-DD]  테스트 데이터로 생성(실제 수집 없음, demo 전용)
  *   node ops/admin-cli.mjs news --project=<id>                                   최신 소식 글마다 출처·날짜 확인 → 통과한 글만 앱에(docs/news.md)
  *
  * 인증은 Application Default Credentials(정리 작업과 같음). `demo-` 프로젝트는 에뮬레이터에서만.
@@ -19,6 +21,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { buildDailyStats, processAdminTasks, setAdmin, syncAccounts } from './admin.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { runMonthly, runWallets } from './monthly.mjs';
+import { fixtureAdapter, runKboPipeline, runKboStats } from './kbo.mjs';
 import { runNews, seedNews } from './news.mjs';
 import { answerWindowMs, runOfficial } from './official.mjs';
 
@@ -26,7 +29,7 @@ const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectId = arg('project');
 
-if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news'].includes(command) || !projectId) {
+if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'kbo', 'kbo-stats'].includes(command) || !projectId) {
   console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly|wallet|news> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
   process.exit(1);
 }
@@ -85,6 +88,17 @@ if (command === 'set-admin') {
   console.log(JSON.stringify(await runMonthly({ db })));
 } else if (command === 'wallet') {
   console.log(JSON.stringify(await runWallets({ db })));
+} else if (command === 'kbo-stats') {
+  console.log(JSON.stringify(await runKboStats({ db, auth })));
+} else if (command === 'kbo') {
+  // 이용 권한을 확보하기 전까지 실제 출처 어댑터는 없다. 테스트 데이터는 에뮬레이터에서만 돌린다
+  const fixture = arg('fixture');
+  if (!projectId.startsWith('demo-') || !fixture) {
+    console.error('실제 경기 수집은 없습니다(docs/daily-kbo-quiz/02-data-source-report.md). 테스트 데이터는 --project=demo-… --fixture=<JSON>으로만 돌립니다.');
+    process.exit(1);
+  }
+  const report = await runKboPipeline({ db, adapter: fixtureAdapter(JSON.parse(readFileSync(fixture, 'utf8'))), gamesDate: arg('date') });
+  console.log(JSON.stringify(report));
 } else if (command === 'sync') {
   console.log(JSON.stringify(await syncAccounts({ auth, db })));
 } else {

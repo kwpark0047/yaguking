@@ -4,6 +4,7 @@ import { DENIAL_MESSAGE, maskEmail, signInProblem } from '@/lib/admin/access';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdsPage } from './pages/AdsPage';
 import { EventsPage } from './pages/EventsPage';
+import { KboQuizPage } from './pages/KboQuizPage';
 import { NewsPage } from './pages/NewsPage';
 import { GamesPage } from './pages/GamesPage';
 import { LogsPage } from './pages/LogsPage';
@@ -99,6 +100,7 @@ function Gate() {
           ['/notices', '공지사항'],
           ['/events', '이벤트'],
           ['/news', '최신 소식'],
+          ['/kbo-quiz', '어제의 퀴즈'],
           ['/ads', '광고'],
           ['/logs', '관리자 기록'],
         ].map(([to, label]) => (
@@ -124,6 +126,7 @@ function Gate() {
           <Route path="/notices" element={<NoticesPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/news" element={<NewsPage />} />
+          <Route path="/kbo-quiz" element={<KboQuizPage />} />
           <Route path="/ads" element={<AdsPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="*" element={<p className="text-sm">없는 화면이에요.</p>} />

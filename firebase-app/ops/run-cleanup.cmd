@@ -22,4 +22,6 @@ rem Monthly ranking: attendance points through yesterday into leaderboards/YYYYM
 node ops\admin-cli.mjs monthly --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Hint wallet: total attendance points through yesterday into users/{uid}/wallet/main (nothing before the hint start date).
 node ops\admin-cli.mjs wallet --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
+rem Yesterday's KBO quiz: count the closed set into kboSets/{day}/stats, delete answers past 30 days (no game data is collected here).
+node ops\admin-cli.mjs kbo-stats --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 >> ops\logs\cleanup.log echo [%date% %time%] admin exit %errorlevel%
