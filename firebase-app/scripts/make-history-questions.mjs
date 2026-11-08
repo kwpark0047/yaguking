@@ -22,7 +22,7 @@ const FACTS = JSON.parse(readFileSync(`${DATA_DIR}facts/kbo-history-b.json`, 'ut
 const OUT = `${DATA_DIR}questions.history-b.csv`;
 const VERIFIED = FACTS.verifiedAt;
 /**
- * 마지막 시즌 = 사실 표의 가장 최근 한국시리즈. 2026 한국시리즈(11-03~11-11)가 끝나면 koreanSeries에
+ * 마지막 시즌 = 사실 표의 가장 최근 한국시리즈. 2026 한국시리즈(11-03~11-08, 삼성 우승)는 2026-11-09에 koreanSeries에 더했다. 다음 시즌도 끝나면 koreanSeries에
  * [2026, 우승, 전적, 준우승, MVP, "끝난 날 YYYY-MM-DD"] 한 줄만 더하면 "2025 시즌까지" 문항(우승 횟수·최근 우승·진출 횟수·
  * 우승 없는 구단·최다 우승)이 모두 "2026 시즌까지"로 다시 만들어진다. 끝난 날을 적으면 그 문항은 21일 동안 "최신 경기"로 나온다
  */
