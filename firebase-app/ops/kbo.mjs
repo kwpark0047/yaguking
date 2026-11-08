@@ -529,3 +529,52 @@ export async function runKboStats({ db, auth, now = Date.now() }) {
   }
   return report;
 }
+
+// ── 사람이 쓴 묶음(시즌 돌아보기) 올리기 ──────────────────────────────
+
+/**
+ * 공식전 문항 풀과 같은 CSV(ops/official/*.csv — git 밖, 정답 포함)를 "어제의 퀴즈" 묶음 **초안**으로 올린다.
+ * 관리자가 관리자 사이트 "어제의 퀴즈"에서 정답·출처를 확인하고 승인해야 열린다. 승인된 묶음은 덮어쓰지 않는다.
+ * 문항 확인·보기 섞기는 공식전 풀과 같은 parsePool(앱 문제은행과 같은 본문은 거절 — 정답이 이미 공개됨).
+ */
+export async function importReviewSet({ db, setId, questions, kind = 'review', now = Date.now() }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(setId)) throw new Error('--date=YYYY-MM-DD');
+  if (questions.length === 0 || questions.length > 10) throw new Error('문항은 1~10개');
+  const ref = db.doc(`kboSets/${setId}`);
+  const existing = await ref.get();
+  if (existing.exists && existing.get('state') !== 'draft') return { setId, written: false, reason: `이미 ${existing.get('state')} 상태 — 덮어쓰지 않음` };
+  const batch = db.batch();
+  const oldKeys = await ref.collection('keys').get();
+  for (const item of oldKeys.docs) if (Number(item.id) >= questions.length) batch.delete(item.ref);
+  batch.set(ref, {
+    kind,
+    gamesDate: '',
+    publishAt: Timestamp.fromMillis(Date.parse(`${setId}T06:00:00+09:00`)),
+    questions: questions.map((question) => ({
+      stem: question.stem,
+      options: question.options,
+      difficulty: question.difficulty,
+      category: question.category,
+      recordAsOf: question.recordAsOf,
+      seasonScope: question.seasonScope,
+    })),
+    state: 'draft',
+    withdrawn: [],
+    isTest: false,
+    updatedAt: FieldValue.serverTimestamp(),
+    by: 'ops:review',
+  });
+  questions.forEach((question, index) => {
+    const [sourceName, ...rest] = question.source.split(' https://');
+    batch.set(ref.collection('keys').doc(String(index)), {
+      correct: question.correct,
+      explanation: question.explanation,
+      sourceName: sourceName.trim(),
+      sourceUrl: rest.length > 0 ? `https://${rest.join(' https://')}` : '',
+      recordAsOf: question.recordAsOf,
+      gameIds: [],
+    });
+  });
+  await batch.commit();
+  return { setId, written: true, questions: questions.length, at: now };
+}

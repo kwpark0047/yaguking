@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { fixtureAdapter, runKboPipeline, runKboStats } from '../../ops/kbo.mjs';
+import { fixtureAdapter, importReviewSet, runKboPipeline, runKboStats } from '../../ops/kbo.mjs';
 import { finalGame } from '../fixtures/kboGames';
 
 /** 어제의 KBO 퀴즈 운영 작업 — 에뮬레이터 + 테스트 데이터. 실제 수집은 없다 */
@@ -147,5 +147,28 @@ describe.skipIf(!emulated)('어제의 KBO 퀴즈 운영 작업', () => {
     expect((await db.doc('kboSets/2026-04-20/attempts/kept').get()).exists).toBe(true);
     await auth.deleteUser(created.uid);
     await auth.deleteUser(anon.uid);
+  });
+  it('돌아보기 묶음 올리기: 초안으로, 정답은 정답 문서에만, 승인된 묶음은 덮어쓰지 않는다', async () => {
+    const question = (index: number) => ({
+      stem: `돌아보기 테스트 ${index}`,
+      options: ['A', 'B', 'C', 'D'].map((label) => ({ label, text: `${index}${label}` })),
+      difficulty: 'easy',
+      category: 'team-history',
+      recordAsOf: '2026-11-08',
+      seasonScope: '2026 시즌',
+      correct: 'C',
+      explanation: '해설',
+      source: '테스트 출처 https://example.test/source',
+    });
+    const result = await importReviewSet({ db, setId: '2026-11-20', questions: [question(0), question(1)] });
+    expect(result).toMatchObject({ written: true, questions: 2 });
+    const set = await db.doc('kboSets/2026-11-20').get();
+    expect(set.data()).toMatchObject({ kind: 'review', state: 'draft', isTest: false, withdrawn: [] });
+    expect(set.get('publishAt').toMillis()).toBe(Date.parse('2026-11-20T06:00:00+09:00'));
+    expect(JSON.stringify(set.get('questions'))).not.toMatch(/correct|explanation|example.test/);
+    expect((await db.doc('kboSets/2026-11-20/keys/1').get()).data()).toMatchObject({ correct: 'C', sourceName: '테스트 출처', sourceUrl: 'https://example.test/source' });
+    await db.doc('kboSets/2026-11-20').update({ state: 'approved' });
+    expect(await importReviewSet({ db, setId: '2026-11-20', questions: [question(9)] })).toMatchObject({ written: false });
+    expect((await db.doc('kboSets/2026-11-20').get()).get('questions')).toHaveLength(2);
   });
 });
