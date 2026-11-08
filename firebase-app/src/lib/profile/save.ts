@@ -1,4 +1,5 @@
 import { deleteUser, type User } from 'firebase/auth';
+import { KBO_ATTEMPT_RETENTION_DAYS, currentSetId } from '@/lib/kbo/set';
 import {
   collection,
   deleteDoc,
@@ -136,6 +137,10 @@ export async function deleteUserRecords(uid: string, nickname: string | null): P
   for (const day of officialDays) {
     await deleteDoc(doc(db, 'officialRounds', day, 'attempts', uid));
     countWrites('deleteUserRecords', 1);
+  }
+  // 어제의 KBO 퀴즈 시도 — 보관 기간 안의 날짜마다. 없는 문서를 지워도 탈이 없다(읽기 없음, 탈퇴할 때 한 번)
+  for (let daysAgo = -1; daysAgo <= KBO_ATTEMPT_RETENTION_DAYS + 8; daysAgo += 1) {
+    refs.push(doc(db, 'kboSets', currentSetId(Date.now() - daysAgo * 86_400_000), 'attempts', uid));
   }
   if (nickname) refs.push(doc(db, 'nicknames', nicknameKey(nickname)));
   refs.push(doc(db, 'users', uid));

@@ -1,4 +1,5 @@
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
+import { KBO_ATTEMPT_RETENTION_DAYS, KBO_QUIZ_START } from '@/lib/kbo/set';
 import { HINT_START } from '@/lib/game/hints';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
 import {
@@ -33,7 +34,7 @@ export const PRIVACY_OPERATOR = '위마켓';
 export const PRIVACY_OFFICER = { name: '박강원', phone: '010-3890-0047' } as const;
 
 /** 이 앱이 기기 저장소(localStorage)에 쓰는 키 — 단위 테스트가 코드와 대조한다 */
-export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily'] as const;
+export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily', 'yk_kbo_card'] as const;
 
 export interface PolicyTable {
   head: readonly string[];
@@ -186,6 +187,7 @@ export const PRIVACY_SECTIONS: readonly PolicySection[] = [
         ['yk_theme', '화면 테마(기본이 아닌 테마를 고른 경우만) — 다음에도 같은 색', '브라우저 저장소를 지울 때까지'],
         ['yk_pwa', '홈 화면에 추가(앱 설치) 권유를 "나중에"로 닫았는지·설치했는지 — 권유를 다시 띄우지 않으려고', '브라우저 저장소를 지울 때까지'],
         ['yk_daily', '오늘의 1이닝 진행·결과와 연속 일수 — 같은 날 다시 풀지 않게, 연속을 보여 주려고(서버로 보내지 않음)', '브라우저 저장소를 지울 때까지'],
+        ['yk_kbo_card', '어제의 KBO 퀴즈 홈 카드 내용 — 하루 한 번만 읽으려고 기억', '브라우저 저장소를 지울 때까지'],
         ['yaguking-static으로 시작하는 저장소', '앱 화면 파일(스크립트·그림·아이콘)만 받아 두어 다시 빨리 열기 — 개인정보·로그인 정보·기록은 넣지 않음', '새 판이 나오거나 브라우저 저장소를 지울 때까지'],
         ['firebase로 시작하는 저장소', '로그인 상태 유지(인증 서비스)', '로그아웃할 때까지'],
         ['firestore로 시작하는 저장소', '받은 기록을 기기에 남겨 다시 읽지 않기(데이터 서비스의 오프라인 저장)', '브라우저 저장소를 지울 때까지 — 로그아웃해도 남습니다. 여러 사람이 쓰는 기기라면 사이트 데이터를 지워 주세요'],
@@ -401,6 +403,44 @@ function amendHints(sections: readonly PolicySection[]): PolicySection[] {
   });
 }
 
+/**
+ * 어제의 KBO 퀴즈(저장소 맨 위 docs/daily-kbo-quiz/03-design.md) — 비회원·회원이 낸 답. 이 판이 시행되는 날부터 퀴즈가 열린다.
+ * (src/lib/kbo/set.ts KBO_QUIZ_START와 같은 날.) 시행 7일 전 공지.
+ */
+export const KBO_PRIVACY_EFFECTIVE = KBO_QUIZ_START;
+
+function amendKboQuiz(sections: readonly PolicySection[]): PolicySection[] {
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return { ...section, items: [...(section.items ?? []), '어제의 KBO 퀴즈 진행 — 낸 답을 저장해 정답을 보여 주고, 풀이 수·정답률 같은 숫자로 서비스를 개선'] };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              ['비회원·회원 활동(어제의 KBO 퀴즈)', '퀴즈를 연 시각, 문제별로 고른 답과 그 시각, 가입 단추를 누른 시각', '서비스 이용 중 자동 저장'],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [...section.table!.rows, ['어제의 KBO 퀴즈 답', `퀴즈 날부터 ${KBO_ATTEMPT_RETENTION_DAYS}일. 탈퇴하면 바로 삭제`]],
+          },
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${KBO_PRIVACY_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
 /** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
 export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
   { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
@@ -432,6 +472,16 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
     changes: [
       '문제 풀이 힌트를 시작합니다. 회원이 출석으로 모은 포인트 합계와 힌트에 쓴 포인트 합계를 기록합니다(어떤 문제에 썼는지는 남기지 않습니다).',
       '이 기록은 회원 탈퇴 시까지 보관하고, 탈퇴하면 바로 삭제합니다.',
+      '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+  {
+    effective: KBO_PRIVACY_EFFECTIVE,
+    sections: amendKboQuiz(amendHints(amendEngagement(amend(PRIVACY_SECTIONS)))),
+    changes: [
+      '어제의 KBO 퀴즈를 시작합니다. 비회원과 회원이 퀴즈를 연 시각, 고른 답과 그 시각, 가입 단추를 누른 시각을 저장합니다.',
+      `이 기록은 퀴즈 날부터 ${KBO_ATTEMPT_RETENTION_DAYS}일 보관하고 그 뒤 지웁니다. 탈퇴하면 바로 삭제합니다. 공식 등수와 포인트에는 쓰지 않습니다.`,
+      '외부 분석 도구는 쓰지 않습니다. 이 기록으로 만든 숫자(풀이 수, 정답률)에는 개인을 알아볼 값이 없습니다.',
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },

@@ -39,6 +39,7 @@ const RoomLobbyPage = lazy(() =>
 );
 const RoomPage = lazy(() => import('@/pages/RoomPage').then((module) => ({ default: module.RoomPage })));
 const RankingPage = lazy(() => import('@/pages/RankingPage').then((module) => ({ default: module.RankingPage })));
+const YesterdayPage = lazy(() => import('@/pages/YesterdayPage').then((module) => ({ default: module.YesterdayPage })));
 const OfficialPage = lazy(() => import('@/pages/OfficialPage').then((module) => ({ default: module.OfficialPage })));
 
 function Lazy({ children }: { children: ReactNode }) {
@@ -165,6 +166,7 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/play" element={<Lazy><PlayPage /></Lazy>} />
             <Route path="/daily" element={<Lazy><DailyPage /></Lazy>} />
+            <Route path="/yesterday" element={<Lazy><YesterdayPage /></Lazy>} />
             <Route path="/level-test" element={<Lazy><LevelTestPage /></Lazy>} />
             <Route path="/notes" element={<Lazy><NotesPage /></Lazy>} />
             <Route path="/ranking" element={<Lazy><RankingPage /></Lazy>} />

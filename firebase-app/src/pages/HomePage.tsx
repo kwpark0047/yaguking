@@ -6,6 +6,7 @@ import { TextSizeSetting, ThemeSetting } from '@/components/display/DisplaySetti
 import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { AdSlot } from '@/components/ads/AdSlot';
 import { DailyLink } from '@/components/home/DailyLink';
+import { KboQuizCard } from '@/components/home/KboQuizCard';
 import { ReminderCard } from '@/components/home/ReminderCard';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
@@ -59,6 +60,7 @@ export function HomePage() {
               <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
                 게임 시작 <span aria-hidden="true">▶</span>
               </Link>
+              <KboQuizCard style={secondary} />
               <DailyLink style={secondary} />
               {user && (
                 <Suspense fallback={null}>
