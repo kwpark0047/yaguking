@@ -92,7 +92,6 @@ export function HomePage() {
                 </Link>
               )}
             </div>
-            {(!user || isGuest) && <MemberPerks signedIn={!!user} />}
             {!user && <p className="text-xs text-ink-2">가입 없이 바로 시작해요. 비회원은 하루 {GUEST_DAILY_GAMES}판이에요.</p>}
             <p className="text-xs text-ink-2">점수는 기기에서 채점하는 비공식 기록이에요.</p>
             <div className="flex flex-wrap items-center justify-center gap-x-4">
@@ -107,6 +106,8 @@ export function HomePage() {
           </>
         )}
       </main>
+      {/* 회원 전용 미리보기(docs/signup-boost.md S3) — 첫 영역(어두운 배경) 밖에 둔다(카드 글자 대비) */}
+      {user !== undefined && (!user || isGuest) && <MemberPerks signedIn={!!user} />}
       <HowToPlay />
       <ReminderCard />
       {user !== undefined &&
