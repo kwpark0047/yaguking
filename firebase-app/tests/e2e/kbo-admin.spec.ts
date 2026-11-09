@@ -69,12 +69,17 @@ test('묶음을 확인해 승인·철회·보류하고, 안내와 돌아보기 �
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(results.violations.map((item) => item.id)).toEqual([]);
 
-  await detail.getByRole('button', { name: '승인' }).click();
+  await detail.getByRole('button', { name: '승인', exact: true }).click();
   await expect.poll(async () => (await readDoc(`kboSets/${DAY}`))?.state).toEqual({ stringValue: 'approved' });
+  // 승인된 묶음은 버튼 글자로 상태를 알린다(꺼진 금색 버튼이 고장처럼 보이지 않게)
+  await expect(detail.getByRole('button', { name: '승인됨' })).toBeDisabled();
+  await expect(detail.getByText('이미 승인한 묶음이에요.')).toBeVisible();
   await detail.getByRole('button', { name: '문항 철회' }).click();
   await expect(detail.getByText('철회됨')).toBeVisible();
   await detail.getByRole('button', { name: '보류(내리기)' }).click();
   await expect.poll(async () => (await readDoc(`kboSets/${DAY}`))?.state).toEqual({ stringValue: 'held' });
+  await expect(detail.getByRole('button', { name: '보류됨' })).toBeDisabled();
+  await expect(detail.getByRole('button', { name: '승인', exact: true })).toBeEnabled();
 
   // 경기 없음 안내 — 시작일 묶음
   const creator = page.getByRole('region', { name: '새 묶음' });

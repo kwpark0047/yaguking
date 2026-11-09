@@ -35,7 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
   'season-end': '시즌 끝',
 };
 const LABELS: OptionLabel[] = ['A', 'B', 'C', 'D'];
-const button = 'min-h-11 rounded-option border-2 px-3 text-sm font-semibold';
+const button = 'min-h-11 rounded-option border-2 px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60';
 
 interface Draft {
   stem: string;
@@ -184,13 +184,16 @@ export function KboQuizPage() {
             {selected.isTest && ' · 테스트 데이터라 이용자에게 열리지 않아요'}
           </p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={busy || selected.state === 'approved' || !answersReady(selected)} className={button} style={primary} onClick={() => void act(() => setState(selected, 'approved'), '승인했어요.', selected.id)}>
-              승인
+            {/* 이미 승인·보류된 묶음은 버튼 글자로 상태를 알린다(꺼진 금색 버튼이 고장처럼 보이지 않게) */}
+            <button type="button" disabled={busy || selected.state === 'approved' || !answersReady(selected)} className={button} style={selected.state === 'approved' ? line : primary} onClick={() => void act(() => setState(selected, 'approved'), '승인했어요.', selected.id)}>
+              {selected.state === 'approved' ? '승인됨' : '승인'}
             </button>
             <button type="button" disabled={busy || selected.state === 'held'} className={button} style={line} onClick={() => void act(() => setState(selected, 'held'), '보류했어요. 이용자에게 보이지 않아요.', selected.id)}>
-              보류(내리기)
+              {selected.state === 'held' ? '보류됨' : '보류(내리기)'}
             </button>
           </div>
+          {selected.state === 'approved' && <p className="text-sm text-ink-2">이미 승인한 묶음이에요. 공개 전에 내리려면 보류를 누르세요.</p>}
+          {selected.state !== 'approved' && !answersReady(selected) && <p className="text-sm text-ink-2">정답을 모두 불러와야 승인할 수 있어요.</p>}
 
           {games.length > 0 && (
             <div className="flex flex-col gap-1">
