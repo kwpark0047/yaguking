@@ -299,3 +299,18 @@ git -C C:/kbo261023-ops pull --ff-only https://github.com/kwpark0047/yaguking.gi
 
 패키지가 바뀐 배포면 `C:\kbo261023-ops\firebase-app`에서 `npm ci`도 한다. 매일 자동으로 받지 않는다(검증 안 된 코드가 밤에 바로 돌지 않게).
 확인: `node ops\cleanup-cli.mjs --project=yaguking-bc25c`(미리 보기, 지우지 않음).
+
+## 13. 비시즌 어제의 퀴즈(2026-11-09부터)
+
+화면은 오늘 묶음이 없으면 **최근 7일 안의 마지막 퀴즈**를 보여 준다. 그래서 비시즌에는 **일주일에 한 묶음**만 올리면 이어진다.
+문항 CSV는 공식전 풀과 같은 열이고 정답이 들어 있으니 운영 폴더 `firebase-app/ops/official/`(git 밖)에 둔다.
+
+| 할 일 | 명령(운영 폴더 `C:kbo261023-opsirebase-app`) |
+|---|---|
+| 초안 올리기 | `node ops/admin-cli.mjs kbo-review --project=yaguking-bc25c --file=ops/official/<CSV> --date=YYYY-MM-DD` |
+| 공개 전 승인 묶음 바꾸기 | 위 명령에 `--replace`(공개 시각이 지난 묶음은 바꾸지 않는다) |
+| 승인 | 관리자 사이트 "어제의 퀴즈" — 새로고침 뒤 그 날짜 초안을 열어 정답·출처 확인 → 승인 |
+| 상태 보기(읽기만) | `node ops/official/peek-set.local.mjs YYYY-MM-DD`, 관리자 기록 `node ops/official/peek-logs.local.mjs` |
+| 화면 승인이 서버에 안 닿을 때 | 운영자가 요청하면 `node ops/official/approve-set.local.mjs YYYY-MM-DD`(초안·공개 전·정답 문서가 모두 있을 때만, 관리자 기록을 남긴다) |
+
+사실은 언론사·위키백과 등 **두 곳 이상**에서 대조하고 출처를 문항에 적는다. 문제은행·앞선 묶음과 같은 사실은 다시 쓰지 않는다.
