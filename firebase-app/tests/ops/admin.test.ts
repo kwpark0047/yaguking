@@ -3,7 +3,7 @@ import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Timestamp } from 'firebase-admin/firestore';
-import { buildDailyStats, isMemberAccount, processAdminTasks, setAdmin, syncAccounts } from '../../ops/admin.mjs';
+import { ACQUISITION_START, buildDailyStats, isMemberAccount, processAdminTasks, setAdmin, syncAccounts, weeklyFunnel } from '../../ops/admin.mjs';
 
 /** 관리자 운영 작업(ops/admin.mjs) — Auth·Firestore 에뮬레이터에서 실제로. `npm run test:ops` */
 const emulated = Boolean(process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST);
@@ -13,6 +13,42 @@ describe('회원 계정 구분', () => {
   it('로그인 수단이나 이메일이 있으면 회원, 없으면 비회원', () => {
     expect(isMemberAccount({ providerData: [], email: undefined })).toBe(false);
     expect(isMemberAccount({ providerData: [{ providerId: 'google.com' }] as never, email: undefined })).toBe(true);
+  });
+});
+
+describe('주간 퍼널(docs/measurement-plan.md)', () => {
+  const now = Date.parse('2026-11-18T00:10:00+09:00'); // 0시 작업 → 11-11~11-17
+  const at = (text: string) => Date.parse(`${text}+09:00`);
+  const accounts = [
+    { uid: 'g1', createdAt: at('2026-11-12T10:00:00'), lastActiveAt: at('2026-11-12T10:30:00'), member: false }, // 경기만
+    { uid: 'g2', createdAt: at('2026-11-13T23:50:00'), lastActiveAt: at('2026-11-14T00:20:00'), member: false }, // 자정 넘겨 다시 옴
+    { uid: 'm1', createdAt: at('2026-11-15T09:00:00'), lastActiveAt: at('2026-11-17T09:00:00'), member: true }, // 가입·확인까지
+    { uid: 'm2', createdAt: at('2026-11-16T09:00:00'), lastActiveAt: at('2026-11-16T09:10:00'), member: true }, // 가입만
+    { uid: 'g3', createdAt: at('2026-11-17T23:59:00'), lastActiveAt: at('2026-11-17T23:59:00'), member: false }, // 아무것도
+    { uid: 'old', createdAt: at('2026-11-10T23:59:00'), lastActiveAt: at('2026-11-17T12:00:00'), member: true }, // 창 밖(그 전날)
+    { uid: 'today', createdAt: at('2026-11-18T00:01:00'), lastActiveAt: at('2026-11-18T00:01:00'), member: false }, // 창 밖(오늘)
+  ];
+  const players = new Set(['g1', 'g2', 'm1', 'old']);
+
+  it('지난 7일 처음 온 계정의 단계별 수와 7일 동안 경기한 고유 사용자(회원·비회원)', () => {
+    const funnel = weeklyFunnel({ accounts, players, ageConfirmed: new Set(['m1', 'old']), now });
+    expect(funnel).toMatchObject({ day: '20261117', from: '20261111', to: '20261117' });
+    expect(funnel.cohort).toEqual({ accounts: 5, played: 3, returned: 2, signedUp: 2, ageConfirmed: 1 });
+    expect(funnel.players).toEqual({ members: 2, guests: 2 });
+    expect(funnel.bySource).toBeUndefined();
+  });
+
+  it('출처가 주어지면(시행 뒤) 출처별로 나누고, 기록 없는 계정은 none', () => {
+    const funnel = weeklyFunnel({ accounts, players, ageConfirmed: new Set(['m1']), sources: new Map([['g1', 'instagram'], ['m1', 'instagram'], ['g2', 'share']]), now });
+    expect(funnel.bySource).toEqual({
+      instagram: { accounts: 2, played: 2, returned: 1, signedUp: 1, ageConfirmed: 1 },
+      share: { accounts: 1, played: 1, returned: 1, signedUp: 0, ageConfirmed: 0 },
+      none: { accounts: 2, played: 0, returned: 0, signedUp: 1, ageConfirmed: 0 },
+    });
+  });
+
+  it('시행일은 처리방침 개정판과 같은 형식', () => {
+    expect(ACQUISITION_START).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 
@@ -106,6 +142,27 @@ describe.skipIf(!emulated)('관리자 운영 작업(에뮬레이터)', () => {
     expect((await ref.get()).get('retention')).toEqual({ d1: report.retention.d1, d7: report.retention.d7 });
     await buildDailyStats({ db, now: later });
     expect((await ref.get()).data()).toMatchObject({ day: report.retention.day, games: 0, retention: { d1: { guests: [2, 0] } } });
+  });
+
+  it('주간 퍼널: 계정 동기화가 어제의 하루 요약에 붙이고(수만), 시행 뒤에는 유입 출처별로 나누며, 하루 요약을 다시 만들어도 남는다', async () => {
+    const guestUser = await auth.createUser({});
+    const memberUser = await auth.createUser({ email: 'f1@example.test', password: 'yaguking-123' });
+    await db.doc(`users/${memberUser.uid}`).set({ ageConfirmedAt: Timestamp.now() });
+    await db.doc(`users/${guestUser.uid}/games/g1`).set({ mode: 'practice', runs: 1, createdAt: Timestamp.now(), atBats: [] });
+    await db.doc(`users/${guestUser.uid}/meta/acquisition`).set({ source: 'instagram', campaign: 'launch', day: 1 });
+    const created = Date.now();
+    // 계정은 지금 만들어졌다 → "지금 + 2일" 0시 작업이면 7일 창 안
+    const later = created + 2 * 86_400_000;
+    const report = await syncAccounts({ auth, db, now: later });
+    expect(report.funnel.cohort).toEqual({ accounts: 2, played: 1, returned: 0, signedUp: 1, ageConfirmed: 1 });
+    expect(report.funnel.players).toEqual({ members: 0, guests: 1 });
+    const ref = db.doc(`adminDaily/${report.funnel.day}`);
+    expect((await ref.get()).get('funnel.cohort.accounts')).toBe(2);
+    await buildDailyStats({ db, now: later });
+    expect((await ref.get()).get('funnel.players')).toEqual({ members: 0, guests: 1 });
+    // 출처별 나누기는 처리방침 개정판 시행 뒤(어제가 시행일 이후)에만
+    if (later < Date.parse(`${ACQUISITION_START}T00:00:00+09:00`) + 86_400_000) expect(report.funnel.bySource).toBeUndefined();
+    else expect(report.funnel.bySource?.instagram?.accounts).toBe(1);
   });
 
   it('작업 대기열: 대기 중인 동기화 요청을 한 번만 돌리고 모두 완료로, 모르는 작업은 실패로', async () => {

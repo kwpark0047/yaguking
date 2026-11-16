@@ -305,6 +305,7 @@ export async function rebuildDaily(now = Date.now()): Promise<void> {
     signups: Number(item.get('signups') ?? 0),
     hourly: Array.isArray(item.get('hourly')) ? (item.get('hourly') as number[]) : [],
     retention: (item.get('retention') as DailyRow['retention'] | undefined) ?? null,
+    funnel: (item.get('funnel') as DailyRow['funnel'] | undefined) ?? null,
   }));
   const tallies = docs.map((item) => (item.get('questions') ?? {}) as Record<string, [number, number]>);
   const batch = writeBatch(db);

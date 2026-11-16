@@ -7,7 +7,10 @@ import { watchEffectsMode } from './lib/effects/preference';
 import { registerServiceWorker, watchInstall } from './lib/pwa/install';
 import { watchDisplay } from './lib/display/preference';
 import { watchSound } from './lib/sound/sound';
+import { captureAcquisition } from './lib/growth/acquisition';
 
+// 유입 출처(docs/measurement-plan.md 2단계) — 처음 들어온 주소의 홍보 링크 표시만, 화면을 그리기 전에(주소창에서 지운다)
+captureAcquisition();
 // 글자 크기·테마(docs/game-look-plan.md) — 효과 설정보다 먼저(고대비 테마면 효과가 차분해진다)
 watchDisplay();
 watchEffectsMode();

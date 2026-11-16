@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { appUrl, copyText } from '@/lib/platform/share';
+import { withShareTag } from '@/lib/growth/acquisition';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
@@ -181,7 +182,7 @@ export function RoomPage() {
   }
 
   async function copyLink() {
-    setCopied(await copyText(appUrl(`/room/${code}`)));
+    setCopied(await copyText(withShareTag(appUrl(`/room/${code}`), 'room')));
   }
 
   const alerts = (

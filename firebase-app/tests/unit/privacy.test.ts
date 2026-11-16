@@ -13,6 +13,7 @@ import {
   ENGAGEMENT_PRIVACY_EFFECTIVE,
   HINT_PRIVACY_EFFECTIVE,
   KBO_PRIVACY_EFFECTIVE,
+  ACQUISITION_PRIVACY_EFFECTIVE,
   versionInForce,
   PRIVACY_DRAFT,
   PRIVACY_EFFECTIVE_DATE,
@@ -71,7 +72,9 @@ describe('처리방침 항목 = 코드가 실제로 하는 일', () => {
       for (const match of readFileSync(file, 'utf8').matchAll(/'(yk_[a-z_]+)'/g)) used.add(match[1]!);
     }
     expect([...used].sort()).toEqual([...DEVICE_STORAGE_KEYS].sort());
-    for (const key of DEVICE_STORAGE_KEYS) expect(allText).toContain(key);
+    // 개정판에서 더한 키도 있다 — 가장 최근 판에 모두 적혀 있어야 한다
+    const latestText = JSON.stringify(PRIVACY_VERSIONS.at(-1)!.sections);
+    for (const key of DEVICE_STORAGE_KEYS) expect(latestText).toContain(key);
   });
 
   it('쓰지 않는 서비스·기능을 적지 않았다(기존 앱 문안의 흔적)', () => {
@@ -102,10 +105,11 @@ describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
     expect(versionInForce('2026-11-03').effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-10-27')?.effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-11-03')?.effective).toBe(ENGAGEMENT_PRIVACY_EFFECTIVE);
-    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE, HINT_PRIVACY_EFFECTIVE, KBO_PRIVACY_EFFECTIVE]);
+    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE, HINT_PRIVACY_EFFECTIVE, KBO_PRIVACY_EFFECTIVE, ACQUISITION_PRIVACY_EFFECTIVE]);
     expect(upcomingVersion(ENGAGEMENT_PRIVACY_EFFECTIVE)?.effective).toBe(HINT_PRIVACY_EFFECTIVE);
     expect(upcomingVersion(HINT_PRIVACY_EFFECTIVE)?.effective).toBe(KBO_PRIVACY_EFFECTIVE);
-    expect(upcomingVersion(KBO_PRIVACY_EFFECTIVE)).toBeNull();
+    expect(upcomingVersion(KBO_PRIVACY_EFFECTIVE)?.effective).toBe(ACQUISITION_PRIVACY_EFFECTIVE);
+    expect(upcomingVersion(ACQUISITION_PRIVACY_EFFECTIVE)).toBeNull();
     expect(kstDateKey(Date.UTC(2026, 10, 2, 15))).toBe('2026-11-03'); // 한국 시간 11월 3일 0시
   });
 

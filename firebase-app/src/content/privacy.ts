@@ -2,6 +2,7 @@ import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 import { KBO_ATTEMPT_RETENTION_DAYS, KBO_QUIZ_START } from '@/lib/kbo/set';
 import { WELCOME_BONUS_POINTS } from '@/lib/game/welcome';
 import { HINT_START } from '@/lib/game/hints';
+import { ACQUISITION_KEY, ACQUISITION_START } from '@/lib/growth/acquisition';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
 import {
   GUEST_RETENTION_DAYS,
@@ -35,7 +36,7 @@ export const PRIVACY_OPERATOR = '위마켓';
 export const PRIVACY_OFFICER = { name: '박강원', phone: '010-3890-0047' } as const;
 
 /** 이 앱이 기기 저장소(localStorage)에 쓰는 키 — 단위 테스트가 코드와 대조한다 */
-export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily', 'yk_kbo_card'] as const;
+export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily', 'yk_kbo_card', 'yk_utm'] as const;
 
 export interface PolicyTable {
   head: readonly string[];
@@ -449,6 +450,61 @@ function amendKboQuiz(sections: readonly PolicySection[]): PolicySection[] {
   });
 }
 
+/**
+ * 유입 출처(docs/measurement-plan.md 2단계) — 홍보 링크로 들어온 경우 그 링크의 출처·캠페인 이름을 비회원 계정이 생길 때 한 번 기록해
+ * 출처별 이용 현황을 합계로 본다. 이날부터 앱이 주소를 읽고 기록한다(src/lib/growth/acquisition.ts ACQUISITION_START — 단위 테스트).
+ * 운영자 승인 2026-11-17, 시행 7일 전 공지.
+ */
+export const ACQUISITION_PRIVACY_EFFECTIVE = ACQUISITION_START;
+
+function amendAcquisition(sections: readonly PolicySection[]): PolicySection[] {
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return { ...section, items: [...(section.items ?? []), '서비스 홍보 효과 측정 — 이용자가 처음 들어온 홍보 링크의 출처별 이용 현황을 합계로 확인'] };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              [
+                '비회원 활동(유입)',
+                '처음 들어온 홍보 링크의 출처(정해진 목록 — 인스타그램·스레드·X·오픈채팅·커뮤니티·앱 안 공유·토스·그 밖)와 캠페인 이름, 그날 날짜 — 링크에 표시가 있을 때만',
+                '비회원으로 처음 시작할 때(게임·친구 대결·어제의 KBO 퀴즈) 한 번 자동 기록',
+              ],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [...section.table!.rows, ['유입 출처', `계정과 함께 — 비회원은 마지막 이용 후 ${GUEST_RETENTION_DAYS}일, 가입하면 탈퇴 시까지. 탈퇴하면 바로 삭제`]],
+          },
+        };
+      case 'device':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows.slice(0, -3),
+              [ACQUISITION_KEY, '처음 들어온 홍보 링크의 출처·캠페인 이름 — 비회원으로 처음 시작할 때 한 번 기록하려고(기록하면 지움)', '이번 방문 동안(창을 닫으면 지워짐)'],
+              ...section.table!.rows.slice(-3),
+            ],
+          },
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${ACQUISITION_PRIVACY_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
 /** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
 export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
   { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
@@ -491,6 +547,17 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       `이 기록은 퀴즈 날부터 ${KBO_ATTEMPT_RETENTION_DAYS}일 보관하고 그 뒤 지웁니다. 탈퇴하면 바로 삭제합니다. 공식 등수와 포인트에는 쓰지 않습니다.`,
       '외부 분석 도구는 쓰지 않습니다. 이 기록으로 만든 숫자(풀이 수, 정답률)에는 개인을 알아볼 값이 없습니다.',
       `가입 축하 포인트를 시작합니다. 회원의 힌트 포인트(모은 포인트 합계)에 한 번 ${WELCOME_BONUS_POINTS}P를 더합니다. 새로 모으는 정보는 없고, 등수 포인트에는 들어가지 않습니다.`,
+      '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+  {
+    effective: ACQUISITION_PRIVACY_EFFECTIVE,
+    sections: amendAcquisition(amendKboQuiz(amendHints(amendEngagement(amend(PRIVACY_SECTIONS))))),
+    changes: [
+      '홍보 효과를 합계로 확인하려고, 홍보 링크로 들어온 경우 그 링크의 출처(정해진 목록)와 캠페인 이름, 그날 날짜를 비회원으로 처음 시작할 때 한 번 기록합니다.',
+      '이전에 본 페이지 주소, 기기·브라우저 정보는 모으지 않습니다. 외부 분석 도구·광고 네트워크는 여전히 쓰지 않습니다.',
+      `이 기록은 계정과 함께 보관합니다(비회원은 마지막 이용 후 ${GUEST_RETENTION_DAYS}일, 가입하면 탈퇴 시까지). 운영자는 출처별 합계만 봅니다.`,
+      `출처를 기록하기 전까지 이번 방문 동안 브라우저 저장소에 ${ACQUISITION_KEY}로 둡니다(창을 닫으면 지워짐).`,
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },

@@ -211,7 +211,7 @@ describe('날짜', () => {
 describe('처리방침', () => {
   it('시작일이 처리방침 판 시행일이고, 그 전날까지는 답을 모으지 않는다', () => {
     expect(KBO_PRIVACY_EFFECTIVE).toBe(KBO_QUIZ_START);
-    expect(PRIVACY_VERSIONS.at(-1)?.effective).toBe(KBO_QUIZ_START);
+    expect(PRIVACY_VERSIONS.some((version) => version.effective === KBO_QUIZ_START)).toBe(true);
     expect(versionInForce(addDays(KBO_QUIZ_START, -1)).effective).not.toBe(KBO_QUIZ_START);
     expect(JSON.stringify(versionInForce(KBO_QUIZ_START).sections)).toContain('어제의 KBO 퀴즈');
     expect(JSON.stringify(versionInForce(addDays(KBO_QUIZ_START, -1)).sections)).not.toContain('어제의 KBO 퀴즈 답');

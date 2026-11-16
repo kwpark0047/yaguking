@@ -22,6 +22,7 @@ import { HINTS_PER_GAME, HINT_TIME_MS, hintVerdict, type HintKind } from '@/lib/
 import { RESULT_PRESENTATION, resultLabel } from '@/lib/game/labels';
 import { extraTimeFor, judgedElapsed } from '@/lib/game/match';
 import { appUrl, shareOrCopy } from '@/lib/platform/share';
+import { withShareTag } from '@/lib/growth/acquisition';
 import { useAuth } from '@/auth/AuthProvider';
 import { SignupNudge } from '@/components/game/SignupNudge';
 import { ResultCardButton } from '@/components/share/ResultCardButton';
@@ -174,7 +175,7 @@ function DailyResult({ today, record }: { today: string; record: DailyRecord }) 
   const { user, isGuest } = useAuth();
   const member = !!user && !isGuest;
   const [shared, setShared] = useState<string | null>(null);
-  const text = shareText(today, record.results, record.streak, appUrl('/daily'), record.hints);
+  const text = shareText(today, record.results, record.streak, withShareTag(appUrl('/daily'), 'daily'), record.hints);
 
   async function share() {
     const outcome = await shareOrCopy(text);

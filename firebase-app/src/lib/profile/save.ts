@@ -113,7 +113,7 @@ export async function deleteAccountAndData(user: User, nickname: string | null):
 }
 
 /**
- * 한 사람의 Firestore 기록을 모두 지운다 — 경기·오답노트·누적·이번 달 연습·출석·칭호·비회원 카운터·닉네임 예약·프로필.
+ * 한 사람의 Firestore 기록을 모두 지운다 — 경기·오답노트·누적·이번 달 연습·출석·칭호·비회원 카운터·유입 출처·닉네임 예약·프로필.
  * 월간 등수 문서에 남은 닉네임은 다음 날 새벽 운영자 PC 작업이 지운다(ops/monthly.mjs).
  * 오늘의 공식전 답(officialRounds/{날짜}/attempts/{uid})은 공식 점수가 있는 날과 어제 것을 지운다. 오늘 공식전은 열려 있어
  * 규칙이 지우기를 막는다(지우고 다시 풀기 금지) — 새벽 판정이 탈퇴한 회원의 답을 지운다(ops/official.mjs).
@@ -142,6 +142,8 @@ export async function deleteUserRecords(uid: string, nickname: string | null): P
   for (let daysAgo = -1; daysAgo <= KBO_ATTEMPT_RETENTION_DAYS + 8; daysAgo += 1) {
     refs.push(doc(db, 'kboSets', currentSetId(Date.now() - daysAgo * 86_400_000), 'attempts', uid));
   }
+  // 유입 출처(비회원으로 처음 시작할 때 한 번) — 없는 문서를 지워도 탈이 없다(읽기 없음)
+  refs.push(doc(db, 'users', uid, 'meta', 'acquisition'));
   if (nickname) refs.push(doc(db, 'nicknames', nicknameKey(nickname)));
   refs.push(doc(db, 'users', uid));
 

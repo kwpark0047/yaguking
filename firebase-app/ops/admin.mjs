@@ -4,6 +4,7 @@
  * - setAdmin: 계정에 관리자 표시(custom claim `admin`)를 붙이거나 뗀다. 관리자 화면은 이 표시를 만들 수 없다
  * - syncAccounts: 로그인 계정 목록 → `accountMirror/{uid}`(회원만, 바뀐 것만 쓰기) + `adminStats/accounts`(비회원은 개수만)
  * - processAdminTasks: 관리자 화면이 남긴 `adminTasks` 중 대기 중인 것을 처리하고 결과를 적는다
+ * - weeklyFunnel: 계정 동기화가 함께 세는 주간 퍼널(docs/measurement-plan.md) — 수만 `adminDaily/{어제}.funnel`에
  */
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -78,6 +79,80 @@ export function returnRates(accounts, now = Date.now()) {
   return { day: yesterday.key, d1: count(1), d7: count(7) };
 }
 
+// ── 주간 퍼널(docs/measurement-plan.md 1·2단계) ─────────────────────────────────
+/** 유입 출처 기록 시행일·출처 목록 — 앱(src/lib/growth/acquisition.ts)·규칙과 같아야 한다(단위 테스트) */
+export const ACQUISITION_START = '2026-11-25';
+export const ACQUISITION_SOURCES = ['instagram', 'threads', 'x', 'openchat', 'community', 'share', 'toss', 'etc'];
+
+const FUNNEL_STEPS = ['played', 'returned', 'signedUp', 'ageConfirmed'];
+
+/**
+ * 주간 퍼널 — 지난 7일(어제까지, 한국 시간)에 처음 온 계정이 어디까지 갔나, 그리고 그 7일 동안 경기를 끝낸 고유 사용자 수(북극성).
+ * 이미 있는 정보(계정의 처음 온·마지막으로 연 시각, 경기 기록, 프로필의 만 14세 확인)만 쓴다. 결과는 수만. 순수 함수.
+ * - accounts: 계정 목록 { uid, createdAt, lastActiveAt, member }
+ * - players: 그 7일 동안 경기를 끝낸 uid 집합
+ * - ageConfirmed: 만 14세 확인을 마친 uid 집합
+ * - sources: uid → 유입 출처(기록이 있는 계정만). null이면 출처별로 나누지 않는다(시행 전)
+ * 단계: 처음 온 계정 → 첫 경기 완료(played) → 다른 날 다시 옴(returned) → 가입(signedUp) → 만 14세 확인(ageConfirmed)
+ */
+export function weeklyFunnel({ accounts, players, ageConfirmed, sources = null, now = Date.now() }) {
+  const yesterday = kstDay(kstDay(now).start - 1);
+  const start = yesterday.start - 6 * DAY;
+  const end = yesterday.start + DAY;
+  const empty = () => ({ accounts: 0, played: 0, returned: 0, signedUp: 0, ageConfirmed: 0 });
+  const cohort = empty();
+  const bySource = sources ? {} : null;
+  const memberUids = new Set();
+  for (const account of accounts) {
+    if (account.member) memberUids.add(account.uid);
+    if (account.createdAt < start || account.createdAt >= end) continue;
+    const reached = {
+      played: players.has(account.uid),
+      returned: account.lastActiveAt >= kstDay(account.createdAt).start + DAY,
+      signedUp: account.member,
+      ageConfirmed: account.member && ageConfirmed.has(account.uid),
+    };
+    const buckets = [cohort];
+    if (bySource) buckets.push((bySource[sources.get(account.uid) ?? 'none'] ??= empty()));
+    for (const bucket of buckets) {
+      bucket.accounts += 1;
+      for (const step of FUNNEL_STEPS) if (reached[step]) bucket[step] += 1;
+    }
+  }
+  const weekly = { members: 0, guests: 0 };
+  for (const uid of players) weekly[memberUids.has(uid) ? 'members' : 'guests'] += 1;
+  return { day: yesterday.key, from: kstDay(start).key, to: yesterday.key, cohort, players: weekly, ...(bySource ? { bySource } : {}) };
+}
+
+const dashed = (key) => `${key.slice(0, 4)}-${key.slice(4, 6)}-${key.slice(6, 8)}`;
+
+/** 주간 퍼널에 필요한 것을 읽는다 — 읽기: 7일 경기 수 + 7일 동안 처음 온 회원 수 + (시행 뒤) 7일 동안 처음 온 계정 수 */
+async function loadFunnel({ db, accounts, now }) {
+  const yesterday = kstDay(kstDay(now).start - 1);
+  const start = yesterday.start - 6 * DAY;
+  const end = yesterday.start + DAY;
+  const games = await db
+    .collectionGroup('games')
+    .where('createdAt', '>=', Timestamp.fromMillis(start))
+    .where('createdAt', '<', Timestamp.fromMillis(end))
+    .select()
+    .get();
+  const players = new Set(games.docs.map((item) => item.ref.parent.parent?.id).filter(Boolean));
+  const cohort = accounts.filter((account) => account.createdAt >= start && account.createdAt < end);
+  const getAll = async (refs) => (refs.length ? db.getAll(...refs) : []);
+  const profiles = await getAll(cohort.filter((account) => account.member).map((account) => db.doc(`users/${account.uid}`)));
+  const ageConfirmed = new Set(profiles.filter((item) => item.get('ageConfirmedAt') != null).map((item) => item.id));
+  let sources = null;
+  if (dashed(yesterday.key) >= ACQUISITION_START) {
+    sources = new Map();
+    for (const item of await getAll(cohort.map((account) => db.doc(`users/${account.uid}/meta/acquisition`)))) {
+      const source = item.get('source');
+      if (ACQUISITION_SOURCES.includes(source)) sources.set(item.ref.parent.parent.id, source);
+    }
+  }
+  return weeklyFunnel({ accounts, players, ageConfirmed, sources, now });
+}
+
 export async function syncAccounts({ auth, db, now = Date.now() }) {
   const report = { members: 0, guests: 0, guestsActive7d: 0, guestsNew24h: 0, guestsPeakHour: 0, written: 0, removed: 0 };
   const guestCreated = [];
@@ -92,7 +167,7 @@ export async function syncAccounts({ auth, db, now = Date.now() }) {
     const page = await auth.listUsers(1000, pageToken);
     for (const user of page.users) {
       const { createdAt, lastSignInAt } = mirrorOf(user);
-      accounts.push({ createdAt, lastActiveAt: lastSignInAt, member: isMemberAccount(user) });
+      accounts.push({ uid: user.uid, createdAt, lastActiveAt: lastSignInAt, member: isMemberAccount(user) });
       if (!isMemberAccount(user)) {
         report.guests += 1;
         if (mirrorOf(user).lastSignInAt >= now - 7 * DAY) report.guestsActive7d += 1;
@@ -126,12 +201,17 @@ export async function syncAccounts({ auth, db, now = Date.now() }) {
     guestsPeakHour: report.guestsPeakHour,
     syncedAt: FieldValue.serverTimestamp(),
   });
-  // 재방문은 어제의 하루 요약에 붙인다(하루 요약 작업 buildDailyStats가 다시 써도 남긴다)
-  // 셀 무리(그저께·8일 전에 처음 온 계정)가 없으면 쓰지 않는다 — 빈 하루 요약 문서를 만들지 않게
+  // 재방문·주간 퍼널은 어제의 하루 요약에 붙인다(하루 요약 작업 buildDailyStats가 다시 써도 남긴다)
+  // 셀 무리(그저께·8일 전·지난 7일에 처음 온 계정, 7일 동안 경기한 사람)가 없으면 쓰지 않는다 — 빈 하루 요약 문서를 만들지 않게
   const rates = returnRates(accounts, now);
+  const funnel = await loadFunnel({ db, accounts, now });
+  const daily = {};
   const cohortSize = [rates.d1, rates.d7].reduce((sum, cohort) => sum + cohort.members[0] + cohort.guests[0], 0);
-  if (cohortSize > 0) writer.set(db.doc(`adminDaily/${rates.day}`), { retention: { d1: rates.d1, d7: rates.d7 } }, { merge: true });
+  if (cohortSize > 0) daily.retention = { d1: rates.d1, d7: rates.d7 };
+  if (funnel.cohort.accounts + funnel.players.members + funnel.players.guests > 0) daily.funnel = funnel;
+  if (Object.keys(daily).length > 0) writer.set(db.doc(`adminDaily/${rates.day}`), daily, { merge: true });
   report.retention = rates;
+  report.funnel = funnel;
   await writer.close();
   return report;
 }
@@ -214,7 +294,7 @@ export function summarizeDay(games, memberUids) {
 
 /**
  * 하루(한국 시간) 요약을 `adminDaily/{YYYYMMDD}`에 쓴다 — 관리 화면은 이 요약만 읽는다(원본 경기를 다시 읽지 않음).
- * 기본은 어제. 같은 날을 다시 돌리면 덮어쓴다(재방문 칸은 남긴다). 읽기: 그날 경기 수 + 계정 사본 수 + 1, 쓰기 1.
+ * 기본은 어제. 같은 날을 다시 돌리면 덮어쓴다(재방문·주간 퍼널 칸은 남긴다). 읽기: 그날 경기 수 + 계정 사본 수 + 1, 쓰기 1.
  */
 export async function buildDailyStats({ db, now = Date.now(), day }) {
   const { start, key } = day ? kstDay(Date.parse(`${day}T00:00:00+09:00`)) : kstDay(kstDay(now).start - 1);
@@ -235,9 +315,10 @@ export async function buildDailyStats({ db, now = Date.now(), day }) {
     const created = item.get('createdAt')?.toMillis?.() ?? 0;
     return created >= start && created < end;
   }).length;
-  // 계정 동기화가 먼저 붙인 재방문(retention)은 남긴다(읽기 1)
-  const retention = (await db.doc(`adminDaily/${key}`).get()).get('retention');
-  const summary = { day: key, ...summarizeDay(games, memberUids), signups, ...(retention ? { retention } : {}), builtAt: FieldValue.serverTimestamp() };
+  // 계정 동기화가 먼저 붙인 재방문(retention)·주간 퍼널(funnel)은 남긴다(읽기 1)
+  const before = await db.doc(`adminDaily/${key}`).get();
+  const kept = Object.fromEntries(['retention', 'funnel'].filter((name) => before.get(name) != null).map((name) => [name, before.get(name)]));
+  const summary = { day: key, ...summarizeDay(games, memberUids), signups, ...kept, builtAt: FieldValue.serverTimestamp() };
   await db.doc(`adminDaily/${key}`).set(summary);
   return { day: key, games: summary.games, players: summary.players, signups };
 }

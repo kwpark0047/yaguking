@@ -18,6 +18,7 @@ import {
 import { SAME_ORIGIN_AUTH_ENABLED } from '@/lib/firebase/sameOrigin';
 import { firebaseAuth } from '@/lib/firebase/auth';
 import { isStandalone } from '@/lib/pwa/install';
+import { pendingAcquisition } from '@/lib/growth/acquisition';
 
 /**
  * 로그인 방법 — 이메일·비밀번호, 구글, 익명(비회원).
@@ -101,7 +102,9 @@ export function completeGoogleRedirect(): Promise<{ linkedGuest: boolean } | nul
 export async function startAsGuest(): Promise<void> {
   const auth = firebaseAuth();
   if (auth.currentUser) return;
-  await signInAnonymously(auth);
+  const { user } = await signInAnonymously(auth);
+  // 유입 출처(docs/measurement-plan.md 2단계) — 홍보 링크로 들어왔을 때만, 계정이 생긴 이때 한 번. 기다리지 않는다
+  if (pendingAcquisition()) void import('@/lib/growth/record').then(({ recordAcquisition }) => recordAcquisition(user.uid));
 }
 
 export async function signOutUser(): Promise<void> {

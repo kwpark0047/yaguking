@@ -298,6 +298,20 @@ service cloud.firestore {
         allow delete: if isSelf(uid);
       }
 
+      // ── 유입 출처(docs/measurement-plan.md 2단계) — 비회원 계정이 생길 때 한 번, 만들기만(고치기 없음) ──
+      // 출처는 정한 목록(src/lib/growth/acquisition.ts와 같아야 한다 — 단위 테스트), 캠페인 40자, 날짜는 서버 기준 오늘.
+      // 시행일(2026-11-25) 전에는 앱이 주소를 읽지 않아 쓸 것이 없다(src/lib/growth/acquisition.ts).
+      match /meta/{docId} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow create: if isSelf(uid) && isGuest() && docId == 'acquisition'
+          && request.resource.data.keys().hasOnly(['source', 'campaign', 'day'])
+          && request.resource.data.source in ['instagram', 'threads', 'x', 'openchat', 'community', 'share', 'toss', 'etc']
+          && request.resource.data.campaign is string
+          && request.resource.data.campaign.matches('^[a-z0-9_-]{0,40}$')
+          && request.resource.data.day == kstDay();
+        allow delete: if isSelf(uid);
+      }
+
       // ── 오답노트 — 1·3·7·14일 복습 ───────────────────────────────────
       match /wrongNotes/{questionId} {
         allow read: if isSelf(uid) || isAdmin();

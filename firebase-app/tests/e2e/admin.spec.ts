@@ -111,7 +111,14 @@ test('관리자 2차: 화면마다 보기 하나 — 새로 만들기, 가입자
   const kstDayKey = (daysAgo: number) => new Date(Date.now() + 9 * 3_600_000 - daysAgo * 86_400_000).toISOString().slice(0, 10);
   const yesterday = kstDayKey(1);
   const dayKey = (date: string) => date.replaceAll('-', '');
-  await adminDb.doc(`adminDaily/${dayKey(yesterday)}`).set({ day: dayKey(yesterday), games: 5, levelTests: 1, memberGames: 3, guestGames: 2, players: 3, averageRuns: 1.2, atBats: 20, correctRate: 0.6, homeRunRate: 0.1, signups: 2, hourly: Array.from({ length: 24 }, (_, h) => (h === 20 ? 5 : 0)), questions: { q1: [6, 1] } });
+  await adminDb.doc(`adminDaily/${dayKey(yesterday)}`).set({ day: dayKey(yesterday), games: 5, levelTests: 1, memberGames: 3, guestGames: 2, players: 3, averageRuns: 1.2, atBats: 20, correctRate: 0.6, homeRunRate: 0.1, signups: 2, hourly: Array.from({ length: 24 }, (_, h) => (h === 20 ? 5 : 0)), questions: { q1: [6, 1] },
+    // 주간 퍼널(계정 동기화가 붙임, docs/measurement-plan.md) — 출처별 1~2명은 "3명 미만"
+    funnel: {
+      from: dayKey(kstDayKey(7)), to: dayKey(yesterday),
+      cohort: { accounts: 10, played: 6, returned: 2, signedUp: 1, ageConfirmed: 1 },
+      players: { members: 1, guests: 5 },
+      bySource: { instagram: { accounts: 7, played: 5, returned: 2, signedUp: 1, ageConfirmed: 1 }, none: { accounts: 3, played: 1, returned: 0, signedUp: 0, ageConfirmed: 0 } },
+    } });
   await adminDb.doc(`adminDaily/${dayKey(kstDayKey(2))}`).set({ day: dayKey(kstDayKey(2)), games: 3, levelTests: 0, memberGames: 1, guestGames: 2, players: 2, averageRuns: 2, atBats: 10, correctRate: 0.5, homeRunRate: 0.2, signups: 1, hourly: [], questions: {} });
   await adminDb.doc('rooms/OLD234/players/h').set({ nickname: '옛방장', joinedAt: old, score: 120, answers: [{ choice: 'A', elapsedMs: 900, correct: true }] });
 
@@ -142,6 +149,12 @@ test('관리자 2차: 화면마다 보기 하나 — 새로 만들기, 가입자
   await expect(page.getByText(/에 만든 내용/)).toBeVisible();
   // 어제·최근 7일(하루 요약) — 어제가 기본, 7일로 바꾸면 합계·날짜별 막대·많이 틀린 문항
   await expect(page.getByRole('heading', { name: `어제(${yesterday.slice(5)}) 비공식 · 매일 밤 요약` })).toBeVisible();
+  const funnel = page.getByRole('region', { name: /주간 퍼널/ });
+  await expect(funnel).toContainText('7일 동안 경기를 끝낸 사람 6');
+  await expect(funnel.getByRole('list', { name: '단계별 사람 수' })).toContainText('첫 경기 완료6 (60%)');
+  const instagram = funnel.getByRole('row', { name: /인스타그램/ });
+  await expect(instagram.getByRole('cell')).toHaveText(['7', '5', '3명 미만', '3명 미만', '3명 미만']);
+  await expect(funnel.getByRole('row', { name: /표시 없음/ }).getByRole('cell')).toHaveText(['3', '3명 미만', '0', '0', '0']);
   await page.getByRole('button', { name: '최근 7일' }).click();
   const period = page.getByRole('region', { name: /최근 2일/ });
   await expect(period).toBeVisible();

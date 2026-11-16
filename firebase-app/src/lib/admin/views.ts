@@ -272,6 +272,53 @@ export interface DailyRow {
   hourly: number[];
   /** 재방문(docs/retention-plan.md L) — [처음 온 수, 다시 연 수]. 계정 동기화가 붙이기 전 날은 null */
   retention: { d1: ReturnCohort; d7: ReturnCohort } | null;
+  /** 주간 퍼널(docs/measurement-plan.md) — 그날까지 7일. 계정 동기화가 붙이기 전 날은 null */
+  funnel: WeeklyFunnel | null;
+}
+
+/** 주간 퍼널 한 묶음(ops/admin.mjs weeklyFunnel) — 처음 온 계정 수와 단계마다 간 수 */
+export interface FunnelCohort {
+  accounts: number;
+  played: number;
+  returned: number;
+  signedUp: number;
+  ageConfirmed: number;
+}
+
+export interface WeeklyFunnel {
+  from: string;
+  to: string;
+  cohort: FunnelCohort;
+  /** 7일 동안 경기를 끝낸 고유 사용자(북극성) */
+  players: { members: number; guests: number };
+  /** 유입 출처별('none' = 기록 없음) — 시행 전에는 없다 */
+  bySource?: Record<string, FunnelCohort>;
+}
+
+export const FUNNEL_STEP_LABEL: Record<keyof FunnelCohort, string> = {
+  accounts: '처음 온 계정',
+  played: '첫 경기 완료',
+  returned: '다른 날 다시 옴',
+  signedUp: '가입',
+  ageConfirmed: '만 14세 확인',
+};
+
+export const SOURCE_LABEL: Record<string, string> = {
+  instagram: '인스타그램',
+  threads: '스레드',
+  x: 'X',
+  openchat: '오픈채팅',
+  community: '커뮤니티',
+  share: '앱 안 공유',
+  toss: '토스',
+  etc: '그 밖의 링크',
+  none: '표시 없음',
+};
+
+/** 출처별 칸에 쓰는 수 — 1~2명은 "3명 미만"으로만(작은 수로 사람을 짐작하지 않게) */
+export const SMALL_COUNT = 3;
+export function maskSmall(count: number): string {
+  return count > 0 && count < SMALL_COUNT ? `${SMALL_COUNT}명 미만` : String(count);
 }
 
 export interface ReturnCohort {

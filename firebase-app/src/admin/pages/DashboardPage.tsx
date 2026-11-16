@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { CATEGORY_TITLE, loadQuestions, type Question } from '@/content/questions';
-import { GUEST_BURST_PER_HOUR, sumDays, sumReturns, type DailyRow } from '@/lib/admin/views';
+import { FUNNEL_STEP_LABEL, GUEST_BURST_PER_HOUR, SOURCE_LABEL, maskSmall, sumDays, sumReturns, type DailyRow, type FunnelCohort, type WeeklyFunnel } from '@/lib/admin/views';
 import { requestAccountSync } from '../data';
 import { useView, ViewBar } from '../useView';
 import { rebuildAll, type DashboardView } from '../views';
@@ -209,6 +209,77 @@ function ReturnRates({ days }: { days: readonly DailyRow[] }) {
   );
 }
 
+const FUNNEL_STEPS = Object.keys(FUNNEL_STEP_LABEL) as (keyof FunnelCohort)[];
+
+/** 주간 퍼널(docs/measurement-plan.md) — 가장 최근 하루 요약에 붙은 7일 묶음. 운영자 PC 계정 동기화가 0시에 센다 */
+function WeeklyFunnelPanel({ funnel }: { funnel: WeeklyFunnel }) {
+  const label = (day: string) => `${day.slice(4, 6)}-${day.slice(6, 8)}`;
+  const base = Math.max(1, funnel.cohort.accounts);
+  const sources = Object.entries(funnel.bySource ?? {}).sort((a, b) => b[1].accounts - a[1].accounts);
+  return (
+    <section className="flex flex-col gap-2" aria-labelledby="weekly-funnel-title">
+      <h3 id="weekly-funnel-title" className="text-sm font-semibold">
+        주간 퍼널 <span className="text-xs font-normal text-ink-2">{label(funnel.from)}~{label(funnel.to)}</span>
+      </h3>
+      <p className="text-sm">
+        7일 동안 경기를 끝낸 사람{' '}
+        <span className="num-tabular text-lg font-bold">{funnel.players.members + funnel.players.guests}</span>{' '}
+        <span className="text-xs text-ink-2">
+          회원 {funnel.players.members} · 비회원 {funnel.players.guests}
+        </span>
+      </p>
+      <ol className="flex flex-col gap-1 text-sm" aria-label="단계별 사람 수">
+        {FUNNEL_STEPS.map((step) => {
+          const count = funnel.cohort[step];
+          return (
+            <li key={step} className="flex items-center gap-2">
+              <span className="w-28 shrink-0 text-ink-2">{FUNNEL_STEP_LABEL[step]}</span>
+              <span
+                aria-hidden="true"
+                className="h-3 rounded"
+                style={{ width: `${Math.max(count ? 6 : 2, (count / base) * 60)}%`, backgroundColor: count ? 'var(--accent)' : 'var(--line)' }}
+              />
+              <span className="num-tabular">
+                {count}
+                {step !== 'accounts' && funnel.cohort.accounts > 0 ? ` (${Math.round((count / funnel.cohort.accounts) * 100)}%)` : ''}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {sources.length > 0 && (
+        <table className="text-sm">
+          <caption className="text-left text-xs text-ink-2">유입 출처별(1~2명은 "3명 미만")</caption>
+          <thead>
+            <tr className="text-left text-ink-2">
+              <th scope="col" className="font-normal">출처</th>
+              {FUNNEL_STEPS.map((step) => (
+                <th key={step} scope="col" className="font-normal">
+                  {FUNNEL_STEP_LABEL[step]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sources.map(([source, cohort]) => (
+              <tr key={source}>
+                <th scope="row" className="text-left font-normal">
+                  {SOURCE_LABEL[source] ?? source}
+                </th>
+                {FUNNEL_STEPS.map((step) => (
+                  <td key={step} className="num-tabular">
+                    {maskSmall(cohort[step])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
 /** 어제·최근 7일 — 운영자 PC가 매일 밤 쓴 하루 요약(adminDaily). 오늘 숫자는 아래 "오늘 경기 요약" */
 function PeriodSummary({ data }: { data: DashboardView }) {
   const [period, setPeriod] = useState<Period>('yesterday');
@@ -270,6 +341,7 @@ function PeriodSummary({ data }: { data: DashboardView }) {
         ))}
       </dl>
       <ReturnRates days={chosen} />
+      {days.find((day) => day.funnel)?.funnel && <WeeklyFunnelPanel funnel={days.find((day) => day.funnel)!.funnel!} />}
       {period === 'week' ? (
         <figure className="flex flex-col gap-1">
           <figcaption className="text-xs text-ink-2">날짜별 경기 수</figcaption>

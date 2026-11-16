@@ -173,6 +173,7 @@ describe('하루 요약 합치기(어제·최근 7일)', () => {
     signups: 0,
     hourly: [],
     retention: null,
+    funnel: null,
     ...patch,
   });
 
