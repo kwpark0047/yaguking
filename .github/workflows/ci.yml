@@ -1,9 +1,50 @@
 name: CI
 
+# 옛 Next.js판(저장소 맨 위 src·supabase·tests …) 검사. firebase-app/만 바꾼 PR·문서만 바꾼 PR에서는 돌지 않는다
+# (Actions 사용량 줄이기, 2026-11-18). 손으로 돌릴 때는 Actions › CI › Run workflow.
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'supabase/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'data/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+      - 'vitest.config.mts'
+      - 'playwright.config.ts'
+      - 'eslint.config.mjs'
+      - 'postcss.config.mjs'
+      - '.github/workflows/ci.yml'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'supabase/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'data/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+      - 'vitest.config.mts'
+      - 'playwright.config.ts'
+      - 'eslint.config.mjs'
+      - 'postcss.config.mjs'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 같은 브랜치에 새로 올리면 앞의 실행을 멈춘다
+concurrency:
+  group: nextjs-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # DB 없이 돌아가는 검사. Docker가 필요 없다.
