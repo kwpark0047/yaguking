@@ -7,6 +7,7 @@ import { needsAgeCheck } from '@/lib/auth/gate';
 import { sanitizeReturnTo } from '@/lib/auth/returnTo';
 import { suggestNickname } from '@/lib/game/nickname';
 import { NicknameTakenError, isNicknameTaken, saveProfile } from '@/lib/profile/save';
+import { linkPendingInvite } from '@/lib/growth/inviteApi';
 import { nicknameProblem, normalizePlayers, playersProblem } from '@/lib/profile/validate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 import { teamThemeActive } from '@/lib/theme/themeSwitch';
@@ -89,6 +90,8 @@ export function ProfileSetupPage() {
         previous,
       );
       await refreshProfile();
+      // 친구 초대 — 링크로 받아 기기에 둔 코드를 한 번 연결(실패해도 가입은 그대로, 시행일 전에는 아무것도 하지 않음)
+      if (!previous) void linkPendingInvite(user!.uid).catch(() => undefined);
       // 가입이 끝난 첫 화면에서 한 번 환영(App의 WelcomeBanner, docs/motion-plan.md §2)
       navigate(returnTo, { replace: true, state: { welcome: true } });
     } catch (caught) {

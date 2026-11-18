@@ -341,11 +341,13 @@ export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_STAR
   for (let i = 0; i < uids.length; i += 150) {
     const chunk = uids.slice(i, i + 150);
     const refs = chunk.map((uid) => db.doc(`users/${uid}/wallet/main`));
-    const [wallets, earned] = await Promise.all([db.getAll(...refs), Promise.all(chunk.map(earnedOf))]);
+    // 친구 초대 보너스(ops/invite.mjs가 먼저 계산) — 힌트에 쓰는 포인트에만 더한다(월간 등수에는 넣지 않음)
+    const bonusRefs = chunk.map((uid) => db.doc(`users/${uid}/meta/invites`));
+    const [wallets, earned, bonuses] = await Promise.all([db.getAll(...refs), Promise.all(chunk.map(earnedOf)), db.getAll(...bonusRefs)]);
     const batch = db.batch();
     let writes = 0;
     wallets.forEach((wallet, index) => {
-      const value = earned[index] + welcome;
+      const value = earned[index] + welcome + Math.max(0, Number(bonuses[index].get('bonus') ?? 0));
       if (wallet.exists ? wallet.get('earned') === value : value === 0) return;
       batch.set(
         refs[index],
