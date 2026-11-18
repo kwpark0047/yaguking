@@ -77,6 +77,8 @@ test('오늘의 1이닝: 로그인 없이 3문제, 결과 줄에 토스 링크(i
   }
   await expect(page.getByRole('heading', { name: '오늘의 1이닝 끝!' })).toBeVisible();
   await expect(page.getByLabel('공유할 글')).toContainText('intoss://yaguking/daily');
+  // 2안타라 웹판이면 가입 권유가 뜨는 결과 — 미니앱에는 가입이 없어 내지 않는다
+  await expect(page.getByRole('region', { name: '가입 권유' })).toHaveCount(0);
 });
 
 test('개인 경기: 비회원으로 바로 시작하고, 3아웃이면 끝, 가입 링크는 보이지 않는다', async ({ page }) => {

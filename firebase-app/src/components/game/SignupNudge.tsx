@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { kstDate } from '@/lib/game/attendance';
 import { WELCOME_BONUS_POINTS, welcomeBonusOpen } from '@/lib/game/welcome';
+import { HAS_ACCOUNTS } from '@/lib/platform/features';
 
 /**
  * 잘한 순간의 가입 권유(docs/signup-boost.md S1) — 비회원이 2안타 이상·홈런을 친 경기 결과에서만 보인다.
  * "나중에"를 누르면 이 화면에서만 닫는다(기기에 기억하지 않는다 — 새 저장 키를 만들지 않음).
+ * 가입이 없는 판(앱인토스 미니앱)에는 내지 않는다 — 출석·공식전·힌트가 없는 판에서 그 기능을 권하지 않게.
  */
 export function SignupNudge({ summary }: { summary: string }) {
   const [closed, setClosed] = useState(false);
-  if (closed) return null;
+  if (!HAS_ACCOUNTS || closed) return null;
   const bonus = welcomeBonusOpen(kstDate());
   return (
     <section aria-label="가입 권유" className="sticker flex flex-col gap-2 p-4 break-keep">
