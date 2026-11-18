@@ -9,6 +9,7 @@ import { DailyLink } from '@/components/home/DailyLink';
 import { KboQuizCard } from '@/components/home/KboQuizCard';
 import { MemberPerks } from '@/components/home/MemberPerks';
 import { ReminderCard } from '@/components/home/ReminderCard';
+import { HeroSky } from '@/components/home/HeroSky';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -43,6 +44,7 @@ export function HomePage() {
       <SiteHeader />
       <AdSlot slot="home-top" />
       <main className="home-hero flex flex-col items-center gap-4 px-5 py-10 text-center">
+        <HeroSky />
         <img src={emblem} alt="야구왕" width={349} height={440} className="h-44 w-auto" />
         <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
 

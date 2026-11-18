@@ -1025,6 +1025,102 @@ body {
   text-shadow: 0 1px 3px rgb(0 0 0 / 0.75);
 }
 
+/*
+ * 히어로 바탕 움직임(HeroSky, src/lib/home/heroSky.ts) — 별빛 깜박임·조명 숨쉬기·빛 안개가 천천히 흐름.
+ * 바탕(배경 그림) 바로 위·글자 아래(z-index -1, 히어로가 isolation으로 쌓임 맥락을 만든다).
+ * 층 전체의 opacity·transform만 움직인다(합성만 — 폰에서 다시 그리지 않음).
+ * 화면 효과: full 모두 · calm 별빛만 느리고 약하게 · none(끄기·동작 줄이기) 층을 빼서 원래 그림 그대로. 고대비는 바탕이 없으므로 뺀다.
+ */
+.hero-sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hero-sky > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.hero-sky__haze {
+  animation: hero-haze 24s ease-in-out infinite alternate;
+}
+.hero-sky__lights {
+  opacity: 0.45;
+  animation: hero-glow 5s ease-in-out infinite;
+}
+.hero-sky__stars {
+  opacity: 0.3;
+  animation: hero-twinkle 3.6s ease-in-out infinite;
+}
+.hero-sky__stars--2 {
+  animation-duration: 4.8s;
+  animation-delay: -1.3s;
+}
+.hero-sky__stars--3 {
+  animation-duration: 6.2s;
+  animation-delay: -2.9s;
+}
+@keyframes hero-haze {
+  from {
+    transform: translateX(-26%);
+  }
+  to {
+    transform: translateX(26%);
+  }
+}
+@keyframes hero-glow {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+@keyframes hero-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+@keyframes hero-twinkle-calm {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+:root[data-effects='calm'] :is(.hero-sky__haze, .hero-sky__lights) {
+  display: none;
+}
+:root[data-effects='calm'] .hero-sky__stars {
+  animation-name: hero-twinkle-calm;
+  animation-duration: 9s;
+}
+:root[data-effects='calm'] .hero-sky__stars--2 {
+  animation-duration: 12s;
+}
+:root[data-effects='calm'] .hero-sky__stars--3 {
+  animation-duration: 15s;
+}
+:root[data-effects='none'] .hero-sky,
+:root[data-style='contrast'] .hero-sky {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-sky {
+    display: none;
+  }
+}
+
 /* 스티커 카드 — 두툼한 테두리 + 아래로 밀린 단색 그림자 */
 .sticker {
   border-radius: 1.5rem;
