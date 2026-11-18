@@ -9,6 +9,8 @@
  *   node ops/admin-cli.mjs official --project=<id> [--pool=<CSV>]                 오늘의 공식전 판정·출제·오래된 것 지우기(풀이 없으면 판정만)
  *   node ops/admin-cli.mjs monthly --project=<id>                                월간 등수 갱신·지난달 확정(docs/engagement-plan.md)
  *   node ops/admin-cli.mjs kbo-review --project=<id> --file=<CSV> --date=YYYY-MM-DD [--replace]  사람이 쓴 돌아보기 문항을 어제의 퀴즈 초안으로(승인은 관리자 화면, --replace는 공개 전 승인 묶음만)
+ *   node ops/admin-cli.mjs invites --project=<id>                                친구 초대 활동 확인·보너스 계산(지갑 작업보다 먼저)
+ *   node ops/admin-cli.mjs invite-revoke --project=<id> --uid=<초대받은 회원>      부정으로 본 초대 보상 취소(관리자 기록)
  *   node ops/admin-cli.mjs kbo-stats --project=<id>                              어제의 KBO 퀴즈 집계·보관 기간 지난 답 지우기
  *   node ops/admin-cli.mjs kbo --project=demo-… --fixture=<JSON> [--date=YYYY-MM-DD]  테스트 데이터로 생성(실제 수집 없음, demo 전용)
  *   node ops/admin-cli.mjs news-feed --project=<id>                              이용 조건을 확인한 언론사 RSS에서 제목·링크·요약 가져오기
@@ -23,6 +25,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { buildDailyStats, processAdminTasks, setAdmin, syncAccounts } from './admin.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { runMonthly, runWallets } from './monthly.mjs';
+import { revokeInvite, runInvites } from './invite.mjs';
 import { fixtureAdapter, importReviewSet, runKboPipeline, runKboStats } from './kbo.mjs';
 import { runNews, seedNews } from './news.mjs';
 import { runNewsFeed } from './newsFeed.mjs';
@@ -32,7 +35,7 @@ const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectId = arg('project');
 
-if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'news-feed', 'kbo', 'kbo-stats', 'kbo-review'].includes(command) || !projectId) {
+if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'news-feed', 'kbo', 'kbo-stats', 'kbo-review', 'invites', 'invite-revoke'].includes(command) || !projectId) {
   console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly|wallet|news> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
   process.exit(1);
 }
@@ -89,6 +92,16 @@ if (command === 'set-admin') {
   console.log(JSON.stringify(await runNews({ db })));
 } else if (command === 'monthly') {
   console.log(JSON.stringify(await runMonthly({ db })));
+} else if (command === 'invites') {
+  console.log(JSON.stringify(await runInvites({ db })));
+} else if (command === 'invite-revoke') {
+  // 부정으로 본 초대의 보상 취소 — 초대받은 회원 uid. 다음 실행에서 합계·지갑이 다시 계산된다
+  const invitee = arg('uid');
+  if (!invitee) {
+    console.error('--uid=<초대받은 회원 uid>가 필요합니다.');
+    process.exit(1);
+  }
+  console.log(JSON.stringify(await revokeInvite({ db, inviteeUid: invitee })));
 } else if (command === 'wallet') {
   console.log(JSON.stringify(await runWallets({ db })));
 } else if (command === 'news-feed') {

@@ -144,6 +144,12 @@ export async function deleteUserRecords(uid: string, nickname: string | null): P
   }
   // 유입 출처(비회원으로 처음 시작할 때 한 번) — 없는 문서를 지워도 탈이 없다(읽기 없음)
   refs.push(doc(db, 'users', uid, 'meta', 'acquisition'));
+  // 친구 초대 — 내 초대 코드와 보너스 합계(운영자 PC가 쓴 것). 초대 진행 기록(inviteLedger)은 다음 날 0시 작업이 지운다(ops/invite.mjs)
+  refs.push(doc(db, 'users', uid, 'meta', 'invites'));
+  const me = await getDoc(doc(db, 'users', uid));
+  countReads('deleteUserRecords', 1);
+  const myCode = me.get('inviteCode') as string | undefined;
+  if (myCode) refs.push(doc(db, 'invites', myCode));
   if (nickname) refs.push(doc(db, 'nicknames', nicknameKey(nickname)));
   refs.push(doc(db, 'users', uid));
 
