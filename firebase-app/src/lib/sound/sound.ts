@@ -28,7 +28,8 @@ export type SoundName =
   | 'levelUp'
   | 'welcome'
   | 'countdown'
-  | 'go';
+  | 'go'
+  | 'playBall';
 
 export type Volume = 'low' | 'mid' | 'high';
 
@@ -192,6 +193,7 @@ function noise(ctx: AudioContext, out: AudioNode, t0: number, { at, dur, filter,
   src.stop(start + dur + 0.02);
 }
 
+const G4 = 392;
 const C5 = 523.25;
 const E5 = 659.25;
 const G5 = 783.99;
@@ -274,7 +276,27 @@ const RECIPES: Record<SoundName, (ctx: AudioContext, out: AudioNode, t: number) 
     [E5, G5, C6].forEach((freq, i) => tone(c, o, t, { at: i * 0.12, freq, dur: 0.35, gain: 0.25 }));
     return 0.6;
   },
+  /** 메인 "게임 시작": 방망이 소리 → 응원 소리(올라가는 네 음 + 두 음) + 관중 함성 */
+  playBall: (c, o, t) => {
+    noise(c, o, t, { at: 0, dur: 0.07, filter: 'highpass', freq: 1800, gain: 0.5 });
+    [G4, C5, E5, G5].forEach((freq, i) => tone(c, o, t, { at: 0.1 + i * 0.1, freq, dur: 0.09, type: 'square', gain: 0.12 }));
+    tone(c, o, t, { at: 0.56, freq: E5, dur: 0.1, type: 'square', gain: 0.12 });
+    tone(c, o, t, { at: 0.68, freq: G5, dur: 0.42, type: 'triangle', gain: 0.3 });
+    noise(c, o, t, { at: 0.5, dur: 0.7, filter: 'bandpass', freq: 900, gain: 0.14, attack: 0.25 });
+    return 1.2;
+  },
 };
+
+/**
+ * 누르는 순간에 낼 소리 — 그 누름으로 장치가 막 켜지는 중이면(첫 누름·키보드 Enter) 켜진 뒤에 낸다.
+ * 소리가 꺼져 있으면 장치를 만들지 않는다.
+ */
+export function playOnPress(name: SoundName): void {
+  if (!settingsNow().on) return;
+  const ctx = ensureContext();
+  if (ctx && ctx.state !== 'running') void ctx.resume().then(() => playSound(name));
+  else playSound(name);
+}
 
 /** 소리를 낸다. 꺼져 있거나 장치가 아직 안 켜졌으면 조용히 지나간다. `delay`초 뒤에 */
 export function playSound(name: SoundName, delay = 0): void {
