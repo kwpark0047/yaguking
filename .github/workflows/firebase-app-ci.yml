@@ -65,7 +65,8 @@ jobs:
   # 보안 규칙·정리 작업 — Firestore 에뮬레이터(JDK 21)
   emulators:
     # PR을 합친 뒤의 push에서는 건너뛴다(PR에서 이미 통과)
-    if: ${{ github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'Merge #') || startsWith(github.event.head_commit.message, 'Merge pull request #')) }}
+    # 따옴표 필수 — YAML에서 따옴표 없는 ' #'는 주석으로 읽힌다
+    if: "github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'Merge #') || startsWith(github.event.head_commit.message, 'Merge pull request #'))"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -94,7 +95,8 @@ jobs:
       - run: npm run test:ops
 
   e2e:
-    if: ${{ github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'Merge #') || startsWith(github.event.head_commit.message, 'Merge pull request #')) }}
+    # 따옴표 필수 — YAML에서 따옴표 없는 ' #'는 주석으로 읽힌다
+    if: "github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'Merge #') || startsWith(github.event.head_commit.message, 'Merge pull request #'))"
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [static]
