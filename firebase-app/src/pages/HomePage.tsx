@@ -12,6 +12,7 @@ import { ReminderCard } from '@/components/home/ReminderCard';
 import { HeroSky } from '@/components/home/HeroSky';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
+import { StartButton } from '@/components/home/StartButton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { NoticeBanner } from '@/components/NoticeBanner';
 import { engagementOpen, engagementStart, kstDate } from '@/lib/game/attendance';
@@ -60,9 +61,7 @@ export function HomePage() {
                   : '문제는 투구, 빨리 맞히면 홈런! 3아웃이면 1이닝이 끝나요.'}
             </p>
             <div className="flex w-full max-w-sm flex-col gap-2">
-              <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
-                게임 시작 <span aria-hidden="true">▶</span>
-              </Link>
+              <StartButton style={primary} />
               <KboQuizCard style={secondary} />
               <DailyLink style={secondary} />
               {user && (
