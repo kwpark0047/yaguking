@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { currentSetId } from '@/lib/kbo/set';
 import {
   answerQuestion,
   clearEmulators,
@@ -75,6 +76,8 @@ async function strikeOut(page: Page) {
 
 test('비회원: 1이닝 한 판 = 읽기 2(남은 판·누적 XP), 쓰기 7 · 오답노트 열기 = 노트 수', async ({ page }) => {
   test.setTimeout(60_000);
+  // 어제의 KBO 퀴즈(11-20부터) 홈 카드가 최근 7일 묶음을 읽는다 — 경기 읽기만 재려고 오늘은 이미 확인한 것으로 둔다
+  await page.addInitScript((day) => localStorage.setItem('yk_kbo_card', JSON.stringify({ day, at: Date.now(), current: true, card: null })), currentSetId());
   await page.goto('/');
   await waitForPublicHome(page);
   const game = await measure(page, '비회원 개인 경기 1판(3문항 틀림)', async () => {

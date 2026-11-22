@@ -127,7 +127,10 @@ test('비밀번호 재설정은 가입 여부와 상관없이 같은 안내를 �
 for (const path of ['/', '/auth?mode=signup', '/auth?mode=login', '/auth/reset', '/privacy']) {
   test(`${path}: axe critical/serious 위반 0, 가로 스크롤 없음`, async ({ page }) => {
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    // 홈은 어제의 KBO 퀴즈 카드(11-20부터)가 Firestore 연결을 열어 두어 networkidle이 오지 않는다 — 화면이 그려질 때까지만
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('main').first()).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(500);
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
