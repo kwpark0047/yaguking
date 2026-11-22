@@ -8,6 +8,7 @@ import { AdSlot } from '@/components/ads/AdSlot';
 import { DailyLink } from '@/components/home/DailyLink';
 import { KboQuizCard } from '@/components/home/KboQuizCard';
 import { MemberPerks } from '@/components/home/MemberPerks';
+import { eventOn, invitesOpen } from '@/lib/growth/invite';
 import { ReminderCard } from '@/components/home/ReminderCard';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
@@ -84,6 +85,11 @@ export function HomePage() {
               {user && open && (
                 <Link to="/ranking" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
                   월간 등수
+                </Link>
+              )}
+              {member && invitesOpen() && (
+                <Link to="/invite" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                  친구 초대{eventOn(kstDate()) ? ` · ${eventOn(kstDate())!.name}` : ''}
                 </Link>
               )}
               {user && (

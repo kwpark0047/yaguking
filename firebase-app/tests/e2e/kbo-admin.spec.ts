@@ -81,11 +81,12 @@ test('묶음을 확인해 승인·철회·보류하고, 안내와 돌아보기 �
   await expect(detail.getByRole('button', { name: '보류됨' })).toBeDisabled();
   await expect(detail.getByRole('button', { name: '승인', exact: true })).toBeEnabled();
 
-  // 경기 없음 안내 — 시작일 묶음
+  // 경기 없음 안내 — 여는 날 기본값은 시작일과 오늘(한국 날짜) 중 늦은 날(시작일이 지나면 오늘)
   const creator = page.getByRole('region', { name: '새 묶음' });
-  await expect(creator.getByLabel('여는 날(그날 06:00)')).toHaveValue(KBO_QUIZ_START);
+  const firstDay = [KBO_QUIZ_START, new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)].sort().at(-1)!;
+  await expect(creator.getByLabel('여는 날(그날 06:00)')).toHaveValue(firstDay);
   await creator.getByRole('button', { name: '경기 없음 안내' }).click();
-  await expect.poll(async () => (await readDoc(`kboSets/${KBO_QUIZ_START}`))?.kind).toEqual({ stringValue: 'no-game' });
+  await expect.poll(async () => (await readDoc(`kboSets/${firstDay}`))?.kind).toEqual({ stringValue: 'no-game' });
 
   // 돌아보기 — 출처 없이는 더할 수 없다
   await creator.getByLabel('여는 날(그날 06:00)').fill('2026-12-02');

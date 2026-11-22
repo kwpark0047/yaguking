@@ -27,6 +27,7 @@ const SettingsPage = lazy(() =>
 );
 const PlayPage = lazy(() => import('@/pages/PlayPage').then((module) => ({ default: module.PlayPage })));
 const DailyPage = lazy(() => import('@/pages/DailyPage').then((module) => ({ default: module.DailyPage })));
+const InvitePage = lazy(() => import('@/pages/InvitePage').then((module) => ({ default: module.InvitePage })));
 const LevelTestPage = lazy(() =>
   import('@/pages/LevelTestPage').then((module) => ({ default: module.LevelTestPage })),
 );
@@ -173,6 +174,7 @@ export function App() {
             <Route path="/official" element={<Lazy><OfficialPage /></Lazy>} />
             <Route path="/room" element={<Lazy><RoomLobbyPage /></Lazy>} />
             <Route path="/room/:code" element={<Lazy><RoomPage /></Lazy>} />
+            <Route path="/invite" element={<Lazy><InvitePage /></Lazy>} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </AnimatedRoutes>

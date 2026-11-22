@@ -31,7 +31,7 @@ describe('유입 출처 — 앱·운영자 PC·규칙·처리방침이 같은 �
   it('처리방침 개정판 시행일 = 기록을 시작하는 날, KBO 퀴즈 판 다음 판, 7일 전 공지가 가능한 날', () => {
     expect(ACQUISITION_PRIVACY_EFFECTIVE).toBe(ACQUISITION_START);
     expect(upcomingVersion(KBO_PRIVACY_EFFECTIVE)?.effective).toBe(ACQUISITION_START);
-    const latest = PRIVACY_VERSIONS.at(-1)!;
+    const latest = PRIVACY_VERSIONS.find((version) => version.effective === ACQUISITION_START)!;
     expect(latest.effective).toBe(ACQUISITION_START);
     const text = JSON.stringify(latest.sections);
     expect(text).toContain(ACQUISITION_KEY);
@@ -41,8 +41,9 @@ describe('유입 출처 — 앱·운영자 PC·규칙·처리방침이 같은 �
   });
 
   it('처리방침 개정은 이전 판의 위탁·국외 이전·제3자 제공·권리·아동·보안을 바꾸지 않는다', () => {
-    const before = PRIVACY_VERSIONS.at(-2)!;
-    const latest = PRIVACY_VERSIONS.at(-1)!;
+    const index = PRIVACY_VERSIONS.findIndex((version) => version.effective === ACQUISITION_START);
+    const before = PRIVACY_VERSIONS[index - 1]!;
+    const latest = PRIVACY_VERSIONS[index]!;
     const of = (version: typeof latest, id: string) => JSON.stringify(version.sections.find((section) => section.id === id));
     for (const id of ['outsourcing', 'overseas', 'third-party', 'rights', 'children', 'security', 'public']) expect(of(latest, id)).toBe(of(before, id));
   });

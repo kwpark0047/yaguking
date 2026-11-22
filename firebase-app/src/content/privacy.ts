@@ -3,6 +3,15 @@ import { KBO_ATTEMPT_RETENTION_DAYS, KBO_QUIZ_START } from '@/lib/kbo/set';
 import { WELCOME_BONUS_POINTS } from '@/lib/game/welcome';
 import { HINT_START } from '@/lib/game/hints';
 import { ACQUISITION_KEY, ACQUISITION_START } from '@/lib/growth/acquisition';
+import {
+  INVITE_ACTIVE_DAYS,
+  INVITE_ACTIVE_WINDOW_DAYS,
+  INVITE_KEY,
+  INVITE_LINK_WITHIN_DAYS,
+  INVITE_POINTS,
+  INVITE_REMEMBER_DAYS,
+  INVITE_START,
+} from '@/lib/growth/invite';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
 import {
   GUEST_RETENTION_DAYS,
@@ -36,7 +45,7 @@ export const PRIVACY_OPERATOR = '위마켓';
 export const PRIVACY_OFFICER = { name: '박강원', phone: '010-3890-0047' } as const;
 
 /** 이 앱이 기기 저장소(localStorage)에 쓰는 키 — 단위 테스트가 코드와 대조한다 */
-export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily', 'yk_kbo_card', 'yk_utm'] as const;
+export const DEVICE_STORAGE_KEYS = ['yk_seen_questions', 'yk_room_nickname', 'yk_effects', 'yk_sound', 'yk_pwa', 'yk_text', 'yk_theme', 'yk_daily', 'yk_kbo_card', 'yk_utm', 'yk_invite'] as const;
 
 export interface PolicyTable {
   head: readonly string[];
@@ -505,6 +514,69 @@ function amendAcquisition(sections: readonly PolicySection[]): PolicySection[] {
   });
 }
 
+/**
+ * 친구 초대 1단계(야구왕 친구 초대·팀 플레이 기획, 운영자 결정 2026-11-18) — 초대 코드, 초대 관계와 진행 상태, 보너스 포인트.
+ * 이날부터 앱이 초대 링크를 읽고 코드를 만든다(src/lib/growth/invite.ts INVITE_START·firestore.rules·ops/invite.mjs와 같은 날 — 단위 테스트).
+ * 시행 7일 전 공지.
+ */
+export const INVITE_PRIVACY_EFFECTIVE = INVITE_START;
+
+function amendInvites(sections: readonly PolicySection[]): PolicySection[] {
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return { ...section, items: [...(section.items ?? []), '친구 초대 운영 — 초대 관계 확인, 초대받은 회원의 활동 확인, 보너스 포인트 지급과 부정 사용 방지'] };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              [
+                '회원 활동(친구 초대)',
+                `내 초대 코드, 가입할 때 넣은 초대 코드와 넣은 시각, 초대 진행 상태(가입·보상 완료·기간 지남·취소)와 활동이 확인된 날, 초대·보너스 포인트 합계와 칭호. 활동 확인에는 이미 기록하는 경기한 날짜만 쓴다(${INVITE_ACTIVE_WINDOW_DAYS}일 안에 ${INVITE_ACTIVE_DAYS}일)`,
+                '초대 화면을 처음 열 때(코드), 초대 링크로 가입하거나 코드를 넣을 때, 운영자가 매일 계산',
+              ],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [...section.table!.rows, ['초대 코드·초대 진행 기록·보너스 합계', '회원 탈퇴 시까지. 탈퇴하면 코드·합계는 바로, 초대 진행 기록은 다음 날 정리 작업이 삭제']],
+          },
+        };
+      case 'public':
+        return {
+          ...section,
+          items: [
+            ...(section.items ?? []),
+            '친구 초대: 나를 초대한 회원에게 내 닉네임과 초대 진행 상태(가입·보상 완료 등)가 보입니다. 초대 코드로는 다른 회원의 정보를 찾아볼 수 없습니다.',
+          ],
+        };
+      case 'device':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows.slice(0, -3),
+              [INVITE_KEY, '초대 링크로 들어왔을 때 받은 초대 코드 — 가입할 때 한 번 연결하려고(연결하면 지움)', `${INVITE_REMEMBER_DAYS}일`],
+              ...section.table!.rows.slice(-3),
+            ],
+          },
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${INVITE_PRIVACY_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
 /** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
 export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
   { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
@@ -559,6 +631,17 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       `이 기록은 계정과 함께 보관합니다(비회원은 마지막 이용 후 ${GUEST_RETENTION_DAYS}일, 가입하면 탈퇴 시까지). 운영자는 출처별 합계만 봅니다.`,
       `출처를 기록하기 전까지 이번 방문 동안 브라우저 저장소에 ${ACQUISITION_KEY}로 둡니다(창을 닫으면 지워짐).`,
       '제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+  {
+    effective: INVITE_PRIVACY_EFFECTIVE,
+    sections: amendInvites(amendAcquisition(amendKboQuiz(amendHints(amendEngagement(amend(PRIVACY_SECTIONS)))))),
+    changes: [
+      '친구 초대를 시작합니다. 회원마다 초대 코드를 만들고, 초대 링크로 가입하거나 가입 후 ' + INVITE_LINK_WITHIN_DAYS + '일 안에 코드를 넣으면 누가 누구를 초대했는지 기록합니다.',
+      `초대받은 회원이 ${INVITE_ACTIVE_WINDOW_DAYS}일 안에 ${INVITE_ACTIVE_DAYS}일 경기하면(이미 기록하는 경기 날짜로 확인) 초대한 회원에게 ${INVITE_POINTS.inviter}P, 초대받은 회원에게 ${INVITE_POINTS.invitee}P 보너스 포인트를 줍니다. 보너스 포인트는 힌트에만 쓰고 월간 등수에는 넣지 않습니다.`,
+      '나를 초대한 회원에게 내 닉네임과 초대 진행 상태가 보입니다. 연락처·전화번호는 받지 않습니다.',
+      `초대 링크로 들어오면 받은 코드를 가입할 때까지 브라우저 저장소에 ${INVITE_KEY}로 최대 ${INVITE_REMEMBER_DAYS}일 둡니다.`,
+      '이 기록은 회원 탈퇴 시까지 보관하고, 탈퇴하면 삭제합니다. 제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },
 ];
