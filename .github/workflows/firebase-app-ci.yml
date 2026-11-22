@@ -3,13 +3,26 @@ name: Firebase판 CI
 # firebase-app/ 검사만 한다(배포하지 않는다). 배포는 firebase-deploy.yml — 꺼져 있다.
 # 에뮬레이터만 쓰고 실제 Firebase 프로젝트에 닿지 않는다(demo-yaguking).
 # 저장소의 기본 브랜치가 작업 브랜치(feat/p1-one-inning)라 그 브랜치에 올릴 때도 돈다(2026-11-01 — 그전에는 main에만 걸려 한 번도 안 돌았다).
-# 공개 저장소라 GitHub Actions 사용료가 없다. 손으로 다시 돌릴 때는 Actions › Firebase판 CI › Run workflow.
+# 손으로 다시 돌릴 때는 Actions › Firebase판 CI › Run workflow.
+#
+# Actions 사용량 줄이기(2026-11-18):
+# - 문서(*.md·docs/)만 바꾸면 돌지 않는다
+# - PR을 합친 뒤의 push("Merge #…"·"Merge pull request #…")에서는 PR에서 이미 통과한 에뮬레이터·E2E를 다시 돌리지 않는다(static만)
+# - node_modules·Playwright 브라우저·Firebase 에뮬레이터 파일을 캐시해 설치 시간을 줄인다(키 = package-lock.json)
 on:
   push:
     branches: [main, feat/p1-one-inning]
-    paths: ['firebase-app/**', '.github/workflows/firebase-app-ci.yml']
+    paths:
+      - 'firebase-app/**'
+      - '!firebase-app/**/*.md'
+      - '!firebase-app/docs/**'
+      - '.github/workflows/firebase-app-ci.yml'
   pull_request:
-    paths: ['firebase-app/**', '.github/workflows/firebase-app-ci.yml']
+    paths:
+      - 'firebase-app/**'
+      - '!firebase-app/**/*.md'
+      - '!firebase-app/docs/**'
+      - '.github/workflows/firebase-app-ci.yml'
   workflow_dispatch:
 
 permissions:
@@ -33,9 +46,14 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: firebase-app/package-lock.json
-      - run: npm ci
+      # node_modules 통째 캐시 — 잠금 파일이 같으면 npm ci를 건너뛴다
+      - id: modules
+        uses: actions/cache@v4
+        with:
+          path: firebase-app/node_modules
+          key: fb-node-modules-${{ runner.os }}-node22-${{ hashFiles('firebase-app/package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
@@ -46,6 +64,9 @@ jobs:
 
   # 보안 규칙·정리 작업 — Firestore 에뮬레이터(JDK 21)
   emulators:
+    # PR을 합친 뒤의 push에서는 건너뛴다(PR에서 이미 통과)
+    # 따옴표 필수 — YAML에서 따옴표 없는 ' #'는 주석으로 읽힌다
+    if: "github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'Merge #') || startsWith(github.event.head_commit.message, 'Merge pull request #'))"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -57,13 +78,25 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: firebase-app/package-lock.json
-      - run: npm ci
+      # node_modules 통째 캐시 — 잠금 파일이 같으면 npm ci를 건너뛴다
+      - id: modules
+        uses: actions/cache@v4
+        with:
+          path: firebase-app/node_modules
+          key: fb-node-modules-${{ runner.os }}-node22-${{ hashFiles('firebase-app/package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      # Firebase 에뮬레이터(Firestore jar 등) 내려받기 캐시
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: fb-emulators-${{ runner.os }}-${{ hashFiles('firebase-app/package-lock.json') }}
       - run: npm run test:rules
       - run: npm run test:ops
 
   e2e:
+    # 따옴표 필수 — YAML에서 따옴표 없는 ' #'는 주석으로 읽힌다
+    if: "github.event_name != 'push' || !(startsWith(github.event.head_commit.message, 'Merge #') || startsWith(github.event.head_commit.message, 'Merge pull request #'))"
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [static]
@@ -76,10 +109,29 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: firebase-app/package-lock.json
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # node_modules 통째 캐시 — 잠금 파일이 같으면 npm ci를 건너뛴다
+      - id: modules
+        uses: actions/cache@v4
+        with:
+          path: firebase-app/node_modules
+          key: fb-node-modules-${{ runner.os }}-node22-${{ hashFiles('firebase-app/package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      # Firebase 에뮬레이터(Firestore jar 등) 내려받기 캐시
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: fb-emulators-${{ runner.os }}-${{ hashFiles('firebase-app/package-lock.json') }}
+      # Playwright 브라우저 캐시 — 맞으면 시스템 의존성만 설치
+      - id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: fb-playwright-${{ runner.os }}-${{ hashFiles('firebase-app/package-lock.json') }}
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.browsers.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       # github 보고: 실패한 테스트가 Actions 요약의 주석(annotation)으로 남는다
       - run: npx playwright test --reporter=github,list
       - uses: actions/upload-artifact@v5
