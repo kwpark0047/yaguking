@@ -359,3 +359,9 @@
 - 실제 배포 `hosting:app`만(규칙·관리자 변경 없음, 메시지 "ec5cfde home motion & start button"): 앱 `index-BaaV0aj7.js` = 로컬 빌드, `sw.js` 200, 오류 0
 - 미니앱판: 같은 단추(`StartButton`)가 들어갔지만 별도 빌드(`npm run toss:build` → 앱인토스 콘솔 제출)라 이번 배포에는 없다. 다음 미니앱 제출 때 함께 나간다
 - 새 기기 저장소 키 없음(처리방침 변경 없음)
+
+## 2026-11-23 — 관리자 다시 배포(기능 변경 없음)
+
+- 운영자 요청("커밋 푸시 PR 머지 배포"). PR #13(배포 기록) 머지 e2f228d
+- 운영 폴더 e2f228d로 빌드해 실제 사이트와 비교: 앱 `index-BaaV0aj7.js` = 실제(그대로). 관리자는 실제 `index-BiAZLJ5w.js`(친구 초대 배포 때) ≠ 로컬 `index-C1zZL1Gh.js` — 그 뒤 앱과 함께 쓰는 코드(바탕 움직임 스타일·시작 소리)가 바뀌었는데 메인 움직임 배포가 `hosting:app`만이었다
+- 배포 전 점검 통과 → 미리보기(관리자): 로그인 화면, 페이지 오류 0 → 실제 `hosting:admin`만(메시지 "e2f228d admin rebuild (shared home styles/sound)"): 관리자 `index-C1zZL1Gh.js` = 로컬 빌드. 규칙·앱 변경 없음
