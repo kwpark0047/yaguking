@@ -21,7 +21,7 @@ node ops\admin-cli.mjs news --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&
 rem Monthly ranking: attendance points through yesterday into leaderboards/YYYYMM; on the 1st, finalize last month and give titles.
 node ops\admin-cli.mjs monthly --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Friend invites: link -> ledger, activity check (2 days within 7), bonus points per member in users/{uid}/meta/invites (before the wallet).
-node opsadmin-cli.mjs invites --project=yaguking-bc25c >> opslogscleanup.log 2>&1
+node ops\admin-cli.mjs invites --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Hint wallet: total attendance points through yesterday into users/{uid}/wallet/main (nothing before the hint start date).
 node ops\admin-cli.mjs wallet --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem News feed: read the press RSS feeds the admin registered and marked terms-checked (titles, links, short summaries only; robots.txt respected).
