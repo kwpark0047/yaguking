@@ -10,8 +10,10 @@ import { KboQuizCard } from '@/components/home/KboQuizCard';
 import { MemberPerks } from '@/components/home/MemberPerks';
 import { eventOn, invitesOpen } from '@/lib/growth/invite';
 import { ReminderCard } from '@/components/home/ReminderCard';
+import { HeroSky } from '@/components/home/HeroSky';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
+import { StartButton } from '@/components/home/StartButton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { NoticeBanner } from '@/components/NoticeBanner';
 import { engagementOpen, engagementStart, kstDate } from '@/lib/game/attendance';
@@ -44,6 +46,7 @@ export function HomePage() {
       <SiteHeader />
       <AdSlot slot="home-top" />
       <main className="home-hero flex flex-col items-center gap-4 px-5 py-10 text-center">
+        <HeroSky />
         <img src={emblem} alt="야구왕" width={349} height={440} className="h-44 w-auto" />
         <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
 
@@ -59,9 +62,7 @@ export function HomePage() {
                   : '문제는 투구, 빨리 맞히면 홈런! 3아웃이면 1이닝이 끝나요.'}
             </p>
             <div className="flex w-full max-w-sm flex-col gap-2">
-              <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
-                게임 시작 <span aria-hidden="true">▶</span>
-              </Link>
+              <StartButton style={primary} />
               <KboQuizCard style={secondary} />
               <DailyLink style={secondary} />
               {user && (

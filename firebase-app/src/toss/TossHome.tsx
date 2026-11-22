@@ -7,6 +7,7 @@ import { EffectsSetting, SoundSetting } from '@/components/effects/Effects';
 import { DailyLink } from '@/components/home/DailyLink';
 import { HowToPlay } from '@/components/home/HowToPlay';
 import { NewsPreview } from '@/components/home/NewsPreview';
+import { StartButton } from '@/components/home/StartButton';
 import { NoticeBanner } from '@/components/NoticeBanner';
 import { GUEST_DAILY_GAMES } from '@/lib/game/guestLimit';
 
@@ -28,9 +29,7 @@ export function TossHome() {
         <h1 className="font-cute text-4xl break-keep">야구 상식으로 홈런 치자!</h1>
         <p className="text-sm text-ink-2 break-keep">문제는 투구, 빨리 맞히면 홈런! 3아웃이면 1이닝이 끝나요.</p>
         <div className="flex w-full max-w-sm flex-col gap-2">
-          <Link to="/play" className="squishy font-cute flex min-h-16 items-center justify-center gap-2 text-2xl" style={primary}>
-            게임 시작 <span aria-hidden="true">▶</span>
-          </Link>
+          <StartButton style={primary} />
           <DailyLink style={secondary} />
           {user && (
             <Suspense fallback={null}>
