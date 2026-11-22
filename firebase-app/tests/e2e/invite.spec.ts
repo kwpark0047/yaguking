@@ -64,7 +64,8 @@ test('초대받은 사람: 링크로 들어와 가입하면 코드가 자동으�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('yk_invite') ?? 'null')?.code)).toBe(inviterCode);
   const uid = await newMember(page);
   await expect.poll(async () => (await db.doc(`users/${uid}`).get()).get('invitedBy'), { timeout: 15_000 }).toBe(inviterCode);
-  expect(await page.evaluate(() => localStorage.getItem('yk_invite'))).toBeNull();
+  // 서버 쓰기가 보인 뒤 기기에서 지우기까지 아주 짧은 틈이 있다 — 기다려서 확인
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('yk_invite')), { timeout: 10_000 }).toBeNull();
 });
 
 test('받은 코드 직접 넣기: 내 코드·없는 코드는 안내, 맞는 코드는 한 번만', async ({ page }) => {
