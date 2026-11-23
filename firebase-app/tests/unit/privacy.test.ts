@@ -15,6 +15,7 @@ import {
   KBO_PRIVACY_EFFECTIVE,
   ACQUISITION_PRIVACY_EFFECTIVE,
   INVITE_PRIVACY_EFFECTIVE,
+  SQUAD_PRIVACY_EFFECTIVE,
   versionInForce,
   PRIVACY_DRAFT,
   PRIVACY_EFFECTIVE_DATE,
@@ -106,12 +107,13 @@ describe('처리방침 개정(2026-11-03, 관리자 열람)', () => {
     expect(versionInForce('2026-11-03').effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-10-27')?.effective).toBe(ADMIN_PRIVACY_EFFECTIVE);
     expect(upcomingVersion('2026-11-03')?.effective).toBe(ENGAGEMENT_PRIVACY_EFFECTIVE);
-    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE, HINT_PRIVACY_EFFECTIVE, KBO_PRIVACY_EFFECTIVE, ACQUISITION_PRIVACY_EFFECTIVE, INVITE_PRIVACY_EFFECTIVE]);
+    expect(upcomingVersions('2026-10-29').map((version) => version.effective)).toEqual([ADMIN_PRIVACY_EFFECTIVE, ENGAGEMENT_PRIVACY_EFFECTIVE, HINT_PRIVACY_EFFECTIVE, KBO_PRIVACY_EFFECTIVE, ACQUISITION_PRIVACY_EFFECTIVE, INVITE_PRIVACY_EFFECTIVE, SQUAD_PRIVACY_EFFECTIVE]);
     expect(upcomingVersion(ENGAGEMENT_PRIVACY_EFFECTIVE)?.effective).toBe(HINT_PRIVACY_EFFECTIVE);
     expect(upcomingVersion(HINT_PRIVACY_EFFECTIVE)?.effective).toBe(KBO_PRIVACY_EFFECTIVE);
     expect(upcomingVersion(KBO_PRIVACY_EFFECTIVE)?.effective).toBe(ACQUISITION_PRIVACY_EFFECTIVE);
     expect(upcomingVersion(ACQUISITION_PRIVACY_EFFECTIVE)?.effective).toBe(INVITE_PRIVACY_EFFECTIVE);
-    expect(upcomingVersion(INVITE_PRIVACY_EFFECTIVE)).toBeNull();
+    expect(upcomingVersion(INVITE_PRIVACY_EFFECTIVE)?.effective).toBe(SQUAD_PRIVACY_EFFECTIVE);
+    expect(upcomingVersion(SQUAD_PRIVACY_EFFECTIVE)).toBeNull();
     expect(kstDateKey(Date.UTC(2026, 10, 2, 15))).toBe('2026-11-03'); // 한국 시간 11월 3일 0시
   });
 

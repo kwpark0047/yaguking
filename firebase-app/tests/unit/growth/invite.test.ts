@@ -56,7 +56,8 @@ describe('친구 초대 — 앱·운영자 PC·규칙·처리방침이 같은 �
     expect(INVITE_PRIVACY_EFFECTIVE).toBe(INVITE_START);
     expect(upcomingVersion(ACQUISITION_PRIVACY_EFFECTIVE)?.effective).toBe(INVITE_START);
     expect(kst(INVITE_START) - kst('2026-11-18')).toBeGreaterThanOrEqual(7 * 86_400_000);
-    const latest = PRIVACY_VERSIONS.at(-1)!;
+    // 초대 판(다음 판 — 팀 판 — 은 tests/unit/squad.test.ts)
+    const latest = PRIVACY_VERSIONS.find((version) => version.effective === INVITE_START)!;
     expect(latest.effective).toBe(INVITE_START);
     const text = JSON.stringify(latest.sections);
     expect(text).toContain(INVITE_KEY);
@@ -67,8 +68,9 @@ describe('친구 초대 — 앱·운영자 PC·규칙·처리방침이 같은 �
   });
 
   it('개정은 위탁·국외 이전·제3자 제공·권리·아동·보안을 바꾸지 않는다(공개 범위에 초대 한 줄만 더함)', () => {
-    const before = PRIVACY_VERSIONS.at(-2)!;
-    const latest = PRIVACY_VERSIONS.at(-1)!;
+    const at = PRIVACY_VERSIONS.findIndex((version) => version.effective === INVITE_START);
+    const before = PRIVACY_VERSIONS[at - 1]!;
+    const latest = PRIVACY_VERSIONS[at]!;
     const of = (version: typeof latest, id: string) => version.sections.find((section) => section.id === id);
     for (const id of ['outsourcing', 'overseas', 'third-party', 'rights', 'children', 'security']) expect(JSON.stringify(of(latest, id))).toBe(JSON.stringify(of(before, id)));
     expect(of(latest, 'public')!.items!.slice(0, -1)).toEqual(of(before, 'public')!.items);

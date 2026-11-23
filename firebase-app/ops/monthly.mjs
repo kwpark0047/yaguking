@@ -141,7 +141,7 @@ export function histogramOf(ranked) {
 
 /** 회원 프로필(닉네임·최애 구단·숨기기) — 닉네임이 없는 회원은 등수에 넣지 않는다 */
 async function loadMembers(db) {
-  const snapshot = await db.collection('users').select('nickname', 'favoriteTeams', 'rankingHidden').get();
+  const snapshot = await db.collection('users').select('nickname', 'favoriteTeams', 'rankingHidden', 'guardianConsentAt').get();
   const members = new Map();
   for (const item of snapshot.docs) {
     const nickname = item.get('nickname');
@@ -150,7 +150,8 @@ async function loadMembers(db) {
     members.set(item.id, {
       nickname,
       team: Array.isArray(teams) && typeof teams[0] === 'string' ? teams[0] : null,
-      hidden: item.get('rankingHidden') === true,
+      // 보호자 동의를 받은 만 14세 미만 자녀는 늘 '익명 선수'(src/lib/auth/guardian.ts)
+      hidden: item.get('rankingHidden') === true || item.get('guardianConsentAt') != null,
     });
   }
   return { members, uids: new Set(snapshot.docs.map((item) => item.id)) };
@@ -343,11 +344,19 @@ export async function runWallets({ db, now = Date.now(), start = ENGAGEMENT_STAR
     const refs = chunk.map((uid) => db.doc(`users/${uid}/wallet/main`));
     // 친구 초대 보너스(ops/invite.mjs가 먼저 계산) — 힌트에 쓰는 포인트에만 더한다(월간 등수에는 넣지 않음)
     const bonusRefs = chunk.map((uid) => db.doc(`users/${uid}/meta/invites`));
-    const [wallets, earned, bonuses] = await Promise.all([db.getAll(...refs), Promise.all(chunk.map(earnedOf)), db.getAll(...bonusRefs)]);
+    // 팀 주간 리그 보너스(ops/squad.mjs가 먼저 계산) — 마찬가지로 힌트에만
+    const squadRefs = chunk.map((uid) => db.doc(`users/${uid}/meta/squads`));
+    const [wallets, earned, bonuses, squadBonuses] = await Promise.all([
+      db.getAll(...refs),
+      Promise.all(chunk.map(earnedOf)),
+      db.getAll(...bonusRefs),
+      db.getAll(...squadRefs),
+    ]);
     const batch = db.batch();
     let writes = 0;
     wallets.forEach((wallet, index) => {
-      const value = earned[index] + welcome + Math.max(0, Number(bonuses[index].get('bonus') ?? 0));
+      const value =
+        earned[index] + welcome + Math.max(0, Number(bonuses[index].get('bonus') ?? 0)) + Math.max(0, Number(squadBonuses[index].get('bonus') ?? 0));
       if (wallet.exists ? wallet.get('earned') === value : value === 0) return;
       batch.set(
         refs[index],

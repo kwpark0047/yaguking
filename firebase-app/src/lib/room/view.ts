@@ -7,6 +7,9 @@ export interface RoomView {
   maxPlayers: number;
   playerIds: string[];
   questionIds: string[];
+  /** 팀 대항전(3단계) */
+  teamMatch: boolean;
+  squads: string[];
 }
 
 const STATUSES: readonly RoomDoc['status'][] = ['waiting', 'playing', 'finished'];
@@ -22,8 +25,17 @@ const isStringList = (value: unknown): value is string[] =>
  */
 export function toRoomView(code: string, data: Partial<Record<keyof RoomDoc, unknown>> | undefined): RoomView | null {
   if (!data) return null;
-  const { hostUid, status, maxPlayers, playerIds, questionIds } = data;
+  const { hostUid, status, maxPlayers, playerIds, questionIds, teamMatch, squads } = data;
   if (typeof hostUid !== 'string' || !STATUSES.includes(status as RoomDoc['status'])) return null;
   if (typeof maxPlayers !== 'number' || !isStringList(playerIds) || !isStringList(questionIds)) return null;
-  return { code, hostUid, status: status as RoomDoc['status'], maxPlayers, playerIds, questionIds };
+  return {
+    code,
+    hostUid,
+    status: status as RoomDoc['status'],
+    maxPlayers,
+    playerIds,
+    questionIds,
+    teamMatch: teamMatch === true,
+    squads: isStringList(squads) ? squads : [],
+  };
 }

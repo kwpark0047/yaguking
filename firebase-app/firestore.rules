@@ -34,11 +34,18 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(uid);
     }
 
-    // 만 14세 확인을 마친 회원(15 문서 §3). 회원 기록 쓰기는 모두 이걸 요구한다.
+    // 만 14세 확인을 마친 회원(15 문서 §3) 또는 보호자 동의를 받은 만 14세 미만 자녀(운영자 PC만 guardianConsentAt을 쓴다 —
+    // src/lib/auth/guardian.ts). 회원 기록 쓰기는 모두 이걸 요구한다.
     function ageConfirmed() {
       return isMember()
         && exists(userPath(request.auth.uid))
-        && get(userPath(request.auth.uid)).data.get('ageConfirmedAt', null) != null;
+        && (get(userPath(request.auth.uid)).data.get('ageConfirmedAt', null) != null
+            || get(userPath(request.auth.uid)).data.get('guardianConsentAt', null) != null);
+    }
+
+    // 보호자 동의를 받은 자녀 계정 — 가족팀에만 합류, 팀을 만들거나 감독·코치를 맡지 않는다
+    function isChildAccount() {
+      return get(userPath(request.auth.uid)).data.get('guardianConsentAt', null) != null;
     }
 
     // 기록을 남길 수 있는 사람: 비회원(익명) 또는 확인을 마친 회원
@@ -109,21 +116,213 @@ service cloud.firestore {
       allow read: if isMember() && (resource.data.inviter == request.auth.uid || inviteeUid == request.auth.uid);
     }
 
+    // ── 팀(2·3단계, src/lib/squad/squad.ts) — 코드에서는 KBO 구단과 헷갈리지 않게 squad. 팀 코드가 곧 문서 ID ──
+    // 모든 쓰기는 한 묶음: 팀 문서의 인원(size)·변경 표시(op {uid, t: in|out})와 팀원 자리 생기기·없어지기가 짝이 맞아야 한다.
+    // 팀 이름의 비속어·실제 구단명은 화면이 거르고, 거르지 못한 이름은 운영자 PC가 숨긴다(hidden — 기기는 못 바꾼다).
+    // 주간 리그 순위·배지(badge)·팀원 주간 기록(weeks)은 운영자 PC만 쓴다(ops/squad.mjs). 시작일(12-15) 전에는 앱이 열지 않는다
+    function squadDoc(code) {
+      return /databases/$(database)/documents/squads/$(code);
+    }
+    function squadMember(code, uid) {
+      return /databases/$(database)/documents/squads/$(code)/members/$(uid);
+    }
+    function squadRequest(code, uid) {
+      return /databases/$(database)/documents/squads/$(code)/requests/$(uid);
+    }
+    function isSquadCode(code) {
+      return code is string && code.matches('^[A-HJ-NP-Z2-9]{6}$');
+    }
+    function isSquadStaff(code) {
+      return signedIn()
+        && (get(squadDoc(code)).data.captain == request.auth.uid || get(squadDoc(code)).data.coach == request.auth.uid);
+    }
+    // 팀 이름 2~12자, 앞뒤 공백·'/' 없음
+    function isSquadName(value) {
+      return value is string && value.size() >= 2 && value.size() <= 12 && value.matches('^[^/\\s]([^/]*[^/\\s])?$');
+    }
+    // 로고 설정값 — src/lib/squad/squad.ts의 목록과 같아야 한다(단위 테스트)
+    function isSquadLogo(logo) {
+      return logo is map
+        && logo.keys().hasOnly(['frame', 'symbol', 'primary', 'secondary', 'initials'])
+        && logo.keys().hasAll(['frame', 'symbol', 'primary', 'secondary', 'initials'])
+        && logo.frame in ['shield', 'circle', 'diamond', 'flag', 'pentagon', 'ball']
+        && logo.symbol in ['ball', 'bats', 'crown', 'star', 'bolt', 'flame', 'tiger', 'eagle', 'bear', 'whale', 'dragon', 'rabbit']
+        && logo.primary in ['navy', 'red', 'blue', 'green', 'black', 'purple', 'brown', 'orange', 'gold', 'sky', 'pink', 'white']
+        && logo.secondary in ['navy', 'red', 'blue', 'green', 'black', 'purple', 'brown', 'orange', 'gold', 'sky', 'pink', 'white']
+        && logo.primary != logo.secondary
+        && logo.initials is string
+        && logo.initials.matches('^([A-Z0-9]{1,3}|[가-힣])$');
+    }
+
+    match /squads/{code} {
+      // 코드를 알면 확인된 회원 누구나 하나 읽기(합류 신청), 목록은 관리자만(코드를 훑을 수 없다)
+      allow get: if ageConfirmed();
+      allow list: if isAdmin();
+
+      // 팀 만들기 = 팀 + 감독 자리 + 내 프로필의 팀 코드(한 묶음). 자녀 계정은 만들 수 없다
+      allow create: if ageConfirmed() && !isChildAccount()
+        && isSquadCode(code)
+        && request.resource.data.keys().hasOnly(['name', 'kind', 'logo', 'captain', 'coach', 'size', 'op', 'createdAt', 'updatedAt'])
+        && isSquadName(request.resource.data.name)
+        && request.resource.data.kind in ['friends', 'coworkers', 'family']
+        && isSquadLogo(request.resource.data.logo)
+        && request.resource.data.captain == request.auth.uid
+        && request.resource.data.coach == null
+        && request.resource.data.size == 1
+        && request.resource.data.op == {'uid': request.auth.uid, 't': 'in'}
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && existsAfter(squadMember(code, request.auth.uid))
+        && getAfter(userPath(request.auth.uid)).data.get('squad', null) == code;
+
+      allow update: if ageConfirmed()
+        && request.resource.data.updatedAt == request.time
+        && (squadCaptainEdits() || squadMemberJoins() || squadMemberLeaves());
+
+      // 혼자 남은 감독이 나가면 팀이 없어진다(감독 자리도 같은 묶음에서 지운다)
+      allow delete: if (ageConfirmed() && resource.data.captain == request.auth.uid && resource.data.size == 1
+        && !existsAfter(squadMember(code, request.auth.uid))) || isAdmin();
+
+      function squadChanges(keys) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+      }
+
+      // 감독: 이름·로고 바꾸기, 코치 정하기·비우기, 감독 넘기기 — 새 감독·코치는 팀원이고 자녀 계정이 아니다. 종류(kind)는 못 바꾼다
+      function squadCaptainEdits() {
+        let next = request.resource.data;
+        return request.auth.uid == resource.data.captain
+          && squadChanges(['name', 'logo', 'coach', 'captain', 'updatedAt'])
+          && isSquadName(next.name)
+          && isSquadLogo(next.logo)
+          && (next.captain == resource.data.captain
+              || (exists(squadMember(code, next.captain)) && get(squadMember(code, next.captain)).data.child == false))
+          && (next.coach == null
+              || (next.coach != next.captain && exists(squadMember(code, next.coach)) && get(squadMember(code, next.coach)).data.child == false));
+      }
+
+      // 합류 승인(감독·코치): 그 사람 자리가 같은 묶음에서 생기고 인원이 하나 는다(최대 9명)
+      function squadMemberJoins() {
+        let op = request.resource.data.op;
+        return (request.auth.uid == resource.data.captain || request.auth.uid == resource.data.coach)
+          && squadChanges(['size', 'op', 'updatedAt'])
+          && op.keys().hasOnly(['uid', 't']) && op.t == 'in' && op.uid is string
+          && request.resource.data.size == resource.data.size + 1
+          && request.resource.data.size <= 9
+          && !exists(squadMember(code, op.uid))
+          && existsAfter(squadMember(code, op.uid));
+      }
+
+      // 나가기(본인)·내보내기(감독): 그 사람 자리가 같은 묶음에서 없어지고 인원이 하나 준다.
+      // 감독이 나가면 남은 팀원(자녀 아님)에게 감독을 넘긴다. 나간 사람이나 새 감독이 코치였으면 코치를 비운다
+      function squadMemberLeaves() {
+        let op = request.resource.data.op;
+        let next = request.resource.data;
+        return squadChanges(['size', 'op', 'captain', 'coach', 'updatedAt'])
+          && op.keys().hasOnly(['uid', 't']) && op.t == 'out' && op.uid is string
+          && (op.uid == request.auth.uid || (request.auth.uid == resource.data.captain && op.uid != resource.data.captain))
+          && next.size == resource.data.size - 1
+          && exists(squadMember(code, op.uid))
+          && !existsAfter(squadMember(code, op.uid))
+          && (op.uid == resource.data.captain
+              ? (next.captain != op.uid && existsAfter(squadMember(code, next.captain))
+                 && getAfter(squadMember(code, next.captain)).data.child == false)
+              : next.captain == resource.data.captain)
+          && (op.uid == resource.data.coach || next.captain == resource.data.coach
+              ? next.coach == null
+              : next.coach == resource.data.coach);
+      }
+
+      // 팀원 자리 — 팀원끼리만 읽는다(닉네임·들어온 날·자녀 표시). 기여 점수는 운영자 PC가 weeks에 쓴다
+      match /members/{memberUid} {
+        allow read: if exists(squadMember(code, request.auth.uid)) || isAdmin();
+
+        allow create: if ageConfirmed()
+          && request.resource.data.keys().hasOnly(['nickname', 'joinedAt', 'child'])
+          && request.resource.data.joinedAt == request.time
+          && isNickname(request.resource.data.nickname)
+          && (
+            // 팀 만들기: 감독 자신(자녀 아님, 내 닉네임)
+            (memberUid == request.auth.uid
+              && !exists(squadDoc(code))
+              && getAfter(squadDoc(code)).data.captain == request.auth.uid
+              && request.resource.data.child == false
+              && request.resource.data.nickname == get(userPath(request.auth.uid)).data.nickname)
+            // 합류 승인: 신청서와 같은 닉네임·자녀 표시, 신청서는 같은 묶음에서 지운다.
+            // 승인 묶음은 감독·코치를 바꾸지 못하므로(squadMemberJoins) 묶음 뒤 팀 문서로 승인한 사람을 본다 — 규칙의 문서 읽기 한도를 아낀다
+            || squadApproves(memberUid)
+          );
+
+        function squadApproves(joiner) {
+          let squadAfter = getAfter(squadDoc(code)).data;
+          let asked = get(squadRequest(code, joiner)).data;
+          return !existsAfter(squadRequest(code, joiner))
+            && (squadAfter.captain == request.auth.uid || squadAfter.coach == request.auth.uid)
+            && squadAfter.op == {'uid': joiner, 't': 'in'}
+            && request.resource.data.nickname == asked.nickname
+            && request.resource.data.child == asked.child;
+        }
+
+        // 나가기·내보내기(팀 문서의 op와 인원이 같은 묶음에서 맞을 때), 또는 팀이 없어질 때 본인 자리
+        allow delete: if (ageConfirmed()
+          && existsAfter(squadDoc(code))
+          && getAfter(squadDoc(code)).data.op == {'uid': memberUid, 't': 'out'}
+          && getAfter(squadDoc(code)).data.size == get(squadDoc(code)).data.size - 1)
+          || (signedIn() && memberUid == request.auth.uid && !existsAfter(squadDoc(code)))
+          || isAdmin();
+      }
+
+      // 합류 신청 — 본인이 만들고(내 프로필의 팀 코드와 한 묶음), 본인·감독·코치가 읽고 지운다
+      match /requests/{requesterUid} {
+        allow get: if (signedIn() && requesterUid == request.auth.uid) || isSquadStaff(code) || isAdmin();
+        allow list: if isSquadStaff(code) || isAdmin();
+        allow create: if ageConfirmed()
+          && requesterUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['nickname', 'child', 'requestedAt'])
+          && request.resource.data.requestedAt == request.time
+          && request.resource.data.nickname == get(userPath(requesterUid)).data.nickname
+          && request.resource.data.child == isChildAccount()
+          && exists(squadDoc(code))
+          && get(squadDoc(code)).data.size < 9
+          && (!isChildAccount() || get(squadDoc(code)).data.kind == 'family')
+          && !exists(squadMember(code, requesterUid))
+          && getAfter(userPath(requesterUid)).data.get('squad', null) == code;
+        allow delete: if (signedIn() && requesterUid == request.auth.uid) || isSquadStaff(code) || isAdmin();
+      }
+
+      // 팀원 주간 기록(3단계) — 운영자 PC만 쓴다. 팀원이 읽는다
+      match /weeks/{week} {
+        allow read: if exists(squadMember(code, request.auth.uid)) || isAdmin();
+      }
+    }
+
+    // ── 팀 주간 리그 순위표(3단계) — 운영자 PC만 쓴다(매일 0시, 월요일에 지난주 확정). 확인된 회원이 읽는다 ──
+    match /squadLeague/{week} {
+      allow read: if ageConfirmed() || isAdmin();
+    }
+
     match /users/{uid} {
       allow read: if (isSelf(uid) && isMember()) || isAdmin();
 
       // 만 14세 확인 = 프로필 생성(1단계). 시각은 서버 시각만.
-      allow create: if isSelf(uid) && isMember()
-        && request.resource.data.keys().hasOnly(['ageConfirmedAt', 'createdAt'])
-        && request.resource.data.ageConfirmedAt == request.time
-        && request.resource.data.createdAt == request.time;
+      // 만 14세 미만 자녀의 보호자 동의 신청(src/lib/auth/guardian.ts)도 프로필을 만든다 — 응답 시각만, 보호자 메일 주소는
+      // 같은 묶음의 private/guardian에. 동의(guardianConsentAt)는 운영자 PC만 쓴다
+      allow create: if isSelf(uid) && isMember() && (
+        (request.resource.data.keys().hasOnly(['ageConfirmedAt', 'createdAt'])
+          && request.resource.data.ageConfirmedAt == request.time
+          && request.resource.data.createdAt == request.time)
+        || (request.resource.data.keys().hasOnly(['under14At', 'createdAt'])
+          && request.resource.data.under14At == request.time
+          && request.resource.data.createdAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(uid)/private/guardian))
+      );
 
       // 온보딩·설정(3단계)과 레벨 테스트(4단계)
       allow update: if isSelf(uid) && isMember()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['nickname', 'favoriteTeams', 'favoritePlayers', 'levelTest', 'rankingHidden', 'inviteCode', 'invitedBy', 'invitedAt', 'updatedAt'])
+             .hasOnly(['nickname', 'favoriteTeams', 'favoritePlayers', 'levelTest', 'rankingHidden', 'inviteCode', 'invitedBy', 'invitedAt', 'squad', 'squadLeftAt', 'updatedAt'])
         && request.resource.data.updatedAt == request.time
-        && resource.data.get('ageConfirmedAt', null) != null
+        && (resource.data.get('ageConfirmedAt', null) != null || resource.data.get('guardianConsentAt', null) != null)
+        && validSquadPointer(uid)
         && validNickname(uid)
         && validFavoriteTeams()
         && validFavoritePlayers()
@@ -144,6 +343,8 @@ service cloud.firestore {
       function validInviteCode(uid) {
         return !changed('inviteCode') || (
           resource.data.get('inviteCode', null) == null
+          // 보호자 동의를 받은 자녀 계정은 초대 코드를 만들지 않는다(보상 홍보를 아이에게 하지 않게)
+          && resource.data.get('guardianConsentAt', null) == null
           && request.resource.data.inviteCode is string
           && request.resource.data.inviteCode.matches('^[A-HJ-NP-Z2-9]{6}$')
           && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.uid == uid
@@ -163,6 +364,27 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/invites/$(request.resource.data.invitedBy)).data.uid != uid
           && request.resource.data.invitedAt == request.time
         ));
+      }
+
+      // ── 내 팀 코드(squad)·나간 시각(squadLeftAt) — src/lib/squad/squadApi.ts ──
+      // 앞 팀에 아직 자리가 있으면 바꿀 수 없다(한 사람은 한 팀). 자리를 이 묶음에서 지우고 나가면 나간 시각을 서버 시각으로 남기고,
+      // 새 팀 코드는 같은 묶음에서 그 팀에 내 자리(만들기)나 신청서가 생길 때만. 나간 뒤 7일 동안은 새 팀을 고를 수 없다
+      function validSquadPointer(uid) {
+        let before = resource.data.get('squad', null);
+        let after = request.resource.data.get('squad', null);
+        let leftAt = resource.data.get('squadLeftAt', null);
+        return (!changed('squad') && !changed('squadLeftAt')) || (
+          (before == null || !existsAfter(/databases/$(database)/documents/squads/$(before)/members/$(uid)))
+          && ((before == null || !exists(/databases/$(database)/documents/squads/$(before)/members/$(uid)))
+              ? !changed('squadLeftAt')
+              : request.resource.data.squadLeftAt == request.time)
+          && (after == null || (
+            isSquadCode(after)
+            && (existsAfter(/databases/$(database)/documents/squads/$(after)/members/$(uid))
+                || existsAfter(/databases/$(database)/documents/squads/$(after)/requests/$(uid)))
+            && (leftAt == null || request.time > leftAt + duration.value(7, 'd'))
+          ))
+        );
       }
 
       // 닉네임을 바꾸면 같은 쓰기 묶음에서 nicknames/{소문자} 예약을 자기 것으로 잡아야 한다
@@ -358,6 +580,22 @@ service cloud.firestore {
         allow delete: if isSelf(uid);
       }
 
+      // ── 보호자 동의 신청(src/lib/auth/guardian.ts) — 만 14세 미만 응답과 같은 묶음에서 한 번 만들기만(고치기 없음).
+      // 보호자 메일 주소(100자)·동의 코드·서버 시각. 본인과 관리자만 읽는다. 동의 처리·기한 지난 삭제는 운영자 PC(ops/guardian.mjs) ──
+      match /private/{docId} {
+        allow read: if (isSelf(uid) && isMember()) || isAdmin();
+        allow create: if isSelf(uid) && isMember() && docId == 'guardian'
+          && request.resource.data.keys().hasOnly(['email', 'code', 'requestedAt'])
+          && request.resource.data.email is string
+          && request.resource.data.email.size() <= 100
+          && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
+          && request.resource.data.code is string
+          && request.resource.data.code.matches('^[A-HJ-NP-Z2-9]{6}$')
+          && request.resource.data.requestedAt == request.time
+          && getAfter(userPath(uid)).data.get('under14At', null) == request.time;
+        allow delete: if isSelf(uid);
+      }
+
       // ── 오답노트 — 1·3·7·14일 복습 ───────────────────────────────────
       match /wrongNotes/{questionId} {
         allow read: if isSelf(uid) || isAdmin();
@@ -400,7 +638,7 @@ service cloud.firestore {
 
       allow create: if signedIn() && canRecord()
         && code.matches('^[A-Z2-9]{6}$')
-        && request.resource.data.keys().hasOnly(['hostUid', 'status', 'createdAt', 'maxPlayers', 'playerIds', 'questionIds', 'questionSeconds'])
+        && request.resource.data.keys().hasOnly(['hostUid', 'status', 'createdAt', 'maxPlayers', 'playerIds', 'questionIds', 'questionSeconds', 'teamMatch', 'squads'])
         && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.status == 'waiting'
         && request.resource.data.createdAt == request.time
@@ -410,7 +648,15 @@ service cloud.firestore {
         && request.resource.data.questionIds is list
         && request.resource.data.questionIds.size() >= 3 && request.resource.data.questionIds.size() <= 15
         && request.resource.data.questionSeconds is int
-        && request.resource.data.questionSeconds >= 5 && request.resource.data.questionSeconds <= 30;
+        && request.resource.data.questionSeconds >= 5 && request.resource.data.questionSeconds <= 30
+        // 팀 대항전(3단계): 방장 팀 코드 하나로 시작 — 방장이 그 팀의 팀원이어야 한다
+        && (!request.resource.data.keys().hasAny(['teamMatch', 'squads']) || (
+          request.resource.data.teamMatch == true
+          && request.resource.data.squads is list
+          && request.resource.data.squads.size() == 1
+          && request.resource.data.squads[0] == get(userPath(request.auth.uid)).data.get('squad', null)
+          && exists(squadMember(request.resource.data.squads[0], request.auth.uid))
+        ));
 
       allow update: if signedIn() && (joining() || leaving() || hostStarts() || hostFinishes());
 
@@ -422,13 +668,25 @@ service cloud.firestore {
       }
 
       // 대기 중인 방에 자기 자신만 끝에 더한다. 정원을 넘을 수 없다.
+      // 팀 대항전이면 내 팀(팀원 자리가 있는 팀)이 방의 팀 목록에 있거나, 두 번째 팀으로 끝에 더해진다
       function joining() {
         return canRecord()
           && resource.data.status == 'waiting'
-          && onlyChanges(['playerIds'])
+          && (resource.data.get('teamMatch', false) == true ? joiningTeam() : onlyChanges(['playerIds']))
           && !(request.auth.uid in resource.data.playerIds)
           && request.resource.data.playerIds == resource.data.playerIds.concat([request.auth.uid])
           && request.resource.data.playerIds.size() <= resource.data.maxPlayers;
+      }
+
+      function joiningTeam() {
+        let mine = get(userPath(request.auth.uid)).data.get('squad', null);
+        return onlyChanges(['playerIds', 'squads'])
+          && mine != null
+          && exists(squadMember(mine, request.auth.uid))
+          && (request.resource.data.squads == resource.data.squads
+              || (!(mine in resource.data.squads) && resource.data.squads.size() < 2
+                  && request.resource.data.squads == resource.data.squads.concat([mine])))
+          && mine in request.resource.data.squads;
       }
 
       // 대기 중에 자기 자신만 명단에서 뺀다. 방장은 나가지 않고 방을 닫는다(삭제).
@@ -466,7 +724,12 @@ service cloud.firestore {
 
         allow create: if isSelf(playerUid)
           && request.auth.uid in getAfter(/databases/$(database)/documents/rooms/$(code)).data.playerIds
-          && request.resource.data.keys().hasOnly(['nickname', 'joinedAt', 'score', 'answers'])
+          && request.resource.data.keys().hasOnly(['nickname', 'joinedAt', 'score', 'answers', 'squad'])
+          // 팀 대항전이면 내 팀 코드(방의 팀 목록에 있는), 아니면 팀 코드 없음
+          && (getAfter(/databases/$(database)/documents/rooms/$(code)).data.get('teamMatch', false) == true
+              ? (request.resource.data.get('squad', null) == get(userPath(request.auth.uid)).data.get('squad', null)
+                 && request.resource.data.squad in getAfter(/databases/$(database)/documents/rooms/$(code)).data.squads)
+              : !request.resource.data.keys().hasAny(['squad']))
           && request.resource.data.nickname is string
           && request.resource.data.nickname.size() >= 1 && request.resource.data.nickname.size() <= 16
           && request.resource.data.joinedAt == request.time

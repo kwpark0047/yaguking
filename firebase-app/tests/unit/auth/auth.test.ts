@@ -8,6 +8,9 @@ const data = (overrides: Partial<ProfileData> = {}): ProfileData => ({
   favoritePlayers: [],
   levelTestDone: false,
   rankingHidden: false,
+  guardian: 'none',
+  squad: null,
+  squadLeftAt: null,
   ...overrides,
 });
 

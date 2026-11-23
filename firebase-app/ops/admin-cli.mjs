@@ -11,6 +11,12 @@
  *   node ops/admin-cli.mjs kbo-review --project=<id> --file=<CSV> --date=YYYY-MM-DD [--replace]  사람이 쓴 돌아보기 문항을 어제의 퀴즈 초안으로(승인은 관리자 화면, --replace는 공개 전 승인 묶음만)
  *   node ops/admin-cli.mjs invites --project=<id>                                친구 초대 활동 확인·보너스 계산(지갑 작업보다 먼저)
  *   node ops/admin-cli.mjs invite-revoke --project=<id> --uid=<초대받은 회원>      부정으로 본 초대 보상 취소(관리자 기록)
+ *   node ops/admin-cli.mjs squads --project=<id>                                 팀 정리·주간 리그 순위·지난주 확정 보너스(공식전 뒤, 지갑 작업보다 먼저)
+ *   node ops/admin-cli.mjs squad-list --project=<id>                             팀 목록(코드·종류·인원·이름)
+ *   node ops/admin-cli.mjs squad-hide --project=<id> --code=<팀 코드> [--show]     팀 이름 숨기기(비속어·사칭)·다시 보이기(관리자 기록)
+ *   node ops/admin-cli.mjs guardians --project=<id>                              보호자 동의를 기다리는 자녀 계정(동의 코드·신청일·가린 보호자 주소)
+ *   node ops/admin-cli.mjs guardian-approve --project=<id> --code=<동의 코드> --email=<받은 메일의 보낸 주소>  보호자 동의 기록(관리자 기록)
+ *   node ops/admin-cli.mjs guardians-expire --project=<id> [--dry-run]           7일 안에 동의가 없는 자녀 계정 지우기
  *   node ops/admin-cli.mjs kbo-stats --project=<id>                              어제의 KBO 퀴즈 집계·보관 기간 지난 답 지우기
  *   node ops/admin-cli.mjs kbo --project=demo-… --fixture=<JSON> [--date=YYYY-MM-DD]  테스트 데이터로 생성(실제 수집 없음, demo 전용)
  *   node ops/admin-cli.mjs news-feed --project=<id>                              이용 조건을 확인한 언론사 RSS에서 제목·링크·요약 가져오기
@@ -26,6 +32,8 @@ import { buildDailyStats, processAdminTasks, setAdmin, syncAccounts } from './ad
 import { existsSync, readFileSync } from 'node:fs';
 import { runMonthly, runWallets } from './monthly.mjs';
 import { revokeInvite, runInvites } from './invite.mjs';
+import { hideSquad, listSquads, runSquads } from './squad.mjs';
+import { approveGuardian, expireGuardians, listGuardians } from './guardian.mjs';
 import { fixtureAdapter, importReviewSet, runKboPipeline, runKboStats } from './kbo.mjs';
 import { runNews, seedNews } from './news.mjs';
 import { runNewsFeed } from './newsFeed.mjs';
@@ -35,7 +43,7 @@ const [command] = process.argv.slice(2);
 const arg = (name) => process.argv.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectId = arg('project');
 
-if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'news-feed', 'kbo', 'kbo-stats', 'kbo-review', 'invites', 'invite-revoke'].includes(command) || !projectId) {
+if (!['set-admin', 'sync', 'tasks', 'daily', 'official', 'monthly', 'wallet', 'news', 'news-feed', 'kbo', 'kbo-stats', 'kbo-review', 'invites', 'invite-revoke', 'squads', 'squad-list', 'squad-hide', 'guardians', 'guardian-approve', 'guardians-expire'].includes(command) || !projectId) {
   console.error('사용법: node ops/admin-cli.mjs <set-admin|sync|tasks|daily|official|monthly|wallet|news> --project=<id> [--email=<이메일>] [--remove] [--date=YYYY-MM-DD]');
   process.exit(1);
 }
@@ -102,6 +110,36 @@ if (command === 'set-admin') {
     process.exit(1);
   }
   console.log(JSON.stringify(await revokeInvite({ db, inviteeUid: invitee })));
+} else if (command === 'squads') {
+  console.log(JSON.stringify(await runSquads({ db })));
+} else if (command === 'squad-list') {
+  for (const row of await listSquads({ db })) console.log(`${row.code} ${row.kind} ${row.size}명${row.hidden ? ' (이름 숨김)' : ''} ${row.name}`);
+} else if (command === 'squad-hide') {
+  const code = arg('code');
+  if (!code) {
+    console.error('--code=<팀 코드>가 필요합니다.');
+    process.exit(1);
+  }
+  console.log(JSON.stringify(await hideSquad({ db, code, hidden: !process.argv.includes('--show') })));
+} else if (command === 'guardians') {
+  // 보호자 메일 주소는 받은 메일과 맞춰 볼 만큼만(앞 두 글자와 도메인)
+  for (const row of await listGuardians({ db })) {
+    const masked = String(row.email ?? '').replace(/^(.{2}).*(@.*)$/, '$1***$2');
+    const day = new Date(row.requestedAt + 9 * 3_600_000).toISOString().slice(0, 10);
+    console.log(`${row.code} 신청 ${day} 보호자 ${masked} uid ${row.uid.slice(0, 6)}…`);
+  }
+} else if (command === 'guardian-approve') {
+  const code = arg('code');
+  const email = arg('email');
+  if (!code || !email) {
+    console.error('--code=<동의 코드> --email=<받은 동의 메일의 보낸 주소>가 필요합니다.');
+    process.exit(1);
+  }
+  const result = await approveGuardian({ db, code, email });
+  console.log(JSON.stringify({ approved: result.approved, reason: result.reason, uid: result.uid ? `${result.uid.slice(0, 6)}…` : undefined }));
+  if (result.approved) console.log('승인했습니다. 보호자에게 확인 메일로 답해 주세요(자녀가 앱에서 "동의됐는지 확인하기"를 누르면 열립니다).');
+} else if (command === 'guardians-expire') {
+  console.log(JSON.stringify(await expireGuardians({ db, auth, dryRun: process.argv.includes('--dry-run') })));
 } else if (command === 'wallet') {
   console.log(JSON.stringify(await runWallets({ db })));
 } else if (command === 'news-feed') {

@@ -6,7 +6,7 @@ describe('toRoomView', () => {
   const full = { hostUid: 'h', status: 'waiting', maxPlayers: 4, playerIds: ['h'], questionIds: ['q1', 'q2'] };
 
   it('갖춰진 방은 그대로', () => {
-    expect(toRoomView('ABC234', full)).toEqual({ code: 'ABC234', ...full });
+    expect(toRoomView('ABC234', full)).toEqual({ code: 'ABC234', ...full, teamMatch: false, squads: [] });
   });
 
   it('참가를 보내는 사이 방이 지워지면 오는 "명단만 있는 문서"는 null', () => {

@@ -9,6 +9,7 @@ import { DailyLink } from '@/components/home/DailyLink';
 import { KboQuizCard } from '@/components/home/KboQuizCard';
 import { MemberPerks } from '@/components/home/MemberPerks';
 import { eventOn, invitesOpen } from '@/lib/growth/invite';
+import { squadsOpen } from '@/lib/squad/squad';
 import { ReminderCard } from '@/components/home/ReminderCard';
 import { HeroSky } from '@/components/home/HeroSky';
 import { HowToPlay } from '@/components/home/HowToPlay';
@@ -88,7 +89,12 @@ export function HomePage() {
                   월간 등수
                 </Link>
               )}
-              {member && invitesOpen() && (
+              {member && squadsOpen() && (
+                <Link to="/team" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
+                  {profile.status === 'ready' && profile.data.squad ? '우리 팀' : '팀 만들기·합류'}
+                </Link>
+              )}
+              {member && invitesOpen() && !(profile.status === 'ready' && profile.data.guardian === 'consented') && (
                 <Link to="/invite" className="flex min-h-14 items-center justify-center rounded-option border-2 font-semibold" style={secondary}>
                   친구 초대{eventOn(kstDate()) ? ` · ${eventOn(kstDate())!.name}` : ''}
                 </Link>

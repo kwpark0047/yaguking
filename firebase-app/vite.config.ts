@@ -27,5 +27,7 @@ export default defineConfig({
     environment: 'node',
     // 규칙 테스트는 Firestore 에뮬레이터가 있을 때만 돈다(없으면 건너뜀) — npm run test:rules
     include: ['tests/unit/**/*.test.ts', 'tests/rules/**/*.test.ts', 'tests/ops/**/*.test.ts'],
+    // 규칙 파일이 커져(팀·보호자 동의) 에뮬레이터가 파일마다 규칙을 읽는 준비가 동시에 돌면 10초를 넘긴다
+    hookTimeout: 60_000,
   },
 });

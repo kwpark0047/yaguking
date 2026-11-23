@@ -22,6 +22,10 @@ rem Monthly ranking: attendance points through yesterday into leaderboards/YYYYM
 node ops\admin-cli.mjs monthly --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Friend invites: link -> ledger, activity check (2 days within 7), bonus points per member in users/{uid}/meta/invites (before the wallet).
 node ops\admin-cli.mjs invites --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
+rem Teams: tidy members and sizes, weekly team league from graded official rounds, finalize last week (bonus 30/20/10P, logo badge) - before the wallet.
+node ops\admin-cli.mjs squads --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
+rem Guardian consent: delete under-14 accounts whose guardian did not consent within 7 days.
+node ops\admin-cli.mjs guardians-expire --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem Hint wallet: total attendance points through yesterday into users/{uid}/wallet/main (nothing before the hint start date).
 node ops\admin-cli.mjs wallet --project=yaguking-bc25c >> ops\logs\cleanup.log 2>&1
 rem News feed: read the press RSS feeds the admin registered and marked terms-checked (titles, links, short summaries only; robots.txt respected).
