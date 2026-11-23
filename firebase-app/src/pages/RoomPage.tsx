@@ -35,6 +35,9 @@ import {
   type Standing,
 } from '@/lib/room/battle';
 import { ROOM_NICKNAME_MAX, rememberGuestName, rememberedGuestName, roomNicknameProblem } from '@/lib/room/nickname';
+import { SquadLogo } from '@/components/squad/SquadLogo';
+import { MATCH_SIDE_MAX, matchSideScore } from '@/lib/squad/squad';
+import { loadSquad, type SquadView } from '@/lib/squad/squadApi';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 const secondary = { borderColor: 'var(--line)' };
@@ -43,6 +46,9 @@ const JOIN_ERROR: Record<RoomJoinError['reason'], string> = {
   missing: '방이 닫혔거나 없는 방이에요.',
   started: '이미 시작한 방이에요.',
   full: '방이 꽉 찼어요.',
+  team: '팀 대항전은 팀원만 들어올 수 있어요. 팀에 들어간 뒤 다시 와 주세요.',
+  'teams-full': '이미 두 팀이 들어온 방이에요.',
+  'side-full': `우리 팀은 이미 ${MATCH_SIDE_MAX}명이 들어왔어요.`,
 };
 
 /**
@@ -78,6 +84,21 @@ export function RoomPage() {
   const joined = !!room && !!uid && room.playerIds.includes(uid);
   const isHost = !!room && room.hostUid === uid;
   const total = room?.questionIds.length ?? 0;
+  const mySquad = !isGuest && profile.status === 'ready' ? profile.data.squad : null;
+  const [squadViews, setSquadViews] = useState<Map<string, SquadView>>(new Map());
+  const squadKey = room?.squads.join(',') ?? '';
+
+  // 팀 대항전 — 들어온 팀의 이름·로고(코드로 하나씩 읽기, 최대 2)
+  useEffect(() => {
+    if (!squadKey || !uid || isGuest) return;
+    let alive = true;
+    Promise.all(squadKey.split(',').map((item) => loadSquad(item).catch(() => null))).then((views) => {
+      if (alive) setSquadViews(new Map(views.filter((view): view is SquadView => !!view).map((view) => [view.code, view])));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [squadKey, uid, isGuest]);
 
   useEffect(() => {
     if (!code || !uid) return;
@@ -143,7 +164,7 @@ export function RoomPage() {
     setError(null);
     try {
       if (isGuest) rememberGuestName(name);
-      await joinRoom(code, uid, name);
+      await joinRoom(code, uid, name, room?.teamMatch ? mySquad : null);
     } catch (reason) {
       setError(reason instanceof RoomJoinError ? JOIN_ERROR[reason.reason] : dataErrorMessage(reason, '들어가지 못했어요. 다시 해 주세요.'));
     } finally {
@@ -227,8 +248,9 @@ export function RoomPage() {
     const full = room.playerIds.length >= room.maxPlayers;
     return (
       <Shell>
-        <h1 className="font-cute text-3xl">친구 대결 {code}</h1>
+        <h1 className="font-cute text-3xl">{room.teamMatch ? '팀 대항전' : '친구 대결'} {code}</h1>
         {alerts}
+        {room.teamMatch && (isGuest || !mySquad) && room.status === 'waiting' && <p className="text-sm break-keep">{JOIN_ERROR.team}</p>}
         {room.status !== 'waiting' || full ? (
           <>
             <p className="text-sm">{room.status !== 'waiting' ? JOIN_ERROR.started : JOIN_ERROR.full}</p>
@@ -262,6 +284,8 @@ export function RoomPage() {
 
   if (room.status === 'waiting') {
     const count = seats?.length ?? room.playerIds.length;
+    const sides = room.squads.map((squad) => ({ squad, seats: (seats ?? []).filter((seat) => seat.squad === squad) }));
+    const teamsReady = !room.teamMatch || (sides.length === 2 && sides.every((side) => side.seats.length > 0));
     return (
       <Shell>
         <h1 className="font-cute text-3xl">대기실</h1>
@@ -278,6 +302,23 @@ export function RoomPage() {
         <p className="num-tabular text-sm text-ink-2" aria-live="polite">
           {count} / {room.maxPlayers}명 · {total}문제 · 문제당 15초
         </p>
+        {room.teamMatch && (
+          <div className="grid grid-cols-2 gap-2" aria-label="두 팀">
+            {[0, 1].map((index) => {
+              const side = sides[index];
+              const view = side ? squadViews.get(side.squad) : undefined;
+              return (
+                <section key={index} className="sticker flex flex-col items-center gap-1 p-3 text-center">
+                  {view ? <SquadLogo logo={view.logo} size={56} badge={view.badge} label={`${view.name} 로고`} /> : <span className="text-3xl">❔</span>}
+                  <p className="font-semibold">{view?.name ?? (side ? '팀' : '상대 팀 기다리는 중')}</p>
+                  <p className="text-xs text-ink-2">
+                    {side?.seats.length ?? 0}/{MATCH_SIDE_MAX}명
+                  </p>
+                </section>
+              );
+            })}
+          </div>
+        )}
         <ul className="flex flex-col gap-2" aria-label="참가자">
           {(seats ?? []).map((seat) => (
             <li key={seat.uid} className="sticker flex min-h-12 items-center justify-between gap-2 px-3">
@@ -285,7 +326,10 @@ export function RoomPage() {
                 {seat.nickname}
                 {seat.uid === uid && <span className="text-ink-2"> (나)</span>}
               </span>
-              {seat.uid === room.hostUid && <span className="text-xs text-ink-2">방장</span>}
+              <span className="text-xs text-ink-2">
+                {room.teamMatch && seat.squad ? `${squadViews.get(seat.squad)?.name ?? '팀'} ` : ''}
+                {seat.uid === room.hostUid ? '방장' : ''}
+              </span>
             </li>
           ))}
         </ul>
@@ -293,7 +337,7 @@ export function RoomPage() {
           <>
             <button
               type="button"
-              disabled={busy || count < 2}
+              disabled={busy || count < 2 || !teamsReady}
               onClick={() => void run(() => startRoom(code), '시작하지 못했어요. 다시 해 주세요.')}
               className="squishy font-cute min-h-14 text-xl disabled:opacity-60"
               style={primary}
@@ -301,6 +345,9 @@ export function RoomPage() {
               시작하기
             </button>
             {count < 2 && <p className="text-xs text-ink-2">2명 이상이면 시작할 수 있어요. 코드를 친구에게 알려 주세요.</p>}
+            {room.teamMatch && count >= 2 && !teamsReady && (
+              <p className="text-xs text-ink-2 break-keep">상대 팀이 한 명 이상 들어와야 시작할 수 있어요. 방 코드를 상대 팀에 알려 주세요.</p>
+            )}
             <button
               type="button"
               disabled={busy}
@@ -332,8 +379,9 @@ export function RoomPage() {
   if (room.status === 'finished') {
     return (
       <Shell>
+        {room.teamMatch && <TeamResults seats={seats ?? []} squads={room.squads} views={squadViews} mySquad={mySquad} />}
         <Results table={table} uid={uid} total={total} />
-        <p className="text-xs text-ink-2">기기에서 채점한 비공식 대결이에요. 랭킹·XP에는 들어가지 않아요.</p>
+        <p className="text-xs text-ink-2">기기에서 채점한 비공식 대결이에요. 랭킹·XP·팀 리그에는 들어가지 않아요.</p>
         <Link to="/room" className="squishy font-cute flex min-h-14 items-center justify-center text-xl" style={primary}>
           새 대결
         </Link>
@@ -408,6 +456,44 @@ export function RoomPage() {
       )}
       <LiveBoard table={table} uid={uid} total={total} />
     </Shell>
+  );
+}
+
+/** 팀 대항전 결과 — 팀마다 낸 사람들 점수의 평균(인원이 달라도 공정하게). 높은 팀이 이긴다 */
+function TeamResults({
+  seats,
+  squads,
+  views,
+  mySquad,
+}: {
+  seats: SeatView[];
+  squads: string[];
+  views: Map<string, SquadView>;
+  mySquad: string | null;
+}) {
+  const rows = squads.map((squad) => {
+    const members = seats.filter((seat) => seat.squad === squad);
+    return { squad, score: matchSideScore(members.map((seat) => seat.score)), players: members.length, view: views.get(squad) };
+  });
+  const best = Math.max(...rows.map((row) => row.score));
+  const winners = rows.filter((row) => row.score === best);
+  const draw = winners.length > 1;
+  return (
+    <section className="sticker flex flex-col gap-3 p-4" aria-labelledby="team-result-title">
+      <h1 id="team-result-title" className="font-cute text-3xl">
+        {draw ? '무승부!' : winners[0]?.squad === mySquad ? '우리 팀 승리!' : `${winners[0]?.view?.name ?? '상대 팀'} 승리`}
+      </h1>
+      <div className="grid grid-cols-2 gap-2">
+        {rows.map((row) => (
+          <div key={row.squad} className="flex flex-col items-center gap-1 text-center">
+            {row.view && <SquadLogo logo={row.view.logo} size={56} label={`${row.view.name} 로고`} />}
+            <p className="font-semibold">{row.view?.name ?? '팀'}</p>
+            <p className="font-cute text-3xl">{row.score}</p>
+            <p className="text-xs text-ink-2">{row.players}명 평균</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

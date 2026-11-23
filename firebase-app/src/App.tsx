@@ -6,7 +6,7 @@ import { InstallOffer } from '@/components/pwa/InstallOffer';
 import { celebrate } from '@/lib/effects/celebrate';
 import { currentMode } from '@/lib/effects/preference';
 import { playSound } from '@/lib/sound/sound';
-import { needsAgeCheck, needsProfileSetup } from '@/lib/auth/gate';
+import { needsAgeCheck, needsProfileSetup, waitsForGuardian } from '@/lib/auth/gate';
 import { applyDocumentTeam } from '@/lib/theme/documentTeam';
 import { onDisplayChange } from '@/lib/display/preference';
 import { teamThemeActive } from '@/lib/theme/themeSwitch';
@@ -42,6 +42,9 @@ const RoomPage = lazy(() => import('@/pages/RoomPage').then((module) => ({ defau
 const RankingPage = lazy(() => import('@/pages/RankingPage').then((module) => ({ default: module.RankingPage })));
 const YesterdayPage = lazy(() => import('@/pages/YesterdayPage').then((module) => ({ default: module.YesterdayPage })));
 const OfficialPage = lazy(() => import('@/pages/OfficialPage').then((module) => ({ default: module.OfficialPage })));
+const GuardianPage = lazy(() => import('@/pages/GuardianPage').then((module) => ({ default: module.GuardianPage })));
+const SquadPage = lazy(() => import('@/pages/SquadPage').then((module) => ({ default: module.SquadPage })));
+const SquadLeaguePage = lazy(() => import('@/pages/SquadLeaguePage').then((module) => ({ default: module.SquadLeaguePage })));
 
 function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<LoadingBall />}>{children}</Suspense>;
@@ -55,6 +58,10 @@ function MemberGate({ requireProfile }: { requireProfile: boolean }) {
   const { user, profile } = useAuth();
   const location = useLocation();
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
+  // 보호자 동의를 기다리는 자녀 계정 — 동의 안내만(설정의 계정 삭제는 열어 둔다)
+  if (user && waitsForGuardian(user, profile) && location.pathname !== '/settings') {
+    return <Navigate to="/guardian" replace />;
+  }
   if (user && needsAgeCheck(user, profile)) {
     return <Navigate to={`/welcome/age?returnTo=${returnTo}`} replace />;
   }
@@ -160,6 +167,7 @@ export function App() {
           <Route path="/privacy" element={<Lazy><LegalPage kind="privacy" /></Lazy>} />
           <Route path="/notices" element={<Lazy><NoticesPage /></Lazy>} />
           <Route path="/news" element={<Lazy><NewsPage /></Lazy>} />
+          <Route path="/guardian" element={<Lazy><GuardianPage /></Lazy>} />
           <Route element={<MemberGate requireProfile={false} />}>
             <Route path="/settings" element={<Lazy><SettingsPage /></Lazy>} />
           </Route>
@@ -175,6 +183,8 @@ export function App() {
             <Route path="/room" element={<Lazy><RoomLobbyPage /></Lazy>} />
             <Route path="/room/:code" element={<Lazy><RoomPage /></Lazy>} />
             <Route path="/invite" element={<Lazy><InvitePage /></Lazy>} />
+            <Route path="/team" element={<Lazy><SquadPage /></Lazy>} />
+            <Route path="/team/league" element={<Lazy><SquadLeaguePage /></Lazy>} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </AnimatedRoutes>

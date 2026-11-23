@@ -13,6 +13,8 @@ import {
   INVITE_START,
 } from '@/lib/growth/invite';
 import { ENGAGEMENT_START, HIDDEN_NAME, RANKING_TOP, TEAM_MIN_FANS } from '@/lib/game/attendance';
+import { LEAGUE_REWARDS, SQUAD_MAX, SQUAD_MIN, SQUAD_START } from '@/lib/squad/squad';
+import { GUARDIAN_CONSENT_EMAIL, GUARDIAN_WAIT_DAYS } from '@/lib/auth/guardian';
 import {
   GUEST_RETENTION_DAYS,
   LEADERBOARD_MONTHS_KEPT,
@@ -577,6 +579,86 @@ function amendInvites(sections: readonly PolicySection[]): PolicySection[] {
   });
 }
 
+/**
+ * 팀(2단계)·팀 플레이(3단계)와 만 14세 미만 자녀의 보호자 동의(운영자 결정 2026-11-18·11-23) — 팀 소속·역할·팀원에게 보이는 정보,
+ * 팀 주간 리그, 보호자 메일 주소와 동의 기록. 이날부터 팀 화면과 자녀 가입 길이 열린다(src/lib/squad/squad.ts SQUAD_START·
+ * ops/squad.mjs·ops/guardian.mjs와 같은 날 — 단위 테스트). 시행 7일 전 공지.
+ */
+export const SQUAD_PRIVACY_EFFECTIVE = SQUAD_START;
+
+function amendSquads(sections: readonly PolicySection[]): PolicySection[] {
+  const consentMail = GUARDIAN_CONSENT_EMAIL ?? '야구왕 운영 메일 주소(이 방침에 싣습니다)';
+  return sections.map((section) => {
+    switch (section.id) {
+      case 'purpose':
+        return {
+          ...section,
+          items: [
+            ...(section.items ?? []),
+            '팀 운영 — 팀 만들기·합류 승인, 팀원에게 닉네임과 주간 기여 점수 보여 주기, 팀 주간 리그 순위·보너스 포인트, 팀 대항전',
+            '만 14세 미만 아동의 회원 가입을 위한 법정대리인(보호자) 동의 확인',
+          ],
+        };
+      case 'items':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              [
+                '회원 활동(팀)',
+                '팀 이름·종류·로고 설정·팀 코드, 소속 팀과 역할(감독·코치), 합류 신청과 들어온 날, 팀원의 주간 공식전 점수와 푼 날 수(이미 기록하는 공식전 점수로 계산), 팀 순위·배지, 팀 보너스 포인트',
+                '팀을 만들거나 합류할 때, 운영자가 매일 계산',
+              ],
+              [
+                '만 14세 미만 아동(보호자 동의)',
+                '보호자 메일 주소, 동의 코드, 동의 신청·동의 시각과 동의한 방침의 시행일. 동의 뒤 자녀 계정은 그 밖에 회원과 같은 정보',
+                '자녀가 가입할 때 보호자 메일 주소를 적고, 보호자가 동의 메일을 보내면 운영자가 확인',
+              ],
+            ],
+          },
+        };
+      case 'retention':
+        return {
+          ...section,
+          table: {
+            ...section.table!,
+            rows: [
+              ...section.table!.rows,
+              ['팀 소속·합류 신청·팀 보너스 합계', '팀을 나가거나 회원 탈퇴 시까지. 팀원 주간 기록(닉네임·점수)은 팀이 없어질 때까지'],
+              ['보호자 메일 주소·동의 기록', `자녀 계정을 지울 때까지. ${GUARDIAN_WAIT_DAYS}일 안에 동의가 없으면 자녀 계정과 함께 삭제`],
+            ],
+          },
+        };
+      case 'public':
+        return {
+          ...section,
+          items: [
+            ...(section.items ?? []),
+            '팀: 같은 팀 팀원에게 내 닉네임, 역할, 이번 주 공식전 점수와 푼 날 수가 보입니다. 팀 코드를 아는 회원은 팀 이름·로고·인원을 볼 수 있고, 팀 리그 순위표에는 팀 이름·로고·점수·참가 인원이 회원에게 보입니다(팀원 닉네임은 순위표에 나오지 않습니다).',
+            '팀 대항전: 친구 대결과 같고, 같은 방 참가자에게 내 팀 이름·로고가 함께 보입니다.',
+          ],
+        };
+      case 'children':
+        return {
+          ...section,
+          paragraphs: [
+            '만 14세 미만 아동은 법정대리인(보호자)의 동의를 받아 회원으로 가입할 수 있습니다. 가입할 때 만 14세 미만이라고 답하면, 동의를 받기 위해 보호자 메일 주소만 받습니다(개인정보 보호법 제22조의2).',
+            `보호자가 그 메일 주소에서 동의 코드와 동의 내용을 담은 메일을 ${consentMail}로 보내면, 운영자가 보낸 주소를 확인한 뒤 동의를 기록합니다. ${GUARDIAN_WAIT_DAYS}일 안에 동의가 없으면 자녀 계정과 보호자 메일 주소를 삭제합니다. 동의 전에는 회원 기록이 쌓이지 않습니다.`,
+            `동의를 받은 자녀 계정은 가족팀에만 들어갈 수 있고(감독·코치는 맡지 않습니다), 월간 등수에는 닉네임 대신 '${HIDDEN_NAME}'로 나오며, 친구 초대 코드를 만들지 않습니다.`,
+            `보호자는 자녀 개인정보의 열람·정정·삭제·처리 정지를 ${consentMail}로 요청할 수 있습니다. 자녀 계정은 설정 › 계정 삭제로 언제든 지울 수 있습니다.`,
+            '만 14세 미만이라고 답하고 보호자 동의를 받지 않기로 하면 그 계정과, 비회원으로 쌓은 기록까지 즉시 삭제합니다.',
+          ],
+        };
+      case 'changes':
+        return { ...section, paragraphs: [section.paragraphs![0]!, `시행일: ${SQUAD_PRIVACY_EFFECTIVE}`] };
+      default:
+        return section;
+    }
+  });
+}
+
 /** 판 목록(시행일 순). 화면은 오늘(한국 날짜) 시행 중인 판을 보여 주고, 다음 판이 있으면 개정 예고를 띄운다 */
 export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
   { effective: PRIVACY_EFFECTIVE_DATE ?? '', sections: PRIVACY_SECTIONS, changes: [] },
@@ -642,6 +724,17 @@ export const PRIVACY_VERSIONS: readonly PrivacyVersion[] = [
       '나를 초대한 회원에게 내 닉네임과 초대 진행 상태가 보입니다. 연락처·전화번호는 받지 않습니다.',
       `초대 링크로 들어오면 받은 코드를 가입할 때까지 브라우저 저장소에 ${INVITE_KEY}로 최대 ${INVITE_REMEMBER_DAYS}일 둡니다.`,
       '이 기록은 회원 탈퇴 시까지 보관하고, 탈퇴하면 삭제합니다. 제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
+    ],
+  },
+  {
+    effective: SQUAD_PRIVACY_EFFECTIVE,
+    sections: amendSquads(amendInvites(amendAcquisition(amendKboQuiz(amendHints(amendEngagement(amend(PRIVACY_SECTIONS))))))),
+    changes: [
+      `팀을 시작합니다. 회원 ${SQUAD_MIN}~${SQUAD_MAX}명이 팀(친구팀·동료팀·가족팀)을 만들고, 팀 이름·로고(정해진 조각을 고른 설정값)·소속·역할(감독·코치)과 합류 신청을 기록합니다.`,
+      '같은 팀 팀원에게 내 닉네임과 이번 주 공식전 점수가 보입니다. 팀 리그 순위표에는 팀 이름·로고·점수만 보이고 팀원 닉네임은 나오지 않습니다.',
+      `팀 주간 리그: 이미 기록하는 오늘의 공식전 점수로 팀 순위를 매기고, 1~3위 팀의 참가 팀원에게 보너스 포인트 ${LEAGUE_REWARDS.join('·')}P를 줍니다(힌트에만, 월간 등수 제외). 팀 대항전은 친구 대결과 같습니다.`,
+      `만 14세 미만 아동도 보호자 동의를 받아 가입할 수 있습니다. 동의를 받으려고 보호자 메일 주소를 받고, 보호자가 보낸 동의 메일을 운영자가 확인합니다. ${GUARDIAN_WAIT_DAYS}일 안에 동의가 없으면 자녀 계정과 보호자 메일 주소를 삭제합니다.`,
+      '팀 기록은 팀을 나가거나 탈퇴할 때까지, 보호자 동의 기록은 자녀 계정을 지울 때까지 보관합니다. 제3자 제공, 처리 위탁, 국외 이전은 바뀌지 않았습니다.',
     ],
   },
 ];

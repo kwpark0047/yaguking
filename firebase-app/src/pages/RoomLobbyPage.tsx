@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
 import { loadQuestions } from '@/content/questions';
@@ -14,6 +14,7 @@ import {
   pickBattleQuestions,
 } from '@/lib/room/battle';
 import { ROOM_NICKNAME_MAX, rememberGuestName, rememberedGuestName, roomNicknameProblem } from '@/lib/room/nickname';
+import { MATCH_SIDE_MAX, squadsOpen } from '@/lib/squad/squad';
 
 const primary = { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' };
 const field = { borderColor: 'var(--line)', backgroundColor: 'var(--bg-card)' };
@@ -32,6 +33,11 @@ export function RoomLobbyPage() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [params] = useSearchParams();
+  const mySquad = !isGuest && profile.status === 'ready' && profile.ageConfirmed ? profile.data.squad : null;
+  // 팀 대항전(3단계) — 팀원만(규칙이 팀원 자리를 확인한다). 두 팀이 팀당 MATCH_SIDE_MAX명까지
+  const [teamMode, setTeamMode] = useState(() => params.get('team') === '1' && !!mySquad);
+  const teamAvailable = squadsOpen() && !!mySquad;
 
   const memberName = !isGuest && profile.status === 'ready' ? profile.data.nickname : null;
 
@@ -49,7 +55,13 @@ export function RoomLobbyPage() {
     try {
       if (isGuest) rememberGuestName(name);
       const questionIds = pickBattleQuestions(await loadQuestions(), count);
-      const roomCode = await createRoom({ uid: user.uid, nickname: name, maxPlayers: size, questionIds });
+      const roomCode = await createRoom({
+        uid: user.uid,
+        nickname: name,
+        maxPlayers: teamMode ? MATCH_SIDE_MAX * 2 : size,
+        questionIds,
+        squad: teamMode ? mySquad : null,
+      });
       navigate(`/room/${roomCode}`);
     } catch (reason) {
       setError(dataErrorMessage(reason, '방을 만들지 못했어요. 연결을 확인하고 다시 해 주세요.'));
@@ -102,10 +114,16 @@ export function RoomLobbyPage() {
 
       <form onSubmit={create} className="sticker flex flex-col gap-3 p-4" aria-labelledby="create-title">
         <h2 id="create-title" className="font-cute text-2xl">
-          방 만들기
+          {teamMode ? '팀 대항전 방 만들기' : '방 만들기'}
         </h2>
+        {teamAvailable && (
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" checked={teamMode} onChange={(event) => setTeamMode(event.target.checked)} />
+            팀 대항전 — 우리 팀과 상대 팀이 팀당 {MATCH_SIDE_MAX}명까지, 팀 평균 점수로 겨뤄요
+          </label>
+        )}
         <div className="flex gap-3">
-          <label className="flex flex-1 flex-col gap-1 text-sm">
+          <label className={`flex flex-1 flex-col gap-1 text-sm ${teamMode ? 'hidden' : ''}`}>
             정원
             <select
               value={size}
@@ -136,7 +154,7 @@ export function RoomLobbyPage() {
             </select>
           </label>
         </div>
-        {size > DEFAULT_ROOM_SIZE && (
+        {(teamMode || size > DEFAULT_ROOM_SIZE) && (
           <p className="text-xs text-ink-2 break-keep">사람이 많을수록 무료 사용량을 빨리 써요(인원의 제곱).</p>
         )}
         <button

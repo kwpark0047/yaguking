@@ -18,15 +18,21 @@ export async function loadProfile(uid: string): Promise<ProfileState> {
     const strings = (value: unknown) =>
       Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
     const nickname = snapshot.get('nickname');
+    const consented = snapshot.get('guardianConsentAt') != null;
+    const squad = snapshot.get('squad');
+    const leftAt = snapshot.get('squadLeftAt');
     return {
       status: 'ready',
-      ageConfirmed: snapshot.get('ageConfirmedAt') != null,
+      ageConfirmed: snapshot.get('ageConfirmedAt') != null || consented,
       data: {
         nickname: typeof nickname === 'string' ? nickname : null,
         favoriteTeams: strings(snapshot.get('favoriteTeams')),
         favoritePlayers: strings(snapshot.get('favoritePlayers')),
         levelTestDone: snapshot.get('levelTest') != null,
         rankingHidden: snapshot.get('rankingHidden') === true,
+        guardian: consented ? 'consented' : snapshot.get('under14At') != null ? 'pending' : 'none',
+        squad: typeof squad === 'string' ? squad : null,
+        squadLeftAt: leftAt && typeof leftAt.toMillis === 'function' ? leftAt.toMillis() : null,
       },
     };
   } catch {
@@ -48,6 +54,36 @@ export async function confirmAge(user: User): Promise<void> {
     createdAt: serverTimestamp(),
   });
   countWrites('confirmAge', 1);
+}
+
+/**
+ * 만 14세 미만 자녀가 보호자 동의를 신청한다(src/lib/auth/guardian.ts): 프로필(만 14세 미만 응답 시각)과
+ * 보호자 메일 주소·동의 코드(users/{uid}/private/guardian — 본인과 운영자만)를 한 묶음으로. 동의는 운영자 PC만 기록한다.
+ */
+export async function requestGuardianConsent(user: User, guardianEmail: string): Promise<string> {
+  const { makeSquadCode } = await import('@/lib/squad/squad');
+  const { writeBatch } = await import('firebase/firestore');
+  await user.getIdToken(true);
+  const code = makeSquadCode();
+  const batch = writeBatch(firestore());
+  batch.set(doc(firestore(), 'users', user.uid), { under14At: serverTimestamp(), createdAt: serverTimestamp() });
+  batch.set(doc(firestore(), 'users', user.uid, 'private', 'guardian'), { email: guardianEmail, code, requestedAt: serverTimestamp() });
+  await batch.commit();
+  countWrites('requestGuardianConsent', 2);
+  return code;
+}
+
+/** 동의를 기다리는 자녀 계정의 동의 코드·보호자 메일 주소 */
+export async function loadGuardianRequest(uid: string): Promise<{ email: string; code: string; requestedAt: number } | null> {
+  const snapshot = await getDoc(doc(firestore(), 'users', uid, 'private', 'guardian'));
+  countReads('loadGuardianRequest', 1);
+  if (!snapshot.exists()) return null;
+  const requested = snapshot.get('requestedAt');
+  return {
+    email: String(snapshot.get('email') ?? ''),
+    code: String(snapshot.get('code') ?? ''),
+    requestedAt: requested && typeof requested.toMillis === 'function' ? requested.toMillis() : Date.now(),
+  };
 }
 
 /**

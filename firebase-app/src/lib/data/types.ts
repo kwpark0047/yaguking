@@ -95,6 +95,9 @@ export interface RoomDoc {
   playerIds: string[];
   questionIds: string[];
   questionSeconds: number;
+  /** 팀 대항전(3단계) — 두 팀이 한 방에서. squads는 들어온 팀 코드(방장 팀이 먼저, 최대 2) */
+  teamMatch?: boolean;
+  squads?: string[];
 }
 
 /** rooms/{code}/players/{uid} */
@@ -102,6 +105,8 @@ export interface RoomPlayerDoc {
   nickname: string;
   joinedAt: Timestamp;
   updatedAt?: Timestamp;
+  /** 팀 대항전에서 내 팀 코드 */
+  squad?: string | null;
   score: number;
   answers: { choice: OptionLabel | null; elapsedMs: number; correct: boolean }[];
 }

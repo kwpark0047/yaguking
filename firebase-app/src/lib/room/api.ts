@@ -3,6 +3,7 @@ import {
   arrayUnion,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
   updateDoc,
@@ -12,6 +13,7 @@ import {
 import { roomCode } from '@/lib/data/keys';
 import type { RoomDoc } from '@/lib/data/types';
 import { firestore } from '@/lib/firebase/db';
+import { MATCH_SIDE_MAX } from '@/lib/squad/squad';
 import { countReads, countWrites } from '@/lib/firebase/meter';
 import { ROOM_QUESTION_SECONDS, scoreOf, type BattleAnswer } from './battle';
 import { toRoomView, type RoomView } from './view';
@@ -28,12 +30,14 @@ export type { RoomView };
 export interface SeatView {
   uid: string;
   nickname: string;
+  /** 팀 대항전에서 그 사람의 팀 코드 */
+  squad: string | null;
   score: number;
   answers: BattleAnswer[];
 }
 
 export class RoomJoinError extends Error {
-  constructor(readonly reason: 'missing' | 'started' | 'full') {
+  constructor(readonly reason: 'missing' | 'started' | 'full' | 'team' | 'teams-full' | 'side-full') {
     super(reason);
   }
 }
@@ -41,7 +45,13 @@ export class RoomJoinError extends Error {
 const roomRef = (code: string) => doc(firestore(), 'rooms', code);
 const seatRef = (code: string, uid: string) => doc(firestore(), 'rooms', code, 'players', uid);
 
-const seat = (nickname: string) => ({ nickname, joinedAt: serverTimestamp(), score: 0, answers: [] });
+const seat = (nickname: string, squad: string | null = null) => ({
+  nickname,
+  joinedAt: serverTimestamp(),
+  score: 0,
+  answers: [],
+  ...(squad ? { squad } : {}),
+});
 
 /**
  * 방 만들기 = 방 + 방장 자리(한 묶음). 코드가 이미 쓰이면 규칙이 거절하므로
@@ -52,6 +62,8 @@ export async function createRoom(input: {
   nickname: string;
   maxPlayers: number;
   questionIds: string[];
+  /** 팀 대항전 — 방장의 팀 코드(팀원이어야 한다 — 규칙) */
+  squad?: string | null;
 }): Promise<string> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -65,8 +77,9 @@ export async function createRoom(input: {
       playerIds: [input.uid],
       questionIds: input.questionIds,
       questionSeconds: ROOM_QUESTION_SECONDS,
+      ...(input.squad ? { teamMatch: true, squads: [input.squad] } : {}),
     });
-    batch.set(seatRef(code, input.uid), seat(input.nickname));
+    batch.set(seatRef(code, input.uid), seat(input.nickname, input.squad ?? null));
     try {
       await batch.commit();
       countWrites('createRoom', 2);
@@ -79,7 +92,7 @@ export async function createRoom(input: {
 }
 
 /** 참가 = 명단 끝에 나를 더하기 + 내 자리(한 묶음). 이미 명단에 있으면 아무것도 안 한다 */
-export async function joinRoom(code: string, uid: string, nickname: string): Promise<void> {
+export async function joinRoom(code: string, uid: string, nickname: string, squad: string | null = null): Promise<void> {
   const snapshot = await getDoc(roomRef(code));
   countReads('joinRoom', 1);
   if (!snapshot.exists()) throw new RoomJoinError('missing');
@@ -87,9 +100,18 @@ export async function joinRoom(code: string, uid: string, nickname: string): Pro
   if (room.playerIds.includes(uid)) return;
   if (room.status !== 'waiting') throw new RoomJoinError('started');
   if (room.playerIds.length >= room.maxPlayers) throw new RoomJoinError('full');
+  // 팀 대항전: 팀원만, 팀은 둘까지, 한 팀 MATCH_SIDE_MAX명까지(자리를 읽어 센다 — 최대 10)
+  if (room.teamMatch) {
+    if (!squad) throw new RoomJoinError('team');
+    const squads = room.squads ?? [];
+    if (!squads.includes(squad) && squads.length >= 2) throw new RoomJoinError('teams-full');
+    const seats = await getDocs(collection(firestore(), 'rooms', code, 'players'));
+    countReads('joinRoom', Math.max(1, seats.size));
+    if (seats.docs.filter((item) => item.get('squad') === squad).length >= MATCH_SIDE_MAX) throw new RoomJoinError('side-full');
+  }
   const batch = writeBatch(firestore());
-  batch.update(roomRef(code), { playerIds: arrayUnion(uid) });
-  batch.set(seatRef(code, uid), seat(nickname));
+  batch.update(roomRef(code), room.teamMatch ? { playerIds: arrayUnion(uid), squads: arrayUnion(squad) } : { playerIds: arrayUnion(uid) });
+  batch.set(seatRef(code, uid), seat(nickname, room.teamMatch ? squad : null));
   await batch.commit();
   countWrites('joinRoom', 2);
 }
@@ -160,6 +182,7 @@ export function watchSeats(code: string, onChange: (seats: SeatView[]) => void, 
         .map(({ uid, data }) => ({
           uid,
           nickname: String(data.nickname ?? ''),
+          squad: typeof data.squad === 'string' ? data.squad : null,
           score: Number(data.score ?? 0),
           answers: (data.answers ?? []) as BattleAnswer[],
         }));

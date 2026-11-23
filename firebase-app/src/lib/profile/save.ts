@@ -146,10 +146,25 @@ export async function deleteUserRecords(uid: string, nickname: string | null): P
   refs.push(doc(db, 'users', uid, 'meta', 'acquisition'));
   // 친구 초대 — 내 초대 코드와 보너스 합계(운영자 PC가 쓴 것). 초대 진행 기록(inviteLedger)은 다음 날 0시 작업이 지운다(ops/invite.mjs)
   refs.push(doc(db, 'users', uid, 'meta', 'invites'));
+  // 팀 보너스 합계(운영자 PC가 쓴 것)와 보호자 동의 신청(만 14세 미만 자녀 계정)
+  refs.push(doc(db, 'users', uid, 'meta', 'squads'));
+  refs.push(doc(db, 'users', uid, 'private', 'guardian'));
   const me = await getDoc(doc(db, 'users', uid));
   countReads('deleteUserRecords', 1);
   const myCode = me.get('inviteCode') as string | undefined;
   if (myCode) refs.push(doc(db, 'invites', myCode));
+  // 팀 — 팀원이면 나가고(감독이면 넘기거나 팀을 없앤다), 신청 중이면 거둔다. 실패해도 지우기는 계속한다 — 남은 자리는 0시 작업이 정리(ops/squad.mjs)
+  const squadCode = me.get('squad') as string | undefined;
+  if (squadCode) {
+    try {
+      const { cancelRequest, leaveSquad, loadMySquad } = await import('@/lib/squad/squadApi');
+      const mine = await loadMySquad(uid, squadCode);
+      if (mine.state === 'member') await leaveSquad(uid, mine.squad, mine.members);
+      if (mine.state === 'pending') await cancelRequest(uid, squadCode);
+    } catch {
+      // 0시 작업이 탈퇴한 회원의 자리·신청서를 지운다
+    }
+  }
   if (nickname) refs.push(doc(db, 'nicknames', nicknameKey(nickname)));
   refs.push(doc(db, 'users', uid));
 

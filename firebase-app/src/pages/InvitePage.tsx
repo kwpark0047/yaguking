@@ -44,7 +44,9 @@ export function InvitePage() {
   const today = kstDate();
   const open = invitesOpen();
   const event = currentOrNextEvent(today);
-  const member = !!user && !isGuest && profile.status === 'ready';
+  // 보호자 동의를 받은 자녀 계정은 초대 코드를 만들지 않는다(규칙도 막는다 — 보상 홍보를 아이에게 하지 않게)
+  const childAccount = profile.status === 'ready' && profile.data.guardian === 'consented';
+  const member = !!user && !isGuest && profile.status === 'ready' && !childAccount;
   const [mine, setMine] = useState<MyInvite | null>(null);
   const [status, setStatus] = useState<{ rows: InviteRow[]; summary: InviteSummary } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -128,7 +130,13 @@ export function InvitePage() {
         </p>
       )}
 
-      {open && !member && (
+      {open && childAccount && (
+        <p role="status" className="text-sm break-keep">
+          보호자 동의 계정은 친구 초대를 하지 않아요. 가족팀은 팀 화면에서 팀 코드로 함께해요.
+        </p>
+      )}
+
+      {open && !member && !childAccount && (
         <section className="sticker flex flex-col gap-3 p-4 break-keep">
           <p>초대는 회원만 할 수 있어요. 링크로 초대받았다면 가입할 때 코드가 자동으로 들어가요.</p>
           <Link to="/auth?mode=signup&returnTo=%2Finvite" className="flex min-h-12 items-center justify-center rounded-option font-semibold" style={primary}>

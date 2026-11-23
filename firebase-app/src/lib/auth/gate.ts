@@ -16,8 +16,17 @@ export interface ProfileData {
   levelTestDone: boolean;
   /** 월간 등수에서 닉네임 숨기기(docs/engagement-plan.md §4) */
   rankingHidden: boolean;
+  /** 만 14세 미만 자녀 계정 — none(아님)·pending(보호자 동의 기다림)·consented(동의 받음). src/lib/auth/guardian.ts */
+  guardian: GuardianState;
+  /** 내 팀 코드(합류했거나 신청 중 — 어느 쪽인지는 팀 문서로 안다). src/lib/squad/squad.ts */
+  squad: string | null;
+  /** 팀에서 나온 시각(ms) — 나간 뒤 7일 동안 다른 팀에 신청할 수 없다 */
+  squadLeftAt: number | null;
 }
 
+export type GuardianState = 'none' | 'pending' | 'consented';
+
+/** ageConfirmed: 만 14세 이상 확인 또는 보호자 동의를 받은 자녀 — 회원 기록을 남길 수 있다(규칙 ageConfirmed()와 같다) */
 export type ProfileState =
   | { status: 'loading' }
   | { status: 'error' }
@@ -26,10 +35,15 @@ export type ProfileState =
 
 type Who = { isAnonymous: boolean } | null;
 
+/** 보호자 동의를 기다리는 자녀 계정 — 나이 확인 대신 동의 안내 화면으로 */
+export function waitsForGuardian(user: Who, profile: ProfileState): boolean {
+  return !!user && !user.isAnonymous && profile.status === 'ready' && profile.data.guardian === 'pending';
+}
+
 export function needsAgeCheck(user: Who, profile: ProfileState): boolean {
   if (!user || user.isAnonymous) return false;
   if (profile.status === 'missing') return true;
-  if (profile.status === 'ready') return !profile.ageConfirmed;
+  if (profile.status === 'ready') return !profile.ageConfirmed && profile.data.guardian !== 'pending';
   return false;
 }
 
