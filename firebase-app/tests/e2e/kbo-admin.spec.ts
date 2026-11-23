@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { KBO_QUIZ_START, publishAtOf } from '@/lib/kbo/set';
+import { nextSetId, publishAtOf } from '@/lib/kbo/set';
 import { accounts, clearEmulators, hasFirestore, listDocs, patchDoc, readDoc } from './helpers';
 
 /** 관리자 "어제의 퀴즈" — 정답·출처 확인, 승인·철회·보류, 안내와 돌아보기 묶음 만들기. 지어낸 묶음만 쓴다 */
@@ -83,7 +83,8 @@ test('묶음을 확인해 승인·철회·보류하고, 안내와 돌아보기 �
 
   // 경기 없음 안내 — 여는 날 기본값은 시작일과 오늘(한국 날짜) 중 늦은 날(시작일이 지나면 오늘)
   const creator = page.getByRole('region', { name: '새 묶음' });
-  const firstDay = [KBO_QUIZ_START, new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)].sort().at(-1)!;
+  // 새 묶음의 기본 날 = 지금 열려 있는 묶음의 다음 날(06:00 전후로 달라진다 — 앱과 같은 함수)
+  const firstDay = nextSetId();
   await expect(creator.getByLabel('여는 날(그날 06:00)')).toHaveValue(firstDay);
   await creator.getByRole('button', { name: '경기 없음 안내' }).click();
   await expect.poll(async () => (await readDoc(`kboSets/${firstDay}`))?.kind).toEqual({ stringValue: 'no-game' });
