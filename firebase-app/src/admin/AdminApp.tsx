@@ -13,6 +13,8 @@ import { MemberDetailPage, MembersPage } from './pages/MembersPage';
 import { NoticesPage } from './pages/NoticesPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { SignupsPage } from './pages/SignupsPage';
+import { GuardiansPage } from './pages/GuardiansPage';
+import { SquadsPage } from './pages/SquadsPage';
 import { AdminSessionProvider, useAdminSession } from './session';
 import { ErrorText, line, primary } from './ui';
 
@@ -96,6 +98,8 @@ function Gate() {
           ['/', '대시보드'],
           ['/members', '가입자'],
           ['/signups', '가입 확인'],
+          ['/guardians', '보호자 동의'],
+          ['/squads', '팀'],
           ['/games', '오늘 경기'],
           ['/rooms', '대결 방'],
           ['/notices', '공지사항'],
@@ -123,6 +127,8 @@ function Gate() {
           <Route path="/members" element={<MembersPage />} />
           <Route path="/members/:uid" element={<MemberDetailPage />} />
           <Route path="/signups" element={<SignupsPage />} />
+          <Route path="/guardians" element={<GuardiansPage />} />
+          <Route path="/squads" element={<SquadsPage />} />
           <Route path="/games" element={<GamesPage />} />
           <Route path="/rooms" element={<RoomsPage />} />
           <Route path="/notices" element={<NoticesPage />} />

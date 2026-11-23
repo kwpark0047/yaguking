@@ -13,6 +13,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -168,6 +169,54 @@ describe.skipIf(!emulatorHost)('관리자 규칙(배포 규칙)', () => {
       await assertFails(task(player(), { by: 'alice' }));
       await assertSucceeds(task(admin()));
       await assertFails(updateDoc(doc(admin(), 'adminTasks/t1'), { status: 'done' }));
+    });
+
+    it('가입자 관리 작업: 계정 삭제는 정한 사유만, 초대 보상 취소는 짧은 메모와 함께', async () => {
+      const task = (id: string, overrides: object) =>
+        setDoc(doc(admin(), `adminTasks/${id}`), { type: 'deleteAccount', target: 'alice', status: 'pending', by: 'boss', requestedAt: now(), ...overrides });
+      await assertSucceeds(task('d1', { detail: '본인 요청' }));
+      await assertSucceeds(task('d2', { detail: '보호자 동의 거절' }));
+      await assertFails(task('d3', { detail: '약관 위반' })); // 이용약관 확정 전 — 제재 사유 없음
+      await assertFails(task('d4', {}));
+      await assertSucceeds(task('r1', { type: 'revokeInvite', detail: '부정 초대 의심' }));
+      await assertFails(task('r2', { type: 'revokeInvite', detail: 'x'.repeat(101) }));
+      await assertFails(setDoc(doc(player(), 'adminTasks/p1'), { type: 'deleteAccount', target: 'bob', status: 'pending', by: 'alice', requestedAt: now(), detail: '본인 요청' }));
+    });
+
+    it('가입자 관리 쓰기: 월간 등수 이름 숨김·보호자 동의 승인·팀 이름 숨김만, 그 밖의 칸은 못 고친다', async () => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'users/kid'), { under14At: Timestamp.now(), createdAt: Timestamp.now() });
+        await setDoc(doc(db, 'users/kid/private/guardian'), { email: 'mom@example.test', code: 'ABC234', requestedAt: Timestamp.now() });
+        await setDoc(doc(db, 'squads/TEAMA2'), { name: '팀', kind: 'friends', captain: 'alice', coach: null, size: 1 });
+        await setDoc(doc(db, 'inviteLedger/bob'), { inviter: 'alice', invitee: 'bob', status: 'joined' });
+      });
+      const db = admin();
+      await assertSucceeds(updateDoc(doc(db, 'users/alice'), { rankingHidden: true }));
+      await assertFails(updateDoc(doc(db, 'users/alice'), { rankingHidden: 'yes' }));
+      await assertFails(updateDoc(doc(db, 'users/alice'), { rankingHidden: false, nickname: '바꿈' }));
+      await assertFails(updateDoc(doc(player(), 'users/bob'), { rankingHidden: true }));
+      // 보호자 동의 승인 — 프로필과 신청서를 한 묶음으로, 서버 시각
+      const approve = (time: unknown = now()) => {
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'users/kid'), { guardianConsentAt: time, guardianConsentVersion: '2026-12-15' });
+        batch.update(doc(db, 'users/kid/private/guardian'), { consentedAt: time });
+        return batch.commit();
+      };
+      await assertFails(approve(Timestamp.fromMillis(Date.now() - 60_000)));
+      await assertFails(updateDoc(doc(db, 'users/alice'), { guardianConsentAt: now(), guardianConsentVersion: '2026-12-15' })); // 자녀 신청 아님
+      await assertSucceeds(approve());
+      await assertFails(approve()); // 이미 동의
+      await assertSucceeds(getDoc(doc(db, 'users/kid/private/guardian')));
+      await assertFails(updateDoc(doc(db, 'users/kid/private/guardian'), { email: 'other@example.test' }));
+      // 팀 이름 숨김만
+      await assertSucceeds(updateDoc(doc(db, 'squads/TEAMA2'), { hidden: true }));
+      await assertFails(updateDoc(doc(db, 'squads/TEAMA2'), { name: '바꾼 이름' }));
+      await assertSucceeds(getDocs(collection(db, 'squads')));
+      await assertSucceeds(getDoc(doc(db, 'squads/TEAMA2')));
+      // 초대 진행 기록은 읽기만(개수 세기)
+      await assertSucceeds(getCountFromServer(query(collection(db, 'inviteLedger'), where('inviter', '==', 'alice'))));
+      await assertFails(updateDoc(doc(db, 'inviteLedger/bob'), { status: 'revoked' }));
     });
   });
 

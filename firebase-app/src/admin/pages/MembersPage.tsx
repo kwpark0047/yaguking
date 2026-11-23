@@ -8,6 +8,7 @@ import { loadRecentGames, type RecentGame } from '../data';
 import { useView, ViewBar } from '../useView';
 import { logView, readView, rebuildMembers, type MembersView, type View } from '../views';
 import { ErrorText, PageTitle, field, fmtTime, line } from '../ui';
+import { MemberActions } from './MemberActions';
 
 const teamName = (slug: string) => TEAMS.find((team) => team.slug === slug)?.shortName ?? slug;
 const providerName = (id: string) => ({ 'google.com': '구글', password: '이메일' })[id] ?? id;
@@ -148,6 +149,21 @@ function MemberLine({ row, now }: { row: MemberViewRow; now: number }) {
             관리자
           </span>
         )}
+        {row.guardian === 'consented' && (
+          <span className="rounded-full border px-2 py-0.5 text-xs" style={line}>
+            자녀 계정
+          </span>
+        )}
+        {row.squad && (
+          <span className="rounded-full border px-2 py-0.5 text-xs" style={line}>
+            팀 {row.squad}
+          </span>
+        )}
+        {row.rankingHidden && (
+          <span className="rounded-full border px-2 py-0.5 text-xs" style={line}>
+            등수 이름 숨김
+          </span>
+        )}
       </span>
     </li>
   );
@@ -225,6 +241,7 @@ export function MemberDetailPage() {
   const timeline: [string, number | null][] = [
     ['가입', row.createdAt || null],
     ['만 14세 확인', row.ageConfirmedAt],
+    ['보호자 동의 신청', row.under14At ?? null],
     ['레벨 테스트', row.levelTest?.at ?? null],
     ['마지막 경기', row.lastGameAt],
     ['마지막 로그인', row.lastSignInAt || null],
@@ -293,7 +310,10 @@ export function MemberDetailPage() {
         )}
         {error && <ErrorText>{error}</ErrorText>}
       </section>
-      <p className="text-xs text-ink-2 break-keep">닉네임 초기화·계정 삭제 같은 조치는 이용약관이 확정된 뒤에 엽니다. 기록·점수는 고치지 않습니다.</p>
+      <MemberActions row={row} />
+      <p className="text-xs text-ink-2 break-keep">
+        기록·점수는 고치지 않습니다. 닉네임 초기화·이용 정지 같은 제재는 이용약관이 확정된 뒤에 엽니다.
+      </p>
     </>
   );
 }

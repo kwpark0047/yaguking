@@ -33,6 +33,7 @@ export function DashboardPage() {
         data.rooms?.stalled ? { to: '/rooms', text: `진행 멈춘 방 ${data.rooms.stalled}` } : null,
         data.rooms?.expired ? { to: '/rooms', text: `정리할 지난 방 ${data.rooms.expired}` } : null,
         data.members?.stuckSignups ? { to: '/signups', text: `14세 확인 안 하고 3일 지난 가입 ${data.members.stuckSignups}` } : null,
+        data.members?.guardianPending ? { to: '/guardians', text: `보호자 동의 기다리는 자녀 계정 ${data.members.guardianPending}` } : null,
         data.games?.flagged ? { to: '/games', text: `이상 징후 경기 ${data.games.flagged}` } : null,
         (data.members?.guestsPeakHour ?? 0) > GUEST_BURST_PER_HOUR
           ? { to: '/', text: `비회원 급증: 한 시간에 ${data.members?.guestsPeakHour}개(최근 24시간 ${data.members?.guestsNew24h})` }
