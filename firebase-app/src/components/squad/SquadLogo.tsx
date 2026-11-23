@@ -8,7 +8,7 @@ const FRAMES: Record<Logo['frame'], string> = {
   shield: 'M50 4 L90 15 V47 C90 73 72 89 50 97 C28 89 10 73 10 47 V15 Z',
   circle: 'M50 5 A45 45 0 1 1 49.99 5 Z',
   diamond: 'M50 3 L97 50 L50 97 L3 50 Z',
-  flag: 'M10 8 H90 V68 L50 95 L10 68 Z',
+  flag: 'M10 6 H90 V94 L50 76 L10 94 Z',
   pentagon: 'M8 8 H92 V56 L50 95 L8 56 Z',
   ball: 'M50 5 A45 45 0 1 1 49.99 5 Z',
 };
@@ -19,7 +19,7 @@ function Symbol({ id, ink, base }: { id: Logo['symbol']; ink: string; base: stri
   const emoji = LOGO_SYMBOLS.find((item) => item.id === id && 'emoji' in item) as { emoji?: string } | undefined;
   if (emoji?.emoji) {
     return (
-      <text x="50" y="52" textAnchor="middle" fontSize="30" dominantBaseline="middle">
+      <text x="50" y="44" textAnchor="middle" fontSize="36" dominantBaseline="middle">
         {emoji.emoji}
       </text>
     );
@@ -67,7 +67,7 @@ export function SquadLogo({
 }) {
   const base = colorHex(logo.primary);
   const ink = colorHex(logo.secondary);
-  const initialsY = logo.frame === 'diamond' ? 72 : 80;
+  const initialsY = logo.frame === 'flag' ? 67 : logo.frame === 'diamond' ? 74 : 80;
   return (
     <svg
       viewBox="0 0 100 100"
