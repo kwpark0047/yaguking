@@ -71,7 +71,7 @@ test('만 14세 미만이라고 답하면 프로필과 계정을 지운다', asy
   expect(await uidOf(email)).toBeDefined();
 
   await page.getByRole('button', { name: '아니요, 만 14세 미만이에요' }).click();
-  await expect(page.getByRole('heading', { name: '지금은 가입할 수 없어요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /지금은 가입할 수 없어요|보호자 동의가 필요해요/ })).toBeVisible();
   await page.getByRole('button', { name: '계정 지우기' }).click();
   await expect(page.getByRole('heading', { name: '계정을 지웠어요' })).toBeVisible();
 

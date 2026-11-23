@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
 import { useGuestFallback } from '@/auth/useGuestFallback';
@@ -37,6 +37,11 @@ export function RoomLobbyPage() {
   const mySquad = !isGuest && profile.status === 'ready' && profile.ageConfirmed ? profile.data.squad : null;
   // 팀 대항전(3단계) — 팀원만(규칙이 팀원 자리를 확인한다). 두 팀이 팀당 MATCH_SIDE_MAX명까지
   const [teamMode, setTeamMode] = useState(() => params.get('team') === '1' && !!mySquad);
+  // 프로필이 늦게 오면(새로 열었을 때) 팀 화면에서 온 경우 팀 대항전으로 켠다
+  const wantsTeam = params.get('team') === '1';
+  useEffect(() => {
+    if (wantsTeam && mySquad) setTeamMode(true);
+  }, [wantsTeam, mySquad]);
   const teamAvailable = squadsOpen() && !!mySquad;
 
   const memberName = !isGuest && profile.status === 'ready' ? profile.data.nickname : null;

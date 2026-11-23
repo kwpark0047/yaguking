@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { useAuth } from '@/auth/AuthProvider';
-import { GUARDIAN_CONSENT_EMAIL, GUARDIAN_WAIT_DAYS, guardianMail, guardianMailto } from '@/lib/auth/guardian';
+import { GUARDIAN_WAIT_DAYS, guardianConsentEmail, guardianMail, guardianMailto } from '@/lib/auth/guardian';
 import { deleteOwnAccount, loadGuardianRequest } from '@/lib/auth/profile';
 import { copyText } from '@/lib/platform/share';
 
@@ -19,6 +19,7 @@ export function GuardianPage() {
   const [busy, setBusy] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const pending = profile.status === 'ready' && profile.data.guardian === 'pending';
+  const consentEmail = guardianConsentEmail();
 
   useEffect(() => {
     if (!user || !pending) return;
@@ -88,7 +89,7 @@ export function GuardianPage() {
           {message}
         </p>
       )}
-      {request && mail && GUARDIAN_CONSENT_EMAIL && (
+      {request && mail && consentEmail && (
         <section aria-labelledby="consent-code" className="sticker flex flex-col gap-3 p-4">
           <h2 id="consent-code" className="text-sm text-ink-2">
             동의 코드
@@ -97,9 +98,9 @@ export function GuardianPage() {
             {request.code}
           </p>
           <p className="text-sm break-keep">
-            받는 곳: <strong>{GUARDIAN_CONSENT_EMAIL}</strong>
+            받는 곳: <strong>{consentEmail}</strong>
           </p>
-          <a href={guardianMailto(GUARDIAN_CONSENT_EMAIL, request.code, null)} className="flex min-h-14 items-center justify-center rounded-option font-cute text-xl" style={primary}>
+          <a href={guardianMailto(consentEmail, request.code, null)} className="flex min-h-14 items-center justify-center rounded-option font-cute text-xl" style={primary}>
             동의 메일 쓰기
           </a>
           <button

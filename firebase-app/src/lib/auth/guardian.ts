@@ -19,6 +19,13 @@ import { SQUAD_START, squadsOpen } from '@/lib/squad/squad';
  */
 export const GUARDIAN_CONSENT_EMAIL: string | null = null;
 
+/** 화면이 쓰는 동의 메일 주소 — 에뮬레이터 개발·E2E에서만 VITE_GUARDIAN_EMAIL로 시험 주소를 넣을 수 있다(squadStart와 같은 방식) */
+export function guardianConsentEmail(): string | null {
+  const env = import.meta.env as Record<string, string | undefined> | undefined;
+  const override = env?.VITE_GUARDIAN_EMAIL;
+  return env?.VITE_USE_EMULATORS !== 'false' && override ? override : GUARDIAN_CONSENT_EMAIL;
+}
+
 /** 동의를 기다리는 기간 — 지나면 0시 작업이 계정을 지운다. ops/guardian.mjs와 같아야 한다(단위 테스트) */
 export const GUARDIAN_WAIT_DAYS = 7;
 /** 동의 절차가 시작되는 날(처리방침 개정판 시행일) — 팀 시작일과 같다 */
@@ -33,7 +40,7 @@ export const isGuardianEmail = (value: string) => value.length <= GUARDIAN_EMAIL
 export const normalizeEmail = (value: string) => value.trim().toLowerCase();
 
 /** 자녀 가입 길을 보여 줄지 — 시행일이 지났고 동의 메일 주소가 정해졌을 때만 */
-export const guardianSignupOpen = (now: number = Date.now(), email: string | null = GUARDIAN_CONSENT_EMAIL) => !!email && squadsOpen(now);
+export const guardianSignupOpen = (now: number = Date.now(), email: string | null = guardianConsentEmail()) => !!email && squadsOpen(now);
 
 /** 보호자가 보낼 메일의 제목·본문(동의 내용). 보호자는 이름과 관계를 적고 그대로 보낸다 */
 export function guardianMail(code: string, nickname: string | null): { subject: string; body: string } {
