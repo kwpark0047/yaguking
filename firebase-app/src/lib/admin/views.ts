@@ -36,11 +36,25 @@ export interface MemberViewRow {
   atBats: number;
   homeRuns: number;
   lastGameAt: number | null;
+  /** 만 14세 미만 자녀 계정(src/lib/auth/guardian.ts) — 예전 보기에는 없다(새로 만들면 생긴다) */
+  guardian?: 'none' | 'pending' | 'consented';
+  /** 보호자 동의를 신청한 시각 — 7일 기한 */
+  under14At?: number | null;
+  /** 팀 코드(합류했거나 신청 중) */
+  squad?: string | null;
+  inviteCode?: string | null;
+  invitedBy?: string | null;
+  /** 월간 등수에서 닉네임 숨김 */
+  rankingHidden?: boolean;
 }
 
-export type MemberStatus = 'needs-age' | 'needs-profile' | 'needs-level-test' | 'active' | 'dormant' | 'idle';
+export type MemberStatus = 'guardian-pending' | 'needs-age' | 'needs-profile' | 'needs-level-test' | 'active' | 'dormant' | 'idle';
+
+/** 회원 기록을 남길 수 있는 사람 — 만 14세 이상 확인 또는 보호자 동의를 받은 자녀(규칙 ageConfirmed()와 같다) */
+export const confirmedMember = (row: Pick<MemberViewRow, 'ageConfirmedAt' | 'guardian'>) => row.ageConfirmedAt !== null || row.guardian === 'consented';
 
 export const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
+  'guardian-pending': '보호자 동의 기다림',
   'needs-age': '14세 미확인',
   'needs-profile': '프로필 미완료',
   'needs-level-test': '레벨 테스트 안 함',
@@ -51,7 +65,8 @@ export const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
 
 /** 한 사람에게 하나 — 앞쪽이 우선(가입이 덜 끝난 것부터) */
 export function memberStatus(row: MemberViewRow, now: number): MemberStatus {
-  if (row.ageConfirmedAt === null) return 'needs-age';
+  if (row.guardian === 'pending') return 'guardian-pending';
+  if (!confirmedMember(row)) return 'needs-age';
   if (!row.nickname || row.favoriteTeams.length === 0) return 'needs-profile';
   if (!row.levelTest) return 'needs-level-test';
   if (row.lastSignInAt >= now - 7 * DAY) return 'active';
@@ -74,8 +89,8 @@ export interface Funnel {
 export function funnelOf(rows: readonly MemberViewRow[]): Funnel {
   return {
     signedUp: rows.length,
-    ageConfirmed: rows.filter((row) => row.ageConfirmedAt !== null).length,
-    profile: rows.filter((row) => row.ageConfirmedAt !== null && row.nickname && row.favoriteTeams.length > 0).length,
+    ageConfirmed: rows.filter(confirmedMember).length,
+    profile: rows.filter((row) => confirmedMember(row) && row.nickname && row.favoriteTeams.length > 0).length,
     levelTest: rows.filter((row) => row.levelTest !== null).length,
     firstGame: rows.filter((row) => row.games > 0).length,
   };
@@ -87,10 +102,11 @@ export const STUCK_SIGNUP_MS = 3 * DAY;
 export function membersSummary(rows: readonly MemberViewRow[], now: number) {
   const today = kstDayStart(now);
   return {
-    members: rows.filter((row) => row.ageConfirmedAt !== null).length,
+    members: rows.filter(confirmedMember).length,
     accounts: rows.length,
     signupsToday: rows.filter((row) => row.createdAt >= today).length,
-    stuckSignups: rows.filter((row) => row.ageConfirmedAt === null && row.createdAt < now - STUCK_SIGNUP_MS).length,
+    stuckSignups: rows.filter((row) => !confirmedMember(row) && row.guardian !== 'pending' && row.createdAt < now - STUCK_SIGNUP_MS).length,
+    guardianPending: rows.filter((row) => row.guardian === 'pending').length,
     funnel: funnelOf(rows),
   };
 }

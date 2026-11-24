@@ -113,6 +113,12 @@ function memberRow(uid: string, mirror: DocumentData | undefined, profile: Docum
     atBats: Number(summary?.ab ?? 0),
     homeRuns: Number(summary?.hr ?? 0),
     lastGameAt: summary?.updatedAt ? ms(summary.updatedAt) : null,
+    guardian: profile?.guardianConsentAt ? 'consented' : profile?.under14At ? 'pending' : 'none',
+    under14At: profile?.under14At ? ms(profile.under14At) : null,
+    squad: typeof profile?.squad === 'string' ? profile.squad : null,
+    inviteCode: typeof profile?.inviteCode === 'string' ? profile.inviteCode : null,
+    invitedBy: typeof profile?.invitedBy === 'string' ? profile.invitedBy : null,
+    rankingHidden: profile?.rankingHidden === true,
   };
 }
 

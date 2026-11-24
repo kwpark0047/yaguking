@@ -71,8 +71,10 @@ export function returnRates(accounts: readonly { createdAt: number; lastActiveAt
 export function syncAccounts(options: { auth: Auth; db: Firestore; now?: number }): Promise<SyncReport>;
 export function processAdminTasks(options: { auth: Auth; db: Firestore; now?: number }): Promise<{
   processed: number;
-  results: { syncAccounts?: SyncReport };
+  results: { syncAccounts?: SyncReport; deleteAccount?: number; revokeInvite?: number };
 }>;
+export const DELETE_REASONS: readonly string[];
+export function deleteAccount(options: { auth: Auth; db: Firestore; uid: string; reason: string; by?: string }): Promise<{ deleted: boolean; removed: string[] }>;
 
 export const GUEST_BURST_PER_HOUR: number;
 export function kstDay(ms: number): { start: number; key: string };

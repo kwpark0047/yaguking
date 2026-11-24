@@ -4,9 +4,63 @@
  * - setAdmin: 계정에 관리자 표시(custom claim `admin`)를 붙이거나 뗀다. 관리자 화면은 이 표시를 만들 수 없다
  * - syncAccounts: 로그인 계정 목록 → `accountMirror/{uid}`(회원만, 바뀐 것만 쓰기) + `adminStats/accounts`(비회원은 개수만)
  * - processAdminTasks: 관리자 화면이 남긴 `adminTasks` 중 대기 중인 것을 처리하고 결과를 적는다
+ *   (계정 동기화, 계정 삭제 — 사유 목록만, 초대 보상 취소)
+ * - deleteAccount: 회원 한 명의 기록·팀 자리·닉네임 예약·초대 코드·로그인 계정을 지운다(관리자 계정은 지우지 않는다)
  * - weeklyFunnel: 계정 동기화가 함께 세는 주간 퍼널(docs/measurement-plan.md) — 수만 `adminDaily/{어제}.funnel`에
  */
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { revokeInvite } from './invite.mjs';
+
+/** 계정 삭제 사유 — src/admin/members.ts DELETE_REASONS·firestore.rules와 같아야 한다(단위 테스트) */
+export const DELETE_REASONS = ['본인 요청', '보호자 요청', '만 14세 미만 의심', '보호자 동의 거절'];
+
+/**
+ * 회원 한 명을 지운다(관리자 요청). 앱의 탈퇴(src/lib/profile/save.ts)와 같은 범위를 서버 권한으로:
+ * 팀 자리·신청서(인원·감독은 그날 0시 팀 작업이 맞춘다), 닉네임 예약, 초대 코드, 프로필과 모든 하위 기록, 로그인 계정.
+ * 월간 등수의 닉네임·초대 진행 기록·공식전 답은 각자의 0시 작업이 탈퇴한 회원으로 보고 정리한다. 관리자 계정은 지우지 않는다
+ */
+export async function deleteAccount({ auth, db, uid, reason, by = 'ops' }) {
+  if (!DELETE_REASONS.includes(reason)) throw new Error(`삭제 사유가 목록에 없음: ${reason}`);
+  let authUser = null;
+  try {
+    authUser = await auth.getUser(uid);
+  } catch (error) {
+    if (error?.code !== 'auth/user-not-found') throw error;
+  }
+  if (authUser?.customClaims?.admin === true) throw new Error('관리자 계정은 지우지 않음 — set-admin --remove 먼저');
+  const profileRef = db.doc(`users/${uid}`);
+  const profile = await profileRef.get();
+  const removed = [];
+  const batch = db.batch();
+  const nickname = profile.get('nickname');
+  if (typeof nickname === 'string' && nickname) {
+    const key = db.doc(`nicknames/${nickname.toLowerCase()}`);
+    if ((await key.get()).get('uid') === uid) {
+      batch.delete(key);
+      removed.push('닉네임 예약');
+    }
+  }
+  const inviteCode = profile.get('inviteCode');
+  if (typeof inviteCode === 'string' && inviteCode) {
+    batch.delete(db.doc(`invites/${inviteCode}`));
+    removed.push('초대 코드');
+  }
+  const squad = profile.get('squad');
+  if (typeof squad === 'string' && squad) {
+    batch.delete(db.doc(`squads/${squad}/members/${uid}`));
+    batch.delete(db.doc(`squads/${squad}/requests/${uid}`));
+    removed.push('팀 자리');
+  }
+  await batch.commit();
+  await db.recursiveDelete(profileRef);
+  removed.push('프로필·기록');
+  if (authUser) {
+    await auth.deleteUser(uid);
+    removed.push('로그인 계정');
+  }
+  await db.collection('adminLogs').add({ by, action: 'delete-account', target: uid, detail: `${reason} — ${removed.join(', ')}`, at: FieldValue.serverTimestamp() });
+  return { deleted: true, removed };
+}
 
 const DAY = 86_400_000;
 
@@ -223,9 +277,17 @@ export async function processAdminTasks({ auth, db, now = Date.now() }) {
   for (const task of pending.docs) {
     const type = task.get('type');
     try {
-      if (type === 'syncAccounts') results.syncAccounts ??= await syncAccounts({ auth, db, now });
-      else throw new Error(`모르는 작업: ${type}`);
-      await task.ref.update({ status: 'done', result: JSON.stringify(results[type]), doneAt: FieldValue.serverTimestamp() });
+      let result;
+      if (type === 'syncAccounts') result = results.syncAccounts ??= await syncAccounts({ auth, db, now });
+      else if (type === 'deleteAccount') {
+        // 사람마다 따로 — 요청한 관리자를 기록에 남긴다
+        result = await deleteAccount({ auth, db, uid: task.get('target'), reason: task.get('detail'), by: `ops:${String(task.get('by')).slice(0, 6)}` });
+        results.deleteAccount = (results.deleteAccount ?? 0) + 1;
+      } else if (type === 'revokeInvite') {
+        result = await revokeInvite({ db, inviteeUid: task.get('target'), by: `ops:${String(task.get('by')).slice(0, 6)}` });
+        results.revokeInvite = (results.revokeInvite ?? 0) + 1;
+      } else throw new Error(`모르는 작업: ${type}`);
+      await task.ref.update({ status: 'done', result: JSON.stringify(result).slice(0, 500), doneAt: FieldValue.serverTimestamp() });
     } catch (error) {
       await task.ref.update({ status: 'failed', result: String(error?.message ?? error), doneAt: FieldValue.serverTimestamp() });
     }

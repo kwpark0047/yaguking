@@ -113,7 +113,7 @@ service cloud.firestore {
 
     // ── 초대 진행(가입·보상·기간 지남·취소) — 운영자 PC만 쓴다(ops/invite.mjs). 초대한 사람과 초대받은 사람이 읽는다 ──
     match /inviteLedger/{inviteeUid} {
-      allow read: if isMember() && (resource.data.inviter == request.auth.uid || inviteeUid == request.auth.uid);
+      allow read: if (isMember() && (resource.data.inviter == request.auth.uid || inviteeUid == request.auth.uid)) || isAdmin();
     }
 
     // ── 팀(2·3단계, src/lib/squad/squad.ts) — 코드에서는 KBO 구단과 헷갈리지 않게 squad. 팀 코드가 곧 문서 ID ──
@@ -156,7 +156,7 @@ service cloud.firestore {
 
     match /squads/{code} {
       // 코드를 알면 확인된 회원 누구나 하나 읽기(합류 신청), 목록은 관리자만(코드를 훑을 수 없다)
-      allow get: if ageConfirmed();
+      allow get: if ageConfirmed() || isAdmin();
       allow list: if isAdmin();
 
       // 팀 만들기 = 팀 + 감독 자리 + 내 프로필의 팀 코드(한 묶음). 자녀 계정은 만들 수 없다
@@ -178,6 +178,10 @@ service cloud.firestore {
       allow update: if ageConfirmed()
         && request.resource.data.updatedAt == request.time
         && (squadCaptainEdits() || squadMemberJoins() || squadMemberLeaves());
+      // 관리자: 팀 이름 숨기기·보이기만(src/admin/members.ts — 관리자 기록과 같은 묶음)
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden'])
+        && request.resource.data.hidden is bool;
 
       // 혼자 남은 감독이 나가면 팀이 없어진다(감독 자리도 같은 묶음에서 지운다)
       allow delete: if (ageConfirmed() && resource.data.captain == request.auth.uid && resource.data.size == 1
@@ -333,6 +337,19 @@ service cloud.firestore {
         && validInvitedBy(uid);
 
       allow delete: if isSelf(uid);
+
+      // 관리자(가입자 관리, src/admin/members.ts): 월간 등수 닉네임 숨기기(본인 요청 대행), 보호자 동의 승인(동의를 기다리는 자녀 계정만,
+      // 서버 시각). 그 밖의 칸·기록은 고치지 않는다. 관리자 기록은 화면이 같은 묶음에 남긴다
+      allow update: if isAdmin() && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rankingHidden'])
+          && request.resource.data.rankingHidden is bool)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guardianConsentAt', 'guardianConsentVersion'])
+          && resource.data.get('under14At', null) != null
+          && resource.data.get('guardianConsentAt', null) == null
+          && request.resource.data.guardianConsentAt == request.time
+          && request.resource.data.guardianConsentVersion is string
+          && request.resource.data.guardianConsentVersion.size() <= 10)
+      );
 
       function changed(key) {
         return request.resource.data.diff(resource.data).affectedKeys().hasAny([key]);
@@ -593,6 +610,11 @@ service cloud.firestore {
           && request.resource.data.code.matches('^[A-HJ-NP-Z2-9]{6}$')
           && request.resource.data.requestedAt == request.time
           && getAfter(userPath(uid)).data.get('under14At', null) == request.time;
+        // 관리자가 보호자 동의를 승인할 때 동의 시각만(프로필 승인과 같은 묶음)
+        allow update: if isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['consentedAt'])
+          && request.resource.data.consentedAt == request.time
+          && getAfter(userPath(uid)).data.get('guardianConsentAt', null) == request.time;
         allow delete: if isSelf(uid);
       }
 
@@ -1015,9 +1037,15 @@ service cloud.firestore {
 
     // 운영자 PC 작업 대기열 — 관리자는 요청만, 처리·완료 표시는 Admin SDK(규칙을 건너뜀)
     match /adminTasks/{taskId} {
+      // 작업: 계정 동기화, 계정 삭제(사유 — 이용약관 확정 전에는 본인·보호자 요청·만 14세 미만 의심·보호자 동의 거절만,
+      // src/admin/members.ts DELETE_REASONS와 같아야 한다), 초대 보상 취소. 운영자 PC가 처리한다(ops/admin.mjs)
       allow create: if isAdmin()
-        && request.resource.data.keys().hasOnly(['type', 'target', 'status', 'by', 'requestedAt'])
-        && request.resource.data.type in ['syncAccounts']
+        && request.resource.data.keys().hasOnly(['type', 'target', 'status', 'by', 'requestedAt', 'detail'])
+        && request.resource.data.type in ['syncAccounts', 'deleteAccount', 'revokeInvite']
+        && (request.resource.data.type != 'deleteAccount'
+            || request.resource.data.get('detail', '') in ['본인 요청', '보호자 요청', '만 14세 미만 의심', '보호자 동의 거절'])
+        && (!request.resource.data.keys().hasAny(['detail'])
+            || (request.resource.data.detail is string && request.resource.data.detail.size() <= 100))
         && request.resource.data.target is string && request.resource.data.target.size() <= 128
         && request.resource.data.status == 'pending'
         && request.resource.data.by == request.auth.uid

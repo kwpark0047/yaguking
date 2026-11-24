@@ -431,3 +431,88 @@ test('광고: 글 광고·이미지 광고 올림 → 앱 메인 맨 위·게임
   await page.getByRole('button', { name: '새로 만들기' }).click();
   await expect(page.getByRole('region', { name: '관리자 기록', exact: true })).toContainText('광고 올림');
 });
+
+test('가입자 관리: 더 보기·월간 등수 이름 숨김·계정 삭제 요청(운영자 PC 처리)·보호자 동의 승인·팀 이름 숨김', async ({ page }) => {
+  test.setTimeout(150_000);
+  // 보호자 동의를 기다리는 자녀 계정과 팀 하나
+  const kid = await signUpMember('kid@example.test');
+  await adminDb.doc(`users/${kid}`).set({ under14At: Timestamp.now(), createdAt: Timestamp.now() });
+  await adminDb.doc(`users/${kid}/private/guardian`).set({ email: 'mom@example.test', code: 'KXDAB3', requestedAt: Timestamp.now() });
+  const tiger = (await accounts()).find((user) => user.email === 'tiger@example.test')!.localId;
+  await adminDb.doc('squads/TEAMA2').set({ name: '동네 직관단', kind: 'friends', logo: { frame: 'shield', symbol: 'tiger', primary: 'navy', secondary: 'gold', initials: 'DJ' }, captain: tiger, coach: null, size: 1, createdAt: Timestamp.now() });
+  await adminDb.doc(`squads/TEAMA2/members/${tiger}`).set({ nickname: '호랑이', joinedAt: Timestamp.now(), child: false });
+  await adminDb.doc(`users/${tiger}`).set({ squad: 'TEAMA2' }, { merge: true });
+  await syncAccounts({ auth: adminAuth, db: adminDb });
+
+  await page.goto(ADMIN);
+  const popupPromise = page.context().waitForEvent('page');
+  await page.getByRole('button', { name: '구글로 로그인' }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  await popup.locator('li', { hasNotText: 'Add new account' }).first().click();
+  await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 15_000 });
+
+  // 1) 가입자: 새로 만들면 보호자 동의 기다림·팀 표시
+  await page.getByRole('link', { name: '가입자', exact: true }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  const list = page.getByRole('list', { name: '가입자 목록' });
+  await expect(list).toContainText('팀 TEAMA2', { timeout: 20_000 });
+  await page.getByLabel('상태').selectOption({ label: '보호자 동의 기다림' });
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await page.getByLabel('상태').selectOption({ label: '전체' });
+
+  // 2) 호랑이 상세: 더 보기 → 팀(감독), 월간 등수 이름 숨김
+  await list.getByRole('link', { name: '호랑이' }).click();
+  await page.getByRole('button', { name: /지갑·보너스·팀·작업 보기/ }).click();
+  await expect(page.getByText('동네 직관단 (친구팀, 1명) · 감독')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: '이름 숨기기' }).click();
+  await expect(page.getByRole('status')).toContainText('익명 선수');
+  expect((await adminDb.doc(`users/${tiger}`).get()).get('rankingHidden')).toBe(true);
+  await axe(page, 'member-actions');
+
+  // 3) 계정 삭제 요청: 닉네임을 적어야 열리고, 운영자 PC가 처리하면 계정·기록·팀 자리가 지워진다
+  const remove = page.getByRole('button', { name: '계정 삭제 요청' });
+  await expect(remove).toBeDisabled();
+  await page.getByLabel('사유').selectOption('본인 요청');
+  await page.getByLabel(/닉네임 “호랑이”/).fill('호랑이');
+  await remove.click();
+  await expect(page.getByRole('status')).toContainText('계정 삭제를 요청했어요');
+  const report = await processAdminTasks({ auth: adminAuth, db: adminDb });
+  expect(report.results).toMatchObject({ deleteAccount: 1 });
+  expect((await adminDb.doc(`users/${tiger}`).get()).exists).toBe(false);
+  expect((await adminDb.doc(`squads/TEAMA2/members/${tiger}`).get()).exists).toBe(false);
+  await expect(adminAuth.getUser(tiger)).rejects.toBeTruthy();
+
+  // 4) 보호자 동의: 다른 보낸 주소는 막고, 맞으면 승인
+  await page.getByRole('link', { name: '보호자 동의' }).click();
+  const requests = page.getByRole('list', { name: '보호자 동의 기다림' });
+  await expect(requests).toContainText('KXDAB3', { timeout: 15_000 });
+  await expect(requests).toContainText('mo***@example.test');
+  await axe(page, 'guardians');
+  await requests.getByLabel('메일 제목의 동의 코드').fill('kxdab3');
+  await requests.getByLabel('받은 메일의 보낸 주소').fill('dad@example.test');
+  await expect(requests.getByRole('button', { name: '동의 승인' })).toBeDisabled();
+  await requests.getByLabel('받은 메일의 보낸 주소').fill('Mom@Example.test');
+  await requests.getByRole('button', { name: '동의 승인' }).click();
+  await expect(page.getByText('동의를 기다리는 계정이 없어요.')).toBeVisible({ timeout: 15_000 });
+  const consented = (await adminDb.doc(`users/${kid}`).get()).data()!;
+  expect(consented.guardianConsentAt).toBeTruthy();
+  expect(consented.guardianConsentVersion).toBe('2026-12-15');
+
+  // 5) 팀: 이름 숨기기
+  await page.getByRole('link', { name: '팀', exact: true }).click();
+  const squads = page.getByRole('list', { name: '팀 목록' });
+  await expect(squads).toContainText('동네 직관단', { timeout: 15_000 });
+  await axe(page, 'squads');
+  await squads.getByRole('button', { name: '이름 숨기기' }).click();
+  await expect(squads).toContainText('(이름 숨김)', { timeout: 15_000 });
+  expect((await adminDb.doc('squads/TEAMA2').get()).get('hidden')).toBe(true);
+
+  // 6) 관리자 기록에 남았다
+  await page.getByRole('link', { name: '관리자 기록' }).click();
+  await page.getByRole('button', { name: '새로 만들기' }).click();
+  const logs = page.getByRole('region', { name: '관리자 기록', exact: true });
+  for (const label of ['회원 포인트·팀 열람', '등수 이름 숨김', '계정 삭제 요청', '계정 삭제(운영자 PC)', '보호자 동의 목록 열람', '보호자 동의 승인', '팀 이름 숨김']) {
+    await expect(logs).toContainText(label, { timeout: 15_000 });
+  }
+});

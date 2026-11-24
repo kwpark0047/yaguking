@@ -23,6 +23,18 @@ const ACTION_LABEL: Record<string, string> = {
   'create-ad': '광고 올림',
   'update-ad': '광고 고침',
   'delete-ad': '광고 지움',
+  'view-member-extras': '회원 포인트·팀 열람',
+  'view-guardians': '보호자 동의 목록 열람',
+  'guardian-approve': '보호자 동의 승인',
+  'guardian-expire': '보호자 동의 기한 지남 삭제',
+  'request-delete': '계정 삭제 요청',
+  'delete-account': '계정 삭제(운영자 PC)',
+  'request-invite-revoke': '초대 보상 취소 요청',
+  'invite.revoke': '초대 보상 취소(운영자 PC)',
+  'ranking-hide': '등수 이름 숨김',
+  'ranking-show': '등수 이름 보임',
+  'squad-hide': '팀 이름 숨김',
+  'squad-show': '팀 이름 보임',
 };
 
 /** 관리자 기록 — 개인정보 접속기록. 고치거나 지울 수 없다(규칙). 2년 보관. 열 때 보기 하나(읽기 1) */
