@@ -14,10 +14,10 @@
 import { SQUAD_START, squadsOpen } from '@/lib/squad/squad';
 
 /**
- * 보호자 동의 메일을 받는 야구왕 운영 메일 주소 — 운영자가 전용 주소를 만들면 넣는다(그 전에는 자녀 가입 길을 보여 주지 않는다).
- * 처리방침 9절(만 14세 미만 아동)에도 이 주소가 실린다.
+ * 보호자 동의 메일을 받는 야구왕 운영 메일 주소(운영자 결정 2026-11-24). 처리방침 9절(만 14세 미만 아동)과 12-15 개정 공지에 실린다.
+ * null이면 자녀 가입 길을 보여 주지 않는다.
  */
-export const GUARDIAN_CONSENT_EMAIL: string | null = null;
+export const GUARDIAN_CONSENT_EMAIL: string | null = 'kwpark0047@gmail.com';
 
 /** 화면이 쓰는 동의 메일 주소 — 에뮬레이터 개발·E2E에서만 VITE_GUARDIAN_EMAIL로 시험 주소를 넣을 수 있다(squadStart와 같은 방식) */
 export function guardianConsentEmail(): string | null {
