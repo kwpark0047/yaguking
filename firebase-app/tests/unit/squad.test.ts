@@ -28,7 +28,7 @@ import {
   DEFAULT_LOGO,
 } from '@/lib/squad/squad';
 import { nextCaptain, rejoinBlockedUntil } from '@/lib/squad/squadApi';
-import { GUARDIAN_CODE_PATTERN, GUARDIAN_START, GUARDIAN_WAIT_DAYS, guardianMail, guardianMailto, guardianSignupOpen, isGuardianEmail } from '@/lib/auth/guardian';
+import { GUARDIAN_CODE_PATTERN, GUARDIAN_CONSENT_EMAIL, GUARDIAN_START, GUARDIAN_WAIT_DAYS, guardianMail, guardianMailto, guardianSignupOpen, isGuardianEmail } from '@/lib/auth/guardian';
 import { PRIVACY_VERSIONS, SQUAD_PRIVACY_EFFECTIVE, INVITE_PRIVACY_EFFECTIVE } from '@/content/privacy';
 import * as ops from '../../ops/squad.mjs';
 import * as guardianOps from '../../ops/guardian.mjs';
@@ -207,6 +207,17 @@ describe('보호자 동의(만 14세 미만)', () => {
     expect(GUARDIAN_CODE_PATTERN.test(makeSquadCode())).toBe(true);
     expect(isGuardianEmail('mom@example.com')).toBe(true);
     expect(isGuardianEmail('mom@example')).toBe(false);
+  });
+
+  it('동의 메일 주소가 정해져 있고(11-24), 처리방침 9절과 바뀌는 점에 실린다 — 12-15부터 자녀 가입 길이 열린다', () => {
+    expect(GUARDIAN_CONSENT_EMAIL).toBe('kwpark0047@gmail.com');
+    const version = PRIVACY_VERSIONS.find((item) => item.effective === SQUAD_START)!;
+    const children = JSON.stringify(version.sections.find((section) => section.id === 'children'));
+    expect(children).toContain(`${GUARDIAN_CONSENT_EMAIL}로 보내면`);
+    expect(children).toContain(`${GUARDIAN_CONSENT_EMAIL}로 요청할 수 있습니다`);
+    expect(version.changes.join(' ')).toContain(GUARDIAN_CONSENT_EMAIL!);
+    expect(guardianSignupOpen(kst('2026-12-14'))).toBe(false);
+    expect(guardianSignupOpen(kst('2026-12-15'))).toBe(true);
   });
 
   it('규칙: 동의 받은 계정도 기록을 남길 수 있고, 초대 코드는 못 만든다', () => {
