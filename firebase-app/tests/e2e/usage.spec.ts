@@ -177,7 +177,12 @@ test('친구 대결 2명·5문제: 한 사람 읽기·쓰기', async ({ browser 
     for (let index = 0; index < 5; index += 1) {
       await expect(page.locator('#question-stem')).toBeVisible({ timeout: 15_000 });
       await answerQuestion(page, true);
-      await page.getByRole('button', { name: index < 4 ? '다음 문제' : '순위 보기' }).click();
+      if (index < 4) {
+        await page.getByRole('button', { name: '다음 문제' }).click();
+      } else {
+        // 모두 다 풀면 방장 기기가 방을 끝내며 '순위 보기'가 저절로 최종 순위로 바뀐다 — 누르기 전에 바뀌어도 된다(결과 화면은 아래에서 확인)
+        await page.getByRole('button', { name: '순위 보기' }).click({ timeout: 3_000 }).catch(() => undefined);
+      }
     }
   }
   await expect(host.getByRole('heading', { name: /우승|최종 순위/ })).toBeVisible({ timeout: 15_000 });

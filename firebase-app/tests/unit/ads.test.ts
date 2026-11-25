@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 import { ADS_PARAGRAPH, ENGAGEMENT_PRIVACY_EFFECTIVE, PRIVACY_SECTIONS, PRIVACY_VERSIONS } from '@/content/privacy';
-import { AD_LIMITS, AD_SLOTS, adProblem, adStatus, buildPublicAds, linkKind, liveImageCount, pickAd, type Ad } from '@/lib/ads/ads';
+import { AD_LIMITS, AD_SLOTS, ADS_SHOWN, adProblem, adsShown, adStatus, buildPublicAds, linkKind, liveImageCount, pickAd, type Ad } from '@/lib/ads/ads';
 import { parsePublicHome } from '@/lib/public/home';
 
 /** 광고(docs/ads-plan.md) — 칸 검사·주소 안전·게시 중 거르기·가중치·공개 묶음·처리방침 문구 */
@@ -107,5 +109,24 @@ describe('처리방침', () => {
     expect(items.paragraphs).toEqual([ADS_PARAGRAPH]);
     expect(ADS_PARAGRAPH).toContain('외부 광고 네트워크나 방문 분석 도구는 쓰지 않습니다');
     expect(next.changes.join(' ')).toContain('운영자가 직접 올리는 광고');
+  });
+});
+
+describe('광고 자리 닫음(2026-11-25 — 게임물관리위원회 설명서 1-1절)', () => {
+  it('운영에서는 앱이 광고를 보여 주지 않는다', () => {
+    expect(ADS_SHOWN).toBe(false);
+    expect(adsShown()).toBe(false);
+    const slot = readFileSync(resolve(__dirname, '../../src/components/ads/AdSlot.tsx'), 'utf8');
+    expect(slot.indexOf('if (!adsShown()) return;')).toBeGreaterThan(0);
+    expect(slot.indexOf('if (!adsShown()) return;')).toBeLessThan(slot.indexOf('loadPublicHome()'));
+  });
+
+  it('에뮬레이터 개발·E2E에서만 다시 열 수 있다 — 운영 빌드에서는 값을 넣어도 닫혀 있다', () => {
+    vi.stubEnv('VITE_ADS_SHOWN', 'true');
+    vi.stubEnv('VITE_USE_EMULATORS', 'true');
+    expect(adsShown()).toBe(true);
+    vi.stubEnv('VITE_USE_EMULATORS', 'false');
+    expect(adsShown()).toBe(false);
+    vi.unstubAllEnvs();
   });
 });
