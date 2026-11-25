@@ -35,7 +35,7 @@ export default defineConfig({
     {
       command: 'npx vite --port 5174 --strictPort',
       // 출석·월간 등수(docs/engagement-plan.md)와 힌트(docs/hint-plan.md)는 시작일 전에는 닫혀 있다 — E2E에서는 앞당겨 연다(에뮬레이터 빌드만 읽는 값)
-      env: { VITE_ENGAGEMENT_START: '2026-01-01', VITE_HINT_START: '2026-01-01', VITE_INVITE_START: '2026-01-01', VITE_SQUAD_START: '2026-01-01', VITE_GUARDIAN_EMAIL: 'consent@yaguking.test' },
+      env: { VITE_ENGAGEMENT_START: '2026-01-01', VITE_HINT_START: '2026-01-01', VITE_INVITE_START: '2026-01-01', VITE_SQUAD_START: '2026-01-01', VITE_GUARDIAN_EMAIL: 'consent@yaguking.test', VITE_ADS_SHOWN: 'true' },
       url: 'http://localhost:5174',
       reuseExistingServer: true,
       timeout: 60_000,

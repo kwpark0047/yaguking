@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
+  ADS_SHOWN,
   AD_LIMITS,
   AD_SLOTS,
   AD_STATUS_LABEL,
@@ -207,6 +208,11 @@ export function AdsPage() {
   return (
     <>
       <PageTitle note="자체 광고와 계약한 협찬 광고만. 외부 광고 네트워크·추적 없음. 이용자 앱에 '광고'와 광고주가 함께 보입니다. 문서 하나를 읽습니다.">광고</PageTitle>
+      {!ADS_SHOWN && (
+        <p role="note" className="sticker p-4 text-sm break-keep">
+          <strong>지금 이용자 앱에는 광고가 보이지 않아요(2026-11-25 닫음).</strong> 게임물관리위원회에 낸 설명서에 광고를 게시하지 않는다고 적었어요. 여기서 올려도 앱에 나오지 않아요.
+        </p>
+      )}
       <p className="sticker p-3 text-xs break-keep text-ink-2">
         금지: 청소년 유해(주류·담배·도박·사행성·성인), 의료·금융 과장, 실제 선수 사진·구단 로고(권리 확인 전), 다른 회원 정보. 협찬 광고는 계약·광고주 표시를 확인한 뒤 올려 주세요.
       </p>

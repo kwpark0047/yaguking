@@ -12,6 +12,18 @@ export const AD_SLOTS: Record<AdSlotName, { label: string; width: number; height
   'play-bottom': { label: '게임 중 하단', width: 960, height: 160 },
 };
 
+/**
+ * 이용자 앱의 광고 자리를 보여 줄지 — **닫음**(운영자 결정 2026-11-25: 게임물관리위원회 설명서 1-1절 "광고를 게시하지 않는다"에 맞게).
+ * 코드·관리자 화면·저장된 광고는 그대로 두고 앱에서 읽지도 그리지도 않는다. 다시 열려면 등급분류를 먼저 신청하고 true로 바꾼다.
+ * 에뮬레이터 개발·E2E에서만 VITE_ADS_SHOWN=true로 열 수 있다(inviteStart와 같은 방식)
+ */
+export const ADS_SHOWN = false;
+
+export function adsShown(): boolean {
+  const env = import.meta.env as Record<string, string | undefined> | undefined;
+  return ADS_SHOWN || (env?.VITE_USE_EMULATORS !== 'false' && env?.VITE_ADS_SHOWN === 'true');
+}
+
 export const AD_LIMITS = {
   title: 30,
   text: 60,

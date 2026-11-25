@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { AD_SLOTS, linkKind, pickAd, type AdSlotName, type PublicAd } from '@/lib/ads/ads';
+import { AD_SLOTS, adsShown, linkKind, pickAd, type AdSlotName, type PublicAd } from '@/lib/ads/ads';
 import { engagementOpen, kstDate } from '@/lib/game/attendance';
 import { loadAdImage } from '@/lib/public/adImage';
 import { loadPublicHome } from '@/lib/public/home';
@@ -17,6 +17,8 @@ export function AdSlot({ slot, className = '' }: { slot: AdSlotName; className?:
   const [image, setImage] = useState<string | null>(null);
 
   useEffect(() => {
+    // 광고 자리를 닫아 둔 동안에는 읽지도 그리지도 않는다(ADS_SHOWN)
+    if (!adsShown()) return;
     // 광고를 알리는 처리방침 판(2026-11-05, src/content/privacy.ts ADS_PARAGRAPH)이 시행된 뒤부터
     if (!engagementOpen(kstDate())) return;
     let alive = true;
